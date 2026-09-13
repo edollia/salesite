@@ -46,6 +46,7 @@
     search: document.querySelector("[data-search]"),
     resultCount: document.querySelector("[data-results-count]"),
     emptyResults: document.querySelector("[data-empty-results]"),
+    shelfError: document.querySelector("[data-shelf-error]"),
     drawer: document.querySelector("[data-cart-drawer]"),
     scrim: document.querySelector("[data-scrim]"),
     cartItems: document.querySelector("[data-cart-items]"),
@@ -181,7 +182,13 @@
      theirs does, which is the opposite of true. The unit has to be on the
      number that is per-unit, or the comparison is worse than useless. */
   function sourceLabel(product) {
-    if (!Number.isFinite(product.comparePrice)) return "No store price listed";
+    /* ONE name for one fact. This branch used to return "No store price listed"
+       while its only caller guards on `hasCompare` and prints "No comparison
+       price listed" itself -- so the string was unreachable, and it was a second
+       name for a state the ledger, the audit document and the visitor already
+       call something else. Returning the same words means the two cannot drift
+       apart if a future caller stops guarding. */
+    if (!Number.isFinite(product.comparePrice)) return "No comparison price listed";
     if (product.sourceStatus === "verified") return `Store price ${money.format(product.comparePrice)} each + tax`;
     if (product.sourceStatus === "category_reference") return `Similar size ${money.format(product.comparePrice)} each + tax`;
     // a working value has no documented source, so it must read as an estimate
@@ -298,15 +305,34 @@
       node.classList.toggle("is-current", current);
       node.setAttribute("aria-hidden", current ? "false" : "true");
     });
+    /* ONLY THE LINES THAT CHANGED MOVE — which nothing was checking. The pop
+       class went on the whole copy block, so the Tide evo card (three scents
+       that share a brand, a name and a size and differ only in the packshot)
+       ran a fade on two lines of identical text every two seconds, and so did
+       every other card whose price was the same on both variants — which was
+       all of them, because the price came off the shelf. `freshen` writes the
+       text and animates only when the string is new. */
+    const freshen = (node, next) => {
+      if (!node) return;
+      const changed = node.textContent !== next;
+      node.textContent = next;
+      // cleared first, always: a node that keeps the class after its animation
+      // has finished is a state flag that lies, and the next rule keyed on it
+      // would apply to a card that has been still for minutes
+      node.classList.remove("is-fresh");
+      if (!animate || !changed) return;
+      void node.offsetWidth;
+      node.classList.add("is-fresh");
+    };
     const nameNode = article.querySelector("[data-variant-name]");
-    nameNode.textContent = cardTitle(product);
+    freshen(nameNode, cardTitle(product));
     nameNode.setAttribute("aria-label", labelName(product));
+    freshen(article.querySelector("[data-variant-size]"), product.size || "");
     const stock = article.querySelector("[data-variant-stock]");
     if (stock) {
       stock.textContent = product.inStock ? `${product.inventoryQuantity} AVAILABLE` : "SOLD OUT";
       stock.hidden = state.displaySettings.showAvailability !== true;
     }
-    article.querySelector("[data-variant-price]").textContent = product.pricingStatus === "pending" ? "PRICE PENDING" : cardPrice(product);
     const button = article.querySelector("[data-add]");
     button.dataset.add = product.id;
     button.disabled = !product.inStock || product.pricingStatus === "pending";
@@ -318,6 +344,18 @@
         ? "In stock; it can go on a list once a price is set."
         : `Add ${fullName(product)} to the pickup list.`;
     button.setAttribute("aria-label", `${addButtonLabel(product)} — ${labelName(product)}, ${product.size}`);
+    /* THE ARROWS ARE NAMED AFTER WHAT THE CARD IS SHOWING, and the card rotates
+       every two seconds. Their labels were written once at render and then never
+       touched, so after a single rotation both arrows announced the product that
+       happened to be showing when the shelf was built — the one thing on the
+       card that a screen-reader user cannot see has changed. Everything else
+       here is refreshed; these were missed. */
+    const arrowName = `${displayBrand([product])} ${product.name}, ${product.size}`.trim();
+    const prevArrow = article.querySelector("[data-variant-prev]");
+    const nextArrow = article.querySelector("[data-variant-next]");
+    if (prevArrow) prevArrow.setAttribute("aria-label", `Previous ${arrowName} option`);
+    if (nextArrow) nextArrow.setAttribute("aria-label", `Next ${arrowName} option`);
+
     article.querySelectorAll("[data-variant-dot]").forEach((dot) => {
       const variant = productById.get(ids[Number(dot.dataset.variantDot)]);
       // WCAG 2.2.2: this is the control that STOPS the rotation, so its name
@@ -327,12 +365,6 @@
       dot.classList.toggle("is-current", current);
       dot.setAttribute("aria-current", current ? "true" : "false");
     });
-    if (animate) {
-      const copy = article.querySelector(".product-card-copy");
-      copy.classList.remove("variant-pop");
-      void copy.offsetWidth;
-      copy.classList.add("variant-pop");
-    }
   }
 
   function renderBrandCard(productsInCard, index) {
@@ -397,11 +429,14 @@
       previous.type = "button";
       previous.className = "variant-arrow variant-arrow-prev";
       previous.dataset.variantPrev = "";
-      /* The shelf price is part of the name, because two shelves can carry the
-         same brand and the same product name — the Tide card on the 2-for-$5
-         shelf and the one on the $8 shelf produced four identical accessible
-         names between them. */
-      const cardName = `${displayBrand(productsInCard)} ${product.name}, ${cardPrice(product)}`.trim();
+      /* The SIZE is part of the name, because two shelves can carry the same
+         brand and the same product name — the Tide card on the 2-for-$5 shelf
+         and the one on the $8 shelf produced four identical accessible names
+         between them. It used to be the shelf price; the card stopped printing
+         that on 2026-09-13, and a control must not be named after something
+         that is not on the card. Size separates the same two cards: 32 fl oz
+         against 107. */
+      const cardName = `${displayBrand(productsInCard)} ${product.name}, ${product.size}`.trim();
       previous.setAttribute("aria-label", `Previous ${cardName} option`);
       previous.textContent = "←";
       const next = document.createElement("button");
@@ -419,16 +454,29 @@
       brand.classList.add("has-dots");
       brand.append(brandRow, dots);
     }
-    const price = document.createElement("div");
-    price.className = "product-price";
-    const dealPrice = document.createElement("strong");
-    dealPrice.dataset.variantPrice = "";
-    dealPrice.textContent = product.pricingStatus === "pending" ? "PRICE PENDING" : cardPrice(product);
-    /* The card no longer prints a store comparison. It was a fifth line on
-       every card, it repeated the same three words 15 times down the page, and
-       the comparison belongs in one place — PRICE NOTES and the savings line
-       in the pickup list, where it is a ledger rather than a sales claim. */
-    price.append(dealPrice);
+    /* THE SIZE, IN THE SLOT THE PRICE HAD. cardPrice() printed "2 for $5"
+       under an <h3> saying "2 FOR $5" at 84 px two hundred pixels above, while
+       the sticky stage bar said it a third time with the live stage lit — three
+       copies of one number on screen at once, the string printed 18 times down
+       the page, against an owner rule that reads "say it once". Meanwhile `size`
+       was in products.js for all 38 products and in the ADD button's
+       aria-label, so a screen-reader user was told the size and a sighted one
+       never was.
+
+       The comment that used to sit here defended the price because "a search
+       result can be seen a long way from its shelf headline". That is not how
+       this page searches: renderShelves() filters INSIDE each shelf section and
+       hides a section that empties, so every card a query leaves on screen is
+       still under its own headline. The card prints no store comparison either
+       — that belongs in PRICE NOTES and the pickup list, where it is a ledger
+       rather than a sales claim.
+
+       A pending price still says so, on the button: it reads PRICE TO BE SET
+       and is disabled. */
+    const size = document.createElement("p");
+    size.className = "product-size";
+    size.dataset.variantSize = "";
+    size.textContent = product.size || "";
     const button = document.createElement("button");
     button.type = "button";
     button.className = "add-button";
@@ -438,8 +486,8 @@
     button.setAttribute("aria-label", `${addButtonLabel(product)} — ${labelName(product)}, ${product.size}`);
     if (!product.inStock) button.title = "This item is not currently available to add.";
     else if (product.pricingStatus === "pending") button.title = "In stock; it can go on a list once a price is set.";
-    copy.append(brand, title, stock);
-    copy.append(price, button);
+    copy.append(brand, title, size, stock);
+    copy.append(button);
     article.append(visual, copy);
     return article;
   }
@@ -504,11 +552,27 @@
         if (cardHeld(card)) return;
         /* Never swap what a pointer is ABOUT TO PRESS, and never swap under the
            keyboard focus. This used to be `card.matches(":hover")`, which froze
-           a card for merely being pointed at; it is now only the controls —
-           Add, the arrows, the dots — because those are the ones where a swap
-           changes the meaning of the click that is already on its way. */
+           a card for merely being pointed at — the owner asked for that to stop,
+           because a cursor resting anywhere over a shelf froze the card under it
+           and the visitor most likely to be looking never saw there was more
+           behind it.
+
+           BUT THE CONTROLS ALONE WERE NOT ENOUGH, and an audit measured the cost
+           on 2026-09-12: a shopper reads the name on the tablet, travels to ADD
+           — about 320 ms at human speed — and the card rotates on the way. Three
+           runs came back 2/22, 5/40 and 10/32 mismatches, and the mis-added
+           product goes straight into the pickup list AND into the text the
+           seller receives. Read "Plus OxiClean Stain Fighters", added "Plus
+           OxiClean Odor Blasters".
+
+           So the COPY BLOCK freezes too. That is the tablet carrying the name,
+           the price and the button — the place a person is standing when they
+           are deciding. The product image and the bay keep cycling, so the
+           owner's objection does not come back: browsing a shelf still shows
+           you what is behind each card. What stops is only the part you are
+           reading before you press. */
         if (card.contains(document.activeElement)) return;
-        if (card.querySelector(".add-button:hover, .variant-arrow:hover, [data-variant-dot]:hover")) return;
+        if (card.querySelector(".product-card-copy:hover, .add-button:hover, .variant-arrow:hover, [data-variant-dot]:hover")) return;
         activateBrandVariant(card, Number(card.dataset.variantIndex || 0) + 1);
       });
     }, variantIntervalMs);
@@ -556,7 +620,14 @@
       dom.shelves.append(section);
     }
     if (dom.resultCount) dom.resultCount.textContent = String(visibleCount);
-    if (dom.emptyResults) dom.emptyResults.hidden = visibleCount !== 0;
+    /* Two different nothings. `products` is empty only when products.js did not
+       run — the manifest is frozen and never ships empty — so an empty CATALOGUE
+       is a failure to report, and an empty RESULT is a search to widen. Saying
+       "NO MATCHES" for the first told a visitor the shop was empty while the
+       hero, the wheel and the pickup list all worked. */
+    const brokenShelf = products.length === 0;
+    if (dom.emptyResults) dom.emptyResults.hidden = brokenShelf || visibleCount !== 0;
+    if (dom.shelfError) dom.shelfError.hidden = !brokenShelf;
     // the price-stage bar must not offer a jump to a shelf the search emptied
     document.querySelectorAll("[data-stage-link]").forEach((link) => {
       const shelf = dom.shelves.querySelector(`.deal-shelf[data-deal="${link.dataset.stageLink}"]`);
@@ -791,8 +862,29 @@
     (same || all[Math.min(Math.max(index, 0), all.length - 1)] || dom.drawer.querySelector("[data-close-cart]"))?.focus();
   }
 
+  /* What the cart IS, cheaply, for comparing a generated request against it. */
+  function cartSignature() {
+    return [...state.cart.entries()].map(([id, q]) => `${id}:${q}`).sort().join("|");
+  }
+
+  /* A REQUEST THAT NO LONGER DESCRIBES THE LIST MUST NOT STAY SENDABLE.
+     The cart already syncs across tabs through the `storage` listener, but a
+     request generated before that sync kept its old text AND its old sms: href,
+     both live. A shopper could press SEND THE TEXT and send a list they had
+     already changed somewhere else. Measured: tab A showed $12.00 and two
+     lines while tab A's own cart had become $72.00. */
+  function invalidateStaleRequest() {
+    const panel = dom.orderSuccess;
+    if (!panel || panel.hidden) return;
+    if (panel.dataset.builtFor === undefined) return;
+    if (panel.dataset.builtFor === cartSignature()) return;
+    closeRequest();
+    showToast("Your list changed, so that request is out of date. Make it again.");
+  }
+
   function renderCart() {
     const summary = cartMath();
+    invalidateStaleRequest();
     const linesInDeal = {};
     for (const id of state.cart.keys()) {
       const item = productById.get(id);
@@ -800,7 +892,13 @@
     }
     document.querySelectorAll("[data-cart-count]").forEach((node) => { node.textContent = String(summary.itemCount); });
     document.querySelectorAll("[data-mobile-count]").forEach((node) => { node.textContent = String(summary.itemCount); });
-    document.querySelectorAll("[data-mobile-total]").forEach((node) => { node.textContent = summary.valid ? money.format(summary.cashTotal) : "PAIR NEEDED"; });
+    /* "—", not "PAIR NEEDED": the drawer and the dialog both print an em dash
+       for an unrequestable cart and the mobile bar printed a status word in a
+       PRICE slot, on the same screen, for the same cart. The comment below the
+       [data-cart-total] write has claimed since session 5 that "both say '—'
+       now" -- it was true of the two selectors that write there and this third
+       one was never added to them. The pair warning in the drawer says why. */
+    document.querySelectorAll("[data-mobile-total]").forEach((node) => { node.textContent = summary.valid ? money.format(summary.cashTotal) : "—"; });
     if (dom.mobileBar) dom.mobileBar.hidden = summary.itemCount === 0;
     if (dom.cartFab) dom.cartFab.hidden = summary.itemCount === 0;
     if (!dom.cartItems) return;
@@ -908,7 +1006,10 @@
          COMPLETE bundles only, which is a figure that leaves the unpaired item
          out — the same arithmetic nonsense the store-comparison row already
          refuses. Worse, the mobile bar said "PAIR NEEDED" for the same cart on
-         the same screen. Both say "—" now, and the pair warning above says why. */
+         the same screen. All THREE say "—" now, and the pair warning above says
+         why. (The mobile bar was missed here until session 7: it is written by
+         [data-mobile-total], which is not in this querySelectorAll, so this
+         comment described a fix that had only been half made.) */
       node.textContent = summary.valid ? money.format(summary.cashTotal) : "—";
     });
     document.querySelectorAll("[data-delivery-status]").forEach((node) => { node.textContent = deliveryMessage(summary.itemCount); });
@@ -927,7 +1028,7 @@
     }
     if (dom.checkout) {
       dom.checkout.disabled = !summary.valid;
-      dom.checkout.title = summary.valid ? "Make request text you can copy" : summary.warnings.join(" ");
+      dom.checkout.title = summary.valid ? "Write the request and send it as a text" : summary.warnings.join(" ");
     }
   }
 
@@ -1134,8 +1235,14 @@
        actually worth to this list rather than announcing $10 off a $5 total. */
     if (state.prize) {
       const standing = prizeStanding(summary);
+      /* The fulfilment line above already names the delivery prize's minimum
+         and this list's count when the shopper chose delivery, so repeating the
+         shortfall here would say the same thing twice in six lines. On PICKUP
+         nothing else says it, and it has to be said. */
+      const saidAlready = state.prize.delivery && fulfillment === "Local delivery";
+      const note = saidAlready ? "" : standing.note;
       lines.splice(lines.length - 1, 0,
-        `Wheel prize claimed: ${state.prize.label}${standing.note ? ` — ${standing.note.toLowerCase()}` : ""}`);
+        `Wheel prize claimed: ${state.prize.label}${note ? ` — ${note.toLowerCase()}` : ""}`);
     }
     /* Flattened and placed LAST. A note is free text going into a document a
        seller reads as machine output: three lines of it, second line reading
@@ -1210,13 +1317,19 @@
       dom.orderSummary.select();
       document.execCommand("copy");
     }
-    showToast("Copied.");
-    // a toast cannot be seen from inside a top-layer dialog, so say it on the
-    // button the visitor just pressed
+    /* SAY IT ONCE. The button label and the toast were both firing, and both are
+       on screen together — the toast sits at z-index 1600, above the dialog, so
+       the comment that used to live here ("a toast cannot be seen from inside a
+       top-layer dialog") was wrong about this page. The button the visitor just
+       pressed is the better of the two, because it is where they are looking.
+       The toast is kept for the case where there is no button to speak on.
+       Found by an audit 2026-09-12. */
     const copyButton = dom.orderSuccess?.querySelector("[data-copy-order]");
     if (copyButton) {
       copyButton.textContent = "COPIED ✓";
       window.setTimeout(() => { copyButton.textContent = "COPY REQUEST"; }, 2200);
+    } else {
+      showToast("Copied.");
     }
   }
 
@@ -1467,6 +1580,17 @@
   dom.orderForm?.addEventListener("submit", (event) => {
     event.preventDefault();
     if (!dom.orderForm.reportValidity()) return;
+    /* AN EMPTY CART MUST NOT PRODUCE A REQUEST. The cart syncs across tabs; the
+       open form did not. Emptying the list in a second tab and then submitting
+       in this one produced a message with an "Items:" heading and nothing under
+       it, over the line "Total pending — a pair on one shelf is still
+       incomplete." — a sentence untrue of a cart that has no shelf and no pair —
+       with SEND THE TEXT live above it. Found by an audit 2026-09-12. */
+    if (cartMath().itemCount === 0) {
+      closeRequest();
+      showToast("That list is empty now — it was changed somewhere else.");
+      return;
+    }
     const formData = new FormData(dom.orderForm);
     const name = String(formData.get("name") || "").trim();
     const note = String(formData.get("note") || "").trim();
@@ -1476,6 +1600,11 @@
     renderRequestChannel(text);
     dom.orderForm.hidden = true;
     dom.orderSuccess.hidden = false;
+    /* Remember what this message was built from. If the cart moves under it —
+       another tab, a storage event, anything — the text on screen and the sms:
+       href are describing a list that no longer exists, and both are still
+       pressable. */
+    dom.orderSuccess.dataset.builtFor = cartSignature();
     (dom.orderSuccess.querySelector("[data-send-sms]:not([hidden])")
       || dom.orderSuccess.querySelector("[data-copy-order]"))?.focus();
   });
@@ -1540,7 +1669,16 @@
      a configuration error and is left out rather than silently honoured. */
   const PRIZES = Object.freeze(Object.fromEntries(
     (window.SITE_CONFIG?.wheelPrizes || [])
-      .filter((p) => p && p.id && (Number(p.min) > 0 || Number(p.minItems) > 0))
+      /* THIS TEST MUST MATCH beast.js's. It draws a wedge as a PRIZE when
+         `seg.min || seg.minItems || seg.delivery`; this filtered on the two
+         minimums only, so a delivery prize carrying no minimum would be drawn
+         as a winning wedge, would raise a golden ticket — and would then be
+         silently discarded here, leaving the shopper holding a prize the
+         pickup list does not know about. Harmless today only because
+         `free-delivery` also carries `minItems: 15`. Two definitions of "is
+         this a prize" is the same shape as the duplicated prize table that
+         already shipped once. Found by an audit 2026-09-12. */
+      .filter((p) => p && p.id && (Number(p.min) > 0 || Number(p.minItems) > 0 || !!p.delivery))
       .map((p) => [String(p.id), Object.freeze({
         label: String(p.label || ""),
         note: String(p.note || ""),
@@ -1590,7 +1728,19 @@
          delivery row 30 px below owns that story — the meter counts the items
          that are left and the stamp lands when they are there — and saying it
          here as well put the same sentence on screen three times. */
-      if (prize.delivery) return { ok: summary.itemCount >= prize.minItems, hide: true, note: "" };
+      /* `hide` suppresses the DRAWER line only. The note is still computed,
+         because the copied request has no delivery row unless the shopper chose
+         delivery -- and a message reading "Wheel prize claimed: FREE DELIVERY"
+         over a two-item list whose minimum is fifteen is the page telling the
+         seller something untrue of what the shopper holds. Every other prize
+         states its shortfall; this one printed bare. */
+      if (prize.delivery) {
+        const short = Math.max(0, prize.minItems - summary.itemCount);
+        return {
+          ok: !short, hide: true,
+          note: short ? `Needs ${prize.minItems} items · ${short} more` : "Applies to this list"
+        };
+      }
       const left = Math.max(0, prize.minItems - summary.itemCount);
       return left
         ? { ok: false, note: `Needs ${prize.minItems} items · ${left} more` }
@@ -1643,6 +1793,67 @@
     line.querySelector("[data-prize-sub]").textContent = standing.note;
   }
 
+  /* ---------- what a PRINTED page has to say ----------
+     A shelf card shows one product at a time and rotates through the rest, so a
+     print — which never rotates and never scrolls — carried the current variant
+     of each of the 18 cards and nothing else: **18 of the 38 products, and 20
+     with no name or price anywhere on the paper.** Found by an audit 2026-09-12.
+
+     The other twenty names are not hidden on the page, they are not IN it: the
+     copy block is rewritten in place on every rotation. So the list is built
+     from `data-variant-ids`, which is the same source the dots and the arrows
+     use, and only when a print is actually asked for.
+
+     matchMedia("print") is the hook, not `beforeprint` alone: `beforeprint` does
+     not fire for a programmatic PDF, and a fallback nobody can test is how the
+     LAST print defect survived two sessions. Both are bound. The list is
+     aria-hidden because on screen it is not there at all, and the page already
+     announces every variant through the dots. */
+  function buildPrintVariants() {
+    document.querySelectorAll(".product-brand-card").forEach((card) => {
+      const ids = String(card.dataset.variantIds || "").split(",").filter(Boolean);
+      const copy = card.querySelector(".product-card-copy");
+      if (!copy) return;
+      copy.querySelector("[data-print-variants]")?.remove();
+      const list = document.createElement("ul");
+      list.className = "print-variants";
+      list.setAttribute("data-print-variants", "");
+      list.setAttribute("aria-hidden", "true");
+      /* THE ONE ON SCREEN IS LEFT OUT. The card prints its own size line on
+         paper, and this list used to repeat it four millimetres below —
+         while a single-variant card, which returned early here, printed no
+         size at all once the price came off the card. Now the visible line
+         always carries the size and this list is only ever "what else is
+         behind these dots", which is what it was for. It is built at print
+         time (matchMedia("print"), below), so the card's current variant is
+         the one the reader is actually looking at. */
+      for (const id of ids) {
+        if (id === card.dataset.productId) continue;
+        const item = productById.get(id);
+        if (!item) continue;
+        const row = document.createElement("li");
+        row.textContent = `${labelName(item)} · ${item.size}`;
+        list.append(row);
+      }
+      if (list.children.length) copy.append(list);
+    });
+  }
+  const clearPrintVariants = () =>
+    document.querySelectorAll("[data-print-variants]").forEach((n) => n.remove());
+  let armPrintOneShot = false;
+  window.addEventListener("beforeprint", buildPrintVariants);
+  // the matchMedia one-shot is armed after renderShelves(), at the bottom of
+  // this file: it used to run here, thirty-four lines before a single card
+  // existed, so the programmatic-PDF path it was written for built nothing
+  window.addEventListener("afterprint", clearPrintVariants);
+  try {
+    const printMedia = window.matchMedia("print");
+    const onPrintMedia = (event) => (event.matches ? buildPrintVariants() : clearPrintVariants());
+    if (printMedia.addEventListener) printMedia.addEventListener("change", onPrintMedia);
+    else if (printMedia.addListener) printMedia.addListener(onPrintMedia);
+    if (printMedia.matches) armPrintOneShot = true;
+  } catch { /* matchMedia("print") unsupported: beforeprint still covers it */ }
+
   const publicApi = Object.freeze({
     products,
     deals,
@@ -1659,7 +1870,8 @@
     announce: (message) => { if (message) showToast(String(message)); }
   });
   window.StockUp = publicApi;
-  window.HemetStockUp = publicApi;
+  /* `window.HemetStockUp` was a rename alias with zero consumers anywhere in
+     the project, including scripts/ and qa/. Removed 2026-09-12. */
 
   /* Two tabs on the same site are two copies of this script writing the same
      localStorage key with no coordination: tab A added two Tide, tab B added
@@ -1674,6 +1886,7 @@
   state.prize = loadPrize();
   setDrawerOpen(false);
   renderShelves();
+  if (armPrintOneShot) buildPrintVariants();
   renderCart();
   renderPriceSources();
   renderPrize();

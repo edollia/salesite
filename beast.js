@@ -430,12 +430,30 @@
        of these boxes is already in its FINAL geometry. Measured there and
        cached, the first solve is the same as the last and nothing moves.
        The cache is keyed on the hero's own size, so a real resize re-measures. */
-    const textWalls = STAGE_TEXT_WALLS.map(boxOf).filter(Boolean);
+    /* THE TEXT WALLS ARE CACHED TOO, and leaving them out was the rest of the
+       jump. The obstacles were frozen for the intro's duration but
+       STAGE_TEXT_WALLS were re-measured on every solve — and the intro slides
+       the slogan in with `x:-50, rotate:-6`, so `boxOf` returned the TRANSFORMED
+       box for as long as it ran. The line-up was pushed off a wall that was
+       still moving, and when the intro ended and the cache was thrown away the
+       whole row re-solved against the settled wall and stepped sideways in one
+       frame: 15.27 px at 1024, 6.14 at 1728, 5.31 at 1440.
+
+       Proof it was the walls and not the obstacles: across the jump frame all
+       four obstacle boxes are byte-identical before and after. Measured
+       2026-09-12, after two earlier candidate causes had been fixed and the jump
+       had not moved at all — which is the reason to measure rather than reason. */
+    const freshWalls = STAGE_TEXT_WALLS.map(boxOf).filter(Boolean);
     const obstacleKey = `${Math.round(heroBox.width)}x${Math.round(heroBox.height)}`;
     const fresh = STAGE_OBSTACLES.map(boxOf).filter(Boolean);
     let obstacles = fresh;
-    if (introRunning && obstacleCache && obstacleCache.key === obstacleKey) obstacles = obstacleCache.boxes;
-    else obstacleCache = { key: obstacleKey, boxes: fresh };
+    let textWalls = freshWalls;
+    if (introRunning && obstacleCache && obstacleCache.key === obstacleKey) {
+      obstacles = obstacleCache.boxes;
+      textWalls = obstacleCache.walls;
+    } else {
+      obstacleCache = { key: obstacleKey, boxes: fresh, walls: freshWalls };
+    }
 
     /* Scale is per STAGE, not shared across all three. `rel` keeps the real
        size relationships inside a stage — the 150 oz Purex really is bigger
@@ -513,6 +531,28 @@
             if (spot.r <= w.l || spot.l >= w.r || spot.base <= w.t || spot.t >= w.b) continue;
             if (w.r >= pod.cx) continue;
             push = Math.max(push, w.r + STAGE_TEXT_CLEAR - spot.l);
+            /* AND A WAY DOWN, added 2026-09-13. Push-only made the wall's
+               arrival a CLIFF, and the resize sweep found it the moment the
+               hero sentence stopped masking it: at 900 px tall, dragging the
+               window across 1036 px moved the left bottle 77 px. The loop is
+               the reason — a taller bottle reaches the slogan, the slogan
+               shoves the row right, the row's span shrinks, the bottle gets
+               shorter, and it no longer reaches the slogan. Nothing converges,
+               and four pixels of window pick a side.
+
+               A drop has no cliff in it: right at the threshold the overlap is
+               a pixel, so the shrink is a pixel, and the pass below takes
+               whichever remedy is cheaper as a fraction of what it costs. The
+               push stays and still wins wherever sliding is cheap.
+
+               The note above says walls are push-only because a drop would
+               shrink the line-up to clear type that sits over the podium. That
+               is still true and is still handled — by the `w.r >= pod.cx` line
+               directly above, which throws the centred layout's straddling
+               wordmark out before either remedy is considered. Push-only was
+               belt as well as braces, and the belt was the thing with the
+               cliff in it. */
+            drop = Math.max(drop, (w.b + STAGE_TEXT_CLEAR - spot.t) / Math.max(1, spot.height));
           }
           for (const o of obstacles) {
             if (spot.r <= o.l || spot.l >= o.r || spot.base <= o.t || spot.t >= o.b) continue;
@@ -602,6 +642,46 @@
     if (event.target instanceof HTMLImageElement) hideBrokenBottle(event.target);
   }, true);
 
+  /* ---------- the hero slogan shares BEAST's measure ----------
+     The owner, 2026-09-12: "of a deal reads too separate no?" It was, and the
+     cause was geometry rather than taste. Measured across seven shapes before
+     this existed: the slogan sat 11.5 px inside BEAST on the left and 57 px
+     PAST it on the right at 1440 -- straight into the drum -- was 4% narrower
+     at 1728, and 23% narrower on a phone. Three different lockups depending on
+     how wide the window happened to be. Two lines read as one phrase when they
+     share a measure; they read as a name and a tagline when they do not.
+
+     offsetWidth is the right instrument here and getBoundingClientRect() is
+     not: .chrome-xl carries skewX(-7deg) and .brush carries rotate(-3deg), so
+     both rects are the transformed AABB and neither describes the type. Layout
+     width ignores transforms.
+
+     THIS RUNS ABOVE THE MOTION GATE, for the same reason the podium solver
+     does (trap 21): a reduced-motion visitor and anyone whose vendor bundle
+     failed still gets the hero, and the lockup is the first thing in it. The
+     fit is CLAMPED so a mid-swap measurement of zero, or a font that never
+     arrives, cannot blow the lockup up -- it just stays at the CSS size. */
+  const sloganBox = document.querySelector("[data-hero-stock]");
+  const sloganInk = sloganBox?.querySelector(".brush");
+  const beastInk = document.querySelector("[data-hero-beast] .chrome");
+  function fitSlogan() {
+    if (!sloganBox || !sloganInk || !beastInk) return;
+    /* Measure the slogan at its unfitted size every time. Measuring the FITTED
+       width and scaling that again compounds: the lockup would creep a little
+       wider on every resize tick and never come back. No paint happens between
+       these two lines -- they are one task -- so the reset is not a flash. */
+    sloganBox.style.setProperty("--slogan-fit", "1");
+    const natural = sloganInk.offsetWidth;
+    const target = beastInk.offsetWidth;
+    if (!natural || !target) return;
+    const fit = Math.min(1.45, Math.max(.55, target / natural));
+    sloganBox.style.setProperty("--slogan-fit", fit.toFixed(4));
+  }
+  fitSlogan();
+  /* Permanent Marker decides this measurement and it is not there on the first
+     frame. Without this the lockup fits to the fallback face and stays there. */
+  document.fonts?.ready?.then(() => { fitSlogan(); scheduleStageLayout(); });
+
   let stageFrame = 0;
   let stageRetries = 0;
   function scheduleStageLayout() {
@@ -611,6 +691,10 @@
       // a plate that has not decoded yet measures as nothing; come back for it
       if (!podiumMetrics() && stageRetries < 40) { stageRetries += 1; scheduleStageLayout(); return; }
       stageRetries = 0;
+      /* The lockup is an obstacle the stage solver measures, so it has to be
+         its final size BEFORE the bottles are placed against it -- fit first,
+         then lay out, in that order, inside the same frame. */
+      fitSlogan();
       layoutStage();
     });
   }
@@ -658,7 +742,7 @@
 
 
   /* ================== THE WHEEL ==================
-     Eight segments, alternating a prize and a miss, which is what a wheel looks
+     Eleven segments and seven distinct outcomes — five of them TRY AGAIN — which is what a wheel looks
      like. The WINNER IS DRAWN FIRST from the weight table and the rotation is
      then solved to land the needle on that segment — never the reverse. That is
      what makes the odds real, auditable and testable; a wheel that spins to a
@@ -677,7 +761,7 @@
      it, so a reduced-motion visitor — or anyone whose vendor bundle failed —
      got a full-width band saying SPIN THE WHEEL with a pink SPIN chip that did
      nothing at all, silently, with no console error. The wheel is SVG and its
-     result comes from a weight table; only the 4.4-second spin needs motion,
+     result comes from a weight table; only the 5.2-second spin needs motion,
      and that degrades to a CSS transition, or to landing instantly for someone
      who has asked for less movement. */
   /* The segments come from SITE_CONFIG.wheelPrizes — a discount is a business
@@ -700,13 +784,28 @@
     prize: !!(seg.min || seg.minItems || seg.delivery),
     top: !!seg.top
   }));
-  /* sessionStorage, not localStorage. Owner, 2026-09-12: "spin the wheel can
-     only be done once per session." A new tab is a new session and gets a new
-     spin — but a spin is refused outright while a PRIZE is still held, which
-     is the case localStorage still covers, so nobody can accidentally spin a
-     won prize away. None of this is enforceable on a static page and the copy
-     never claims it is; it is a courtesy, and the seller settles the claim. */
-  const WHEEL_SPUN_KEY = "beast-wheel-spun";
+  /* localStorage AND A DATE, changed 2026-09-13 at the owner's instruction.
+
+     It was sessionStorage, which is per TAB: an audit opened a third tab and
+     reached DUTCH BROS with no devtools and no trickery, while the dialog said
+     ONE SPIN A VISIT. Seventy per cent of the face is TRY AGAIN, which leaves
+     no trace, so farming it was free and invisible.
+
+     The owner set the business rule: one spin a day. The key carries the local
+     date, so the lock survives a new tab and clears itself at midnight without
+     anything to sweep up. A spin is still refused outright while a PRIZE is
+     held, so nobody can spin a won prize away.
+
+     NONE OF THIS IS ENFORCEABLE ON A STATIC PAGE — clearing site data resets
+     it, and it always will. The copy says what the code does and claims no
+     more: the prize is stated, never subtracted, and settled in person. */
+  const wheelKeyForToday = () => {
+    const now = new Date();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const day = String(now.getDate()).padStart(2, "0");
+    return `beast-wheel-spun-${now.getFullYear()}-${month}-${day}`;
+  };
+  const WHEEL_SPUN_KEY = wheelKeyForToday();
 
   /* Each wedge is a gradient, so its ink has to clear the WCAG floor at BOTH
      ends of it. White type on the old #0aa9d8 cyan measured 4.17:1 against the
@@ -980,7 +1079,7 @@
         return item;
       }));
     }
-    /* THE ODDS, merged one row per OUTCOME — the four TRY AGAIN segments are the
+    /* THE ODDS, merged one row per OUTCOME — the five TRY AGAIN segments are the
        same outcome and nobody wants four rows of 14%. They are NOT rendered on
        the storefront: the owner asked on 2026-09-12 that the numbers stay
        private. They are returned to wheel-lab.html, which is the internal bench
@@ -997,10 +1096,28 @@
       });
       return merged.sort((a, b) => b.pct - a.pct);
     };
-    if (oddsList) oddsList.closest("details")?.remove();
+    /* THE ODDS ARE PRIVATE ON THE STOREFRONT AND REQUIRED ON THE BENCH, and this
+       line did not know the difference. The owner made the percentages private
+       on 2026-09-12 — "for me only to know, shouldn't be known to public" — so
+       this strips the <details> off the wheel dialog. But the storefront has no
+       such element to strip: the only `[data-wheel-odds]` in the project is in
+       wheel-lab.html, which is the page the odds were MOVED TO. beast.js runs
+       before wheel-lab.js, so this deleted the bench's table out from under it
+       and the one place the owner can read their own odds has been empty ever
+       since, silently, with no console error. Found by an audit 2026-09-12.
+       `window.__beastLab` is set by wheel-lab.html's own inline <head> script. */
+    if (oddsList && !window.__beastLab) oddsList.closest("details")?.remove();
 
-    const spunThisSession = () => { try { return sessionStorage.getItem(WHEEL_SPUN_KEY) === "1"; } catch { return false; } };
-    const markSpun = () => { try { sessionStorage.setItem(WHEEL_SPUN_KEY, "1"); } catch { /* private mode */ } };
+    /* Yesterday's keys are swept on the way past: the lock is one row, but a
+       browser left open for a year should not accumulate 365 of them. */
+    const spunThisSession = () => { try {
+      for (let i = localStorage.length - 1; i >= 0; i -= 1) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith("beast-wheel-spun-") && key !== WHEEL_SPUN_KEY) localStorage.removeItem(key);
+      }
+      return localStorage.getItem(WHEEL_SPUN_KEY) === "1";
+    } catch { return false; } };
+    const markSpun = () => { try { localStorage.setItem(WHEEL_SPUN_KEY, "1"); } catch { /* private mode */ } };
     const heldPrize = () => window.StockUp?.getPrize?.() || null;
     // a spin is refused by EITHER rule: one a session, and never over a prize
     const canSpin = () => !spunThisSession() && !heldPrize();
@@ -1022,7 +1139,7 @@
         bandSub.textContent = prize.note || "Honoured in person.";
       } else if (spunThisSession()) {
         bandTitle.textContent = "NO LUCK THIS TIME";
-        bandSub.textContent = "That was the spin for this visit.";
+        bandSub.textContent = "That was the spin for today.";
       }
       const chip = band.querySelector("[data-spin-go]");
       if (!canSpin() && !spinning) {
@@ -1264,12 +1381,20 @@
       // the bench prints these; the storefront does not
       odds: mergedOdds,
       preview: (id) => showTicket(id),
-      force: (id) => { try { sessionStorage.removeItem(WHEEL_SPUN_KEY); } catch { /* private mode */ }
+      /* BENCH TOOLS. `force` lands the wheel on any segment you name and `reset`
+         clears the spin lock — they exist for wheel-lab.html, and they were
+         shipping to the storefront where anyone with a console could spin
+         themselves a FREE CAR. The prize is stated and never subtracted, and the
+         seller honours it in person, so this was never a way to take money — but
+         a page that sells things should not carry a "win anything" button.
+         Gated 2026-09-12 on the same flag the odds table uses. */
+      force: (id) => { if (!window.__beastLab) return; try { localStorage.removeItem(WHEEL_SPUN_KEY); } catch { /* private mode */ }
         window.StockUp?.setPrize?.(null);
         spinButton.classList.remove("is-done");
         spinButton.querySelector("span").textContent = "SPIN";
         spin(id); },
-      reset: () => { try { sessionStorage.removeItem(WHEEL_SPUN_KEY); } catch { /* private mode */ }
+      reset: () => { if (!window.__beastLab) return;
+        try { localStorage.removeItem(WHEEL_SPUN_KEY); } catch { /* private mode */ }
         window.StockUp?.setPrize?.(null);
         spinning = false;
         spinButton.classList.remove("is-done");
@@ -1299,6 +1424,13 @@
   }
 
   root.classList.add("motion");
+
+  /* If the <head> failsafe already revealed the page, `motion`'s hidden states
+   would blank a hero the visitor is looking at for as long as the asset wait
+   takes — measured at ~150 ms even after the entrance was made to seek rather
+   than play. `late-boot` neutralises those hidden states from the same frame. */
+
+  if (window.__bootReleased) root.classList.add("late-boot");
   const { gsap, ScrollTrigger } = window;
   gsap.registerPlugin(ScrollTrigger);
   gsap.defaults({ ease: "power3.out", duration: 1 });
@@ -1363,7 +1495,25 @@
   const boot = document.querySelector("[data-boot]");
   const bootBar = document.querySelector("[data-boot-bar]");
   const bootedBefore = (() => { try { return sessionStorage.getItem("beast-booted") === "1"; } catch { return false; } })();
-  document.body.classList.add("is-booting");
+  /* Unless the <head> failsafe already gave up on the splash — see its comment.
+     Re-locking the page after it has been released is worse than a slow boot. */
+  if (!window.__bootReleased) document.body.classList.add("is-booting");
+  /* STAND THE <head> FAILSAFE DOWN THE MOMENT THIS FILE IS ALIVE — here, not
+     inside releaseBoot(). releaseBoot() is NOT on the happy path: the splash is
+     removed by finishBoot's timeline onComplete and `is-booting` by the intro's
+     own callback, so the clearTimeout inside it never ran and the head timer
+     fired at head+9s on EVERY load. Harmless once the boot is finished; on a
+     slow load it is not harmless at all, because `html.motion` is already on and
+     the hero copy, the price and the bottles are at opacity 0 until the intro
+     plays them in — so the failsafe took the splash off an EMPTY SCENE and held
+     it blank for the best part of a second. Measured with beast.js delayed 8.6s:
+     failsafe at 9018 ms, copy opacity 0, price opacity 0, blank hero for 940 ms.
+     Found by an audit 2026-09-12.
+     Nothing is lost by clearing it: this file carries its own 8-second deadline
+     plus `error` and `unhandledrejection` handlers, which is the cover the head
+     timer was standing in for. */
+  clearTimeout(window.__bootDeadline);
+  window.__bootDeadline = null;
 
   /* A full-screen overlay that only ever comes down from JavaScript is one
      uncaught error away from hiding the whole site. Three ways out: a hard
@@ -1373,6 +1523,10 @@
     if (bootReleased) return;
     bootReleased = true;
     clearTimeout(bootDeadline);
+    /* The failsafe in <head> exists for the case where THIS FILE never runs.
+       It has, so stand it down — otherwise its 9-second timer would fire in the
+       middle of a slow first visit and yank an overlay this file is managing. */
+    clearTimeout(window.__bootDeadline);
     document.body.classList.remove("is-booting");
     document.querySelector("[data-boot]")?.remove();
   }
@@ -1404,7 +1558,7 @@
     .fromTo("[data-hero-beast]", { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: 1.2 }, .15)
     .add(() => shine("[data-hero-beast] .chrome"), .5)
     .fromTo("[data-hero-stock]", { x: -50, opacity: 0, rotate: -6 }, { x: 0, opacity: 1, rotate: 0, duration: 1 }, .38)
-    .fromTo("[data-hero-line]", { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: .8, stagger: .08 }, .6)
+    .fromTo("[data-hero-line]", { y: 22, opacity: 0 }, { y: 0, opacity: 1, duration: .8, stagger: .08, immediateRender: false }, .6)
     .fromTo("[data-hero-price]", { opacity: 0, scale: .88 }, { opacity: 1, scale: 1, duration: 1.2 }, .5)
     .add(() => shine("[data-hero-price] .chrome"), .95)
     .fromTo("[data-hero-glow]", { opacity: 0 }, { opacity: 1, duration: 1.2 }, .8)
@@ -1413,7 +1567,19 @@
 
   function finishBoot() {
     try { sessionStorage.setItem("beast-booted", "1"); } catch { /* private mode */ }
-    if (!boot) { introRunning = true; heroIntro.play(); return; }
+    if (!boot) {
+      introRunning = true;
+      /* If the <head> failsafe already took the splash down, the visitor is
+         LOOKING AT THE PAGE — and `html.motion` has just re-hidden the copy, the
+         price and the bottles for the entrance to play them back in. Animating
+         now blanks a hero that is already on screen: measured 152 ms fully blank
+         and 502 ms with the copy and price gone, with beast.js 9.5-10.5 s late.
+         Seek to the end instead. The entrance is a first impression, and there
+         is no first impression left to make. */
+      if (window.__bootReleased) heroIntro.progress(1);
+      else heroIntro.play();
+      return;
+    }
     gsap.timeline({ onComplete: () => boot.remove() })
       .to(".boot-in", { y: -24, opacity: 0, duration: .4, ease: "power2.in" })
       .to(boot, { clipPath: "inset(0 0 100% 0)", duration: .8, ease: "expo.inOut" }, "-=.1")
@@ -2149,7 +2315,7 @@
   window.addEventListener("load", () => ScrollTrigger.refresh());
   document.fonts?.ready?.then(() => ScrollTrigger.refresh());
   /* The motion layer's test surface. `window.__stageDebug` used to be the only
-     hook here and nothing read it — HANDOFF §7.14 said to wire it or delete it.
+     hook here and nothing read it — the weakness list said to wire it or delete it.
      This is the wiring: a screenshot of a scene that cycles every three seconds
      is a coin toss without a way to pin it, which is how session 5's hero
      renders kept catching the intro mid-flight. `settled` resolves once the

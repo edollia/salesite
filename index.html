@@ -20,18 +20,57 @@
   <link rel="preload" href="assets/fonts/archivo-black.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/permanent-marker.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="preload" href="assets/beast-lab/portal-mobile.webp" as="image" type="image/webp" media="(max-width: 759px), (max-aspect-ratio: 1/1)" fetchpriority="high">
-  <link rel="preload" href="assets/beast-lab/portal-desktop.webp" as="image" type="image/webp" media="(min-width: 760px) and (min-aspect-ratio: 1/1)" fetchpriority="high">
+  <!-- These two must stay the exact complement of each other and must match the
+       <picture> below and the CSS landscape band. `not all and (min-aspect-ratio:1/1)`
+       is used rather than `(max-aspect-ratio:1/1)` so a perfectly square window
+       preloads ONE plate and not both. -->
+  <link rel="preload" href="assets/beast-lab/portal-mobile.webp" as="image" type="image/webp" media="(max-width:759px) and (max-aspect-ratio:0.9999/1)" fetchpriority="high">
+  <link rel="preload" href="assets/beast-lab/portal-desktop.webp" as="image" type="image/webp" media="(min-aspect-ratio:1/1), (min-width:760px)" fetchpriority="high">
   <link rel="stylesheet" href="beast.css">
   <link rel="stylesheet" href="product-fit.css">
-  <script>document.documentElement.classList.replace("no-js","js");</script>
+  <!-- THE SPLASH MUST NOT DEPEND ON ONE FILE. This line swaps no-js for js, which
+       is what makes `html.no-js .boot{display:none}` stop applying — so from here
+       on the ONLY things that can take the overlay down live inside beast.js. If
+       that one request fails (a 404, a bad deploy, a connection that dies, a
+       blocker) the visitor gets a full-screen splash forever, at z-index 2000,
+       over a storefront that script.js has already built underneath it: every
+       card, every price, every ADD button present, focusable and completely
+       obscured. Found by an audit on 2026-09-12; blocking GSAP alone degrades
+       correctly, so this was specific to the file that owns the dismissal.
+
+       Two failsafes, here rather than in beast.js, because a failsafe inside the
+       file it protects is not one:
+         · the <script> tag's own onerror, which fires the moment the request
+           fails and takes the splash down with no wait at all;
+         · a deadline, for the case where the file loads but never runs (a parse
+           error in a browser we did not test). beast.js clears it the instant it
+           takes over, so this never fights the real boot sequence. -->
+  <script>
+    document.documentElement.classList.replace("no-js", "js");
+    window.__bootFailsafe = function () {
+      /* Record that the splash was already given up on. beast.js checks this
+         before it re-adds `is-booting`: the two deadlines are anchored to
+         different moments — this one to head-parse, beast.js's to whenever
+         beast.js actually executes — so a file that arrives after 9 s would
+         otherwise be met by a page that had already released, re-lock it
+         (`is-booting` sets `overflow:hidden`) and hold it unscrollable with no
+         splash showing. Measured at 2.0 s with beast.js delayed 11 s. */
+      window.__bootReleased = true;
+      var boot = document.querySelector("[data-boot]");
+      if (boot) boot.remove();
+      if (document.body) document.body.classList.remove("is-booting");
+    };
+    window.__bootDeadline = setTimeout(window.__bootFailsafe, 9000);
+    addEventListener("error", window.__bootFailsafe);
+    addEventListener("unhandledrejection", window.__bootFailsafe);
+  </script>
   <script src="site-settings.js" defer></script>
   <script src="products.js" defer></script>
   <script src="prize-art.js" defer></script>
   <script src="script.js" defer></script>
   <script src="assets/vendor/gsap.min.js" defer></script>
   <script src="assets/vendor/ScrollTrigger.min.js" defer></script>
-  <script src="beast.js" defer></script>
+  <script src="beast.js" defer onerror="window.__bootFailsafe &amp;&amp; window.__bootFailsafe()"></script>
 </head>
 <body class="beast" id="top">
   <!-- Every <img> on this page carries draggable="false" in the MARKUP. An
@@ -53,9 +92,15 @@
   </div>
 
   <header class="nav" data-nav>
-    <a class="nav-brand" href="#top" aria-label="Beast Stock-Up home">
+    <a class="nav-brand" href="#top" aria-label="Beast of a Deal — beast.deal, back to top">
       <img draggable="false" class="nav-panther" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="52" height="37">
-      <span class="nav-lockup"><span class="nav-beast">BEAST</span><span class="nav-stock">STOCK-UP</span></span>
+      <!-- Owner, 2026-09-12: header reads "www" small, then "beast.deal".
+           NOTE FOR WHOEVER PICKS THIS UP: the domain is bought but does not
+           resolve to this site yet, so `publicUrl` is still null and nothing
+           PRINTABLE carries the address — the flyer's QR box stays a dashed
+           placeholder. This is the one on-screen surface that now names it,
+           at the owner's explicit instruction. -->
+      <span class="nav-lockup"><span class="nav-www">www</span><span class="nav-stock">beast.deal</span></span>
     </a>
     <nav class="nav-links" aria-label="Sections">
       <a href="#shop" data-nav-link>IN STOCK</a>
@@ -72,9 +117,42 @@
     <!-- ============================== HERO ============================== -->
     <section class="hero" data-hero>
       <div class="hero-scene" aria-hidden="true">
+        <!-- THE PLATE IS CHOSEN BY ORIENTATION ALONE, and it must stay that way.
+             These conditions have to match the CSS band that lays the hero out
+             (`@media(min-aspect-ratio:1/1) and (max-height:640px)` in beast.css,
+             which carries NO width condition) and the two preloads in <head>.
+             Trap 15 in the master brief says to keep all three in sync and they
+             fell out of it: session 6 correctly removed the width clause --
+             "a short wide window is a landscape window whether it is 700px
+             across or 930" -- and left `min-width:760px` here.
+
+             AND THE SHAPE THAT MATTERS IS THE HERO'S, NOT THE WINDOW'S. The
+             hero is `height:100vh; max-height:1000px`, so a 1144x1210 window
+             gives a hero box of 1144x1000 -- LANDSCAPE -- while the window
+             itself is portrait. Choosing on the window alone served the tall
+             portrait plate into a wide short box: cover-fitting 941x1672 into
+             1144x1000 scales it to 2033 px tall, so the painted podium landed
+             at y=1579 in a frame ending at 1516 and the solver stood the
+             line-up on a platform 63 px below the fold. Measured at 1144x1210:
+             --pod-cy 1062.88 against a 1000 px hero, every bottle 107 px past
+             the bottom, 31% of one sliced off by `overflow:hidden`. The owner
+             reported it as "items getting clipped behind, the base is too low".
+             The condition below is `(min-aspect-ratio:1/1), (min-width:760px)` — the same
+             one the object-position rule and the two-column hero band use. THE
+             THREE MUST STAY IDENTICAL. 760 is where a hero box is wide enough to
+             hold a copy column beside the podium; below it the box is genuinely
+             portrait and the portrait plate is right.
+
+             The consequence was not subtle. At 720x450 (which is 1440x900 at
+             200% browser zoom) and at 640x360, a LANDSCAPE window was served
+             the 941x1672 PORTRAIT plate. podiumMetrics() then solved a correct
+             ellipse for the wrong artwork: cover-scaling that plate into a
+             450px-tall box put the disc at cy=165 with b=43, so the line-up was
+             placed 34px tall -- 7.6% of the viewport against 35% everywhere
+             else -- and two of the four bottles were hidden outright. -->
         <picture class="hero-plate">
-          <source media="(min-width:760px) and (min-aspect-ratio:1/1)" type="image/webp" srcset="assets/beast-lab/portal-desktop.webp">
-          <source media="(min-width:760px) and (min-aspect-ratio:1/1)" srcset="assets/beast-lab/portal-desktop.jpg">
+          <source media="(min-aspect-ratio:1/1), (min-width:760px)" type="image/webp" srcset="assets/beast-lab/portal-desktop.webp">
+          <source media="(min-aspect-ratio:1/1), (min-width:760px)" srcset="assets/beast-lab/portal-desktop.jpg">
           <source type="image/webp" srcset="assets/beast-lab/portal-mobile.webp">
           <img draggable="false" src="assets/beast-lab/portal-mobile.jpg" alt="" fetchpriority="high" width="941" height="1672">
         </picture>
@@ -199,7 +277,7 @@
     <div class="spin-band" data-spin-band>
       <button class="spin-invite" type="button" data-open-wheel aria-haspopup="dialog" aria-controls="wheel-dialog">
         <span class="spin-badge" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="spin-copy"><b data-spin-title>SPIN THE WHEEL</b><small data-spin-sub>Money off, a drink, free delivery — and a car.</small></span>
+        <span class="spin-copy"><b data-spin-title>SPIN THE WHEEL</b><small data-spin-sub>Money off, a drink, free delivery — and a toy car.</small></span>
         <span class="spin-go" data-spin-go aria-hidden="true">SPIN →</span>
       </button>
     </div>
@@ -223,7 +301,12 @@
             <input id="product-search" type="search" data-search autocomplete="off" placeholder="Tide, sensitive, pods, paper…">
             <button type="button" data-clear-search hidden>CLEAR</button>
           </div>
-          <p role="status"><strong data-results-count>31</strong> SHOWING<span data-stage-count></span></p>
+          <!-- 38, not a smaller number typed once and left behind. script.js overwrites
+               this on first render, so it is only ever read by someone whose JS has not
+               run -- which is exactly the visitor who cannot be corrected later. It said
+               31 while the shelf held 38. Nothing guards it; keep it equal to the product
+               count in products.js. -->
+          <p role="status"><strong data-results-count>38</strong> SHOWING<span data-stage-count></span></p>
         </div>
       </header>
 
@@ -233,8 +316,24 @@
 
       <section class="empty-results" data-empty-results hidden>
         <span>?</span><h2>NO MATCHES</h2>
-        <p>Nothing here by that name.</p>
+        <p>Try a brand, a scent or a size.</p>
         <button type="button" data-clear-search>SHOW EVERYTHING</button>
+      </section>
+
+      <!-- A SEARCH THAT FINDS NOTHING AND A CATALOGUE THAT NEVER ARRIVED ARE NOT
+           THE SAME EVENT, and until now the page said "0 SHOWING · NO MATCHES"
+           for both: if products.js failed, script.js fell back to an empty array
+           and the visitor was told, over a working hero and a working pickup
+           list, that a shop with 38 products in it had nothing in it. That is
+           the one thing on this page that could be called a lie.
+
+           It says so plainly instead, and it offers the number, which is typed
+           into the markup here for the same reason it is typed into the rules
+           plate — so it survives every script on the page failing. -->
+      <section class="shelf-error" data-shelf-error hidden>
+        <span>!</span><h2>THE SHELF DID NOT LOAD</h2>
+        <p>That is my end, not yours. Reload the page — or text me and I will tell you what I have.</p>
+        <a class="btn btn-cyan" href="sms:+13233019200"><span>TEXT (323) 301-9200</span></a>
       </section>
     </section>
 
@@ -275,7 +374,19 @@
         <article class="plate plate-order">
           <ol class="mini-steps"><li><b>1</b>Pick what you want</li><li><b>2</b>Send the request</li><li><b>3</b>Collect it</li></ol>
           <h3>HOW TO ORDER</h3>
-          <p class="channel-line" data-contact-slot><span data-contact-value></span><span data-pickup-value></span></p>
+          <!-- THE NUMBER IS IN THE MARKUP, not only in beast.js. It used to be
+               written solely by beast.js's fillSlots(), so blocking that one
+               124 KB motion file left the HOW TO ORDER plate with an empty gap
+               where the only way to contact the business should be — everything
+               else on the page still worked. The one printed fact the business
+               runs on must not sit behind the motion layer. Found by an audit
+               on 2026-09-12.
+               beast.js still overwrites this from SITE_CONFIG, so the config
+               remains the source of truth and a changed number still propagates;
+               this is the value that survives if the script never arrives.
+               `check-integrity.mjs` compares it against SITE_CONFIG, the same
+               way it already guards the flyer's hand-typed copy of it. -->
+          <p class="channel-line" data-contact-slot><span data-contact-value>Text your list to (323) 301-9200.</span><span data-pickup-value></span></p>
           <a class="btn btn-pink" href="#shop"><span>START MY LIST</span><i>→</i></a>
         </article>
         <!-- The six towns used to be six chips at the bottom of the delivery
@@ -310,8 +421,12 @@
     <div class="footer-in">
       <!-- BEAST is already 360 px tall behind this mark. Printing it a second
            time 40 px lower was the wordmark competing with its own watermark. -->
-      <a class="footer-mark" href="#top" aria-label="Beast Stock-Up — back to top"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="76" height="55"><i>STOCK-UP</i></a>
-      <p data-inventory-line>While supplies last.</p>
+      <a class="footer-mark" href="#top" aria-label="Beast Stock-Up — back to top"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="76" height="55"><i>OF A DEAL</i></a>
+      <!-- "While supplies last." is gone. It is half of the line the owner threw
+           out by name — "'real bottles · while supplies last' — nah, wtf is that.
+           Come on, judge your own work." — and it said the same thing as the line
+           directly under it, in worse words. `data-inventory-line` went with it:
+           no script in the project ever read that hook. -->
       <small>First come, first served. Packaging may vary.</small>
     </div>
   </footer>
@@ -392,7 +507,7 @@
   <dialog class="wheel-dialog" id="wheel-dialog" data-wheel-dialog aria-labelledby="wheel-title">
     <div class="wheel-in">
       <header>
-        <div><p data-wheel-eyebrow>ONE SPIN A VISIT · HONOURED IN PERSON</p><h2 id="wheel-title">SPIN THE WHEEL</h2></div>
+        <div><p data-wheel-eyebrow>ONE SPIN A DAY · HONOURED IN PERSON</p><h2 id="wheel-title">SPIN THE WHEEL</h2></div>
         <button type="button" data-close-wheel aria-label="Close the wheel">×</button>
       </header>
       <div class="wheel-stage" data-wheel-stage>

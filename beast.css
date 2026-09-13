@@ -8,14 +8,31 @@
 @font-face{font-family:ArchivoBlack;src:url('assets/fonts/archivo-black.woff2') format('woff2');font-display:swap}
 @font-face{font-family:Marker;src:url('assets/fonts/permanent-marker.woff2') format('woff2');font-display:swap}
 /* instanced at the one weight the page uses; see scripts/build-fonts.py */
-@font-face{font-family:Caveat;src:url('assets/fonts/caveat-700.woff2') format('woff2');font-weight:700;font-display:swap}
+/* The Caveat @font-face and the --hand token were removed on 2026-09-12. They
+   had been dead since "this is what I have" came off the shop on 2026-09-11:
+   `.hand` matched nothing and no rule read --hand. An unused @font-face is never
+   downloaded so it cost no bytes, but it kept `caveat-700.woff2` on PUBLISH.md's
+   upload allow-list for a face the site does not use. The woff2 files stay on
+   disk as sources; build-fonts.py still instances them. */
 
 :root{
-  --ink:#020816;--navy:#03152f;--navy-2:#071f3d;
+  --ink:#020816;--navy:#03152f;
   --cyan:#00d5ff;--ice:#8debff;--pink:#ff249d;--yellow:#f5f739;--foam:#f7fbff;
   --max:1280px;--gutter:max(18px,calc((100vw - var(--max)) / 2 + 30px));--nav-h:72px;
-  --display:ArchivoBlack,"Arial Black",Impact,sans-serif;--body:Archivo,"Helvetica Neue",Arial,sans-serif;--brush:Marker,"Comic Sans MS",cursive;--hand:Caveat,cursive;
+  --display:ArchivoBlack,"Arial Black",Impact,sans-serif;--body:Archivo,"Helvetica Neue",Arial,sans-serif;--brush:Marker,"Comic Sans MS",cursive;
   --chrome-face:linear-gradient(180deg,#ffffff 0%,#e4eef6 16%,#9fb6ca 32%,#ffffff 45%,#456986 51%,#d6e6f1 62%,#ffffff 78%,#7d9ab3 100%);
+  /* WHAT GOES ON TOP OF THE PINK. White on --pink (#ff249d) measures 3.51:1 and
+     small bold text needs 4.5 — so every primary control in the purchase path
+     was failing WCAG AA: SPIN, MAKE MY REQUEST, CREATE THE REQUEST, START MY
+     LIST and both pickup-count badges. Measured, not assumed.
+
+     The brand pink is NOT changed: the wordmark, the brush, the collab pill and
+     every pink surface are exactly as they were. Only the ink on top of it moves,
+     to the same near-black the CYAN buttons have always used — so this is the
+     page's own idiom rather than a new one. On #ff249d it measures 5.39:1.
+
+     One line reverses it if the owner prefers the white: set --on-pink:#fff. */
+  --on-pink:#04121f;
   --chrome-band:linear-gradient(145deg,#ffffff 0%,#7f9bb2 14%,#173a58 30%,#dfeef7 48%,#3d6079 66%,#0a2742 82%,#f1f9ff 100%);
   --ease-out:cubic-bezier(.16,1,.3,1);
 }
@@ -38,7 +55,7 @@ button,a{color:inherit}
 a{text-decoration:none}
 p,h1,h2,h3{margin:0}
 button{cursor:pointer}
-::selection{background:var(--pink);color:#fff}
+::selection{background:var(--pink);color:var(--on-pink)}
 :focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
 /* No grey box on tap. Owner, 2026-09-12: the nav links "display a flickering
    square border when tapped or clicked". That is the platform tap highlight —
@@ -70,7 +87,7 @@ a,button,summary,[role=button],input,select,textarea{-webkit-tap-highlight-color
 .btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:54px;padding:0 24px;border-radius:999px;font:900 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;transition:transform .35s var(--ease-out),box-shadow .35s}
 .btn i{font-style:normal;font-size:16px;transition:transform .35s var(--ease-out)}
 .btn-cyan{background:linear-gradient(180deg,#8ff0ff,var(--cyan) 55%,#00b4dc);color:var(--ink);box-shadow:inset 0 2px 0 rgba(255,255,255,.7),0 6px 0 #006f8f,0 16px 32px rgba(0,213,255,.28)}
-.btn-pink{background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:#fff;box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 16px 32px rgba(255,36,157,.3)}
+.btn-pink{background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:var(--on-pink);box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 16px 32px rgba(255,36,157,.3)}
 /* Every appearance-changing hover lives here. Outside this query they LATCH
    after a tap: measured with hover:none emulation, a tapped ADD button stayed
    lifted and brightened and a tapped price tile kept a false active underline
@@ -118,6 +135,12 @@ a,button,summary,[role=button],input,select,textarea{-webkit-tap-highlight-color
 .brush{position:relative;display:inline-block;font:400 1em/1 var(--brush);color:var(--pink);text-transform:uppercase;transform:rotate(-3deg);text-shadow:0 2px 0 #fff,0 5px 0 #4a0c31,0 12px 22px rgba(0,0,0,.5);white-space:nowrap}
 .brush::after{content:"";position:absolute;left:4%;right:12%;bottom:-.12em;height:.14em;background:var(--pink);clip-path:polygon(0 35%,100% 0,100% 55%,60% 75%,0 100%)}
 .brush-sm{font-size:clamp(30px,7vw,46px)}
+/* "www" sits small above the domain, so the lockup reads as an address. */
+.nav-www{display:block;font:900 9px/1 var(--body);letter-spacing:.34em;color:var(--ice);opacity:.85;margin-bottom:2px}
+/* In the hero the stroke runs the full measure BEAST and the slogan now share,
+   so it underscores the PHRASE. Inset it and it draws a box round the second
+   line, which is exactly what made the lockup read as a name plus a tagline. */
+.hero-stockup .brush::after{left:1%;right:1%}
 
 /* ---------- boot ---------- */
 .boot{position:fixed;inset:0;z-index:2000;background:radial-gradient(circle at 50% 40%,#0b3058,#020816 62%);display:grid;place-items:center;overflow:hidden}
@@ -183,7 +206,7 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 .nav-links{display:none}
 .nav-list{border:1px solid rgba(141,235,255,.4);border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.03));display:flex;align-items:center;gap:9px;padding:6px 7px 6px 14px;font:900 9px/1 var(--display);letter-spacing:.1em;transition:box-shadow .3s,border-color .3s}
 @media(hover:hover){.nav-list:hover{border-color:var(--cyan);box-shadow:0 0 20px rgba(0,213,255,.45)}}
-.nav-list b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--pink);font-size:12px}
+.nav-list b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--pink);color:var(--on-pink);font-size:12px}
 .nav-progress{position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:linear-gradient(90deg,var(--cyan),var(--pink));transform-origin:left;transform:scaleX(0)}
 
 /* ---------- hero ----------
@@ -204,6 +227,12 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 .hero-plate,.hero-plate img{position:absolute;inset:0;width:100%;height:100%}
 .hero-plate{transform-origin:50% 60%}
 .hero-plate img{object-fit:cover;object-position:50% 100%}
+/* The two plates want opposite anchors: the LANDSCAPE one centres, the PORTRAIT
+   one stands on its bottom edge where its podium is. So this must be gated on
+   exactly the condition that picks the plate -- the HERO BOX's shape, not the
+   window's. It used to sit inside `@media(min-width:760px)`, which centred the
+   portrait plate on any wide window and hid the podium under the fold. */
+@media(min-aspect-ratio:1/1), (min-width:760px){.hero-plate img{object-position:50% 50%}}
 .hero-bubbles{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none}
 .hero-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(2,8,22,.6),transparent 24%,transparent 64%,rgba(2,8,22,.45) 94%,var(--navy))}
 .hero-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
@@ -222,7 +251,16 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 .hero-copy .btn{pointer-events:auto}
 .hero-title{display:grid;justify-items:center;margin-top:24px;line-height:1}
 .hero-beast{position:relative;display:block;font-size:clamp(40px,min(17vw,12vh),164px);line-height:.86}
-.hero-stockup{display:block;margin-top:-.08em;font-size:clamp(22px,min(8.6vw,6.2vh),88px)}
+/* THE LOCKUP IS ONE PHRASE, NOT A NAME WITH A SUBTITLE. The owner, 2026-09-12:
+   "of a deal reads too separate no?" They were right, and it was measurable: at
+   1440 the slogan overhung BEAST by 57px on the right while sitting 11px in on
+   the left, running into the washer drum, and the size relationship was three
+   different numbers in three bands (0.506x on a phone, 0.631x at 1728, 0.719x at
+   1440). Two lines only read as one phrase when they share a measure, so the
+   slogan is now FITTED to BEAST's own layout width by fitSlogan() in beast.js.
+   CSS keeps the base size -- --slogan-fit only ever nudges it, and is clamped --
+   so a no-JS visit still gets a sane lockup and nothing here can run away. */
+.hero-stockup{display:block;margin-top:-.13em;--slogan-base:clamp(22px,min(8.6vw,6.2vh),88px);font-size:calc(var(--slogan-base) * var(--slogan-fit, 1))}
 .collab-pill{margin-top:14px;display:inline-flex;align-items:center;gap:9px;padding:6px 13px 6px 8px;border:1px solid rgba(255,255,255,.35);background:rgba(1,9,24,.7);border-radius:999px;font:900 9px/1 var(--body);letter-spacing:.18em}
 .collab-pill img{width:28px;height:auto}
 .collab-pill b{color:var(--pink);font-size:13px}
@@ -230,7 +268,26 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 .hero-cta .btn{white-space:nowrap}
 .hero-cta{display:none;flex-wrap:wrap;justify-content:center;gap:9px;margin-top:16px}
 .hero-price{position:static;width:max-content}
-.hero-price-in{display:grid;justify-items:center;text-align:center}
+/* CHROME TYPE NEEDS A DARK GROUND. The price deck sits over the washer drum,
+   and the drum's centre is the brightest thing on the plate: measured with the
+   price itself hidden, 33-44% of the plate directly behind it is above 0.35
+   relative luminance at every desktop shape and at 844x390. Chrome reads
+   because a stack of dark shadows separates it from what is behind it, and on a
+   bright ground that separation is simply gone -- the lower half of the "5"
+   dissolved into the splash.
+
+   So the price casts its own pool of shade. It is a soft ellipse, not a plate:
+   a hard box behind the numerals would read as a label stuck on the scene.
+
+   It is a child of .hero-price-in at z-index -1, which puts it behind the
+   numerals and INSIDE the price's own stacking context (z-index 5) -- so it can
+   never darken a bottle, because .hero-stage is z-index 8 and paints over it.
+   position:relative is what makes that containing block; the ::before is
+   absolutely positioned and so is NOT a grid item and takes no track. */
+.hero-price-in{position:relative;display:grid;justify-items:center;text-align:center}
+.hero-price-in::before{content:"";position:absolute;z-index:-1;inset:-22% -14%;pointer-events:none;
+  background:radial-gradient(ellipse at 50% 48%,
+    rgba(2,11,24,.66) 0 18%,rgba(2,11,24,.50) 36%,rgba(2,11,24,.28) 54%,rgba(2,11,24,.10) 70%,transparent 84%)}
 /* All three stages share one grid cell, so the deck is as wide and as tall as
    the widest stage and a swap moves no layout. visibility, not display: a
    display:none card would collapse the track it is sizing. */
@@ -259,6 +316,26 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
    the only thing the control has to communicate. The 38x24 HIT TARGET is
    untouched — shrinking a control below that is a different kind of defect —
    and it is still the WCAG 2.2.2 pause for the auto-advance. */
+/* THE DIAL'S SPACE IS RESERVED BEFORE THE DIAL EXISTS.
+   The price block is a DECK and it GREW when the stage dial was appended to it
+   after idle — by exactly the dial's 24 px plus its margin. Because the deck is
+   centred, the growth moved its top up by half that, 19 px, ~3.6 s into the
+   visit; the podium solver re-measured the obstacle, re-solved, and the whole
+   line-up stepped sideways in ONE FRAME: 5.31 px at 1440, 6.14 at 1728, 15.27
+   at 1024. That is the tail of the owner's report, "when it all loads the
+   bottles and the 2 for 5 jumps". Found by an audit 2026-09-12 after the other
+   half of the same jump had already been fixed.
+   `:has()` swaps the reservation for the real thing the moment it lands, so the
+   two can never both apply and nothing has to be told to remove it. */
+.hero-price-in{--dial-space:calc(24px + clamp(8px,1.6vh,14px))}
+html.motion .hero-price-in{padding-bottom:var(--dial-space)}
+/* `.is-ready`, not merely present. The dial is appended ~60 ms before it is
+   shown (it waits for the other stages' packshots to decode) and is display:none
+   until then — so keying on its mere existence handed the padding back while the
+   dial still occupied nothing, and the deck SHRANK by 38 px for one frame. That
+   is a jump this reservation exists to remove, introduced by the first draft of
+   the reservation itself. Measured: top 207.8 -> 226.8 -> 207.8 in 62 ms. */
+html.motion .hero-price-in:has(.hero-dial.is-ready){padding-bottom:0}
 .hero-dial{display:none;gap:0;margin-top:clamp(8px,1.6vh,14px);pointer-events:auto}
 .hero-dial.is-ready{display:flex}
 .hero-dial button{position:relative;width:26px;height:24px;display:grid;place-items:center;background:none;border:0;cursor:pointer;pointer-events:auto}
@@ -349,7 +426,7 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 .spin-copy{display:grid;gap:2px;min-width:0}
 .spin-copy b{font:900 11px/1 var(--display);letter-spacing:.13em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .spin-copy small{font:700 10px/1.25 var(--body);color:#9dc4da;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.spin-go{margin-left:auto;flex:0 0 auto;padding:7px 12px;border-radius:999px;background:var(--pink);color:#fff;
+.spin-go{margin-left:auto;flex:0 0 auto;padding:7px 12px;border-radius:999px;background:var(--pink);color:var(--on-pink);
   font:900 9px/1 var(--display);letter-spacing:.12em;box-shadow:0 3px 0 #8c0d51}
 .spin-band.has-prize .spin-badge{background:conic-gradient(var(--yellow) 0 50%,#062744 0)}
 .spin-band.has-prize .spin-copy b{color:var(--yellow)}
@@ -374,7 +451,7 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 .wheel-in header h2{margin-top:6px;font:900 27px/1 var(--display);letter-spacing:-.03em}
 .wheel-in header button{margin-left:auto;width:38px;height:38px;border-radius:50%;border:1px solid rgba(141,235,255,.35);background:rgba(2,10,24,.7);color:#eaf6ff;font-size:19px;line-height:1;cursor:pointer}
 .wheel-in header button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
-@media(hover:hover){.wheel-in header button:hover{background:var(--pink);border-color:var(--pink);color:#fff}}
+@media(hover:hover){.wheel-in header button:hover{background:var(--pink);border-color:var(--pink);color:var(--on-pink)}}
 /* svh in the cap as well as vw: on a short window the disc used to hold 300 px
    and shove the SPIN button off the bottom of the dialog. The flags sit 30 SVG
    units outside a 118-unit radius, which is why the box is 260 wide for a
@@ -580,9 +657,48 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
 /* Each shelf is lit in its own stage colour, so the shop reads as three bays
    rather than one long list. The page below the fold had no rhythm at all:
    three identical dark plates with a giant chrome number on each. */
-.deal-shelf{position:relative;padding:48px 0 24px;overflow:clip;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent)}
-.deal-shelf::before{content:"";position:absolute;z-index:0;left:0;right:0;top:0;height:360px;pointer-events:none;
-  background:radial-gradient(ellipse 58% 100% at 50% 0,color-mix(in srgb,var(--stage) 22%,transparent),transparent 70%)}
+/* A shelf is a BAY: one wall, one floor, one light, with the price mounted on
+   the wall and the products standing on the floor in front of it. The wall has
+   to belong to the whole section rather than to the row -- with it on the row
+   only, the giant price was painted on the page background above a lit box,
+   and the seam between the two was visible across the full width. */
+/* LIGHT ADDS; IT DOES NOT AVERAGE. The first build of this wall mixed the stage
+   colour straight into the paint, which is fine for the cyan bay and wrong for
+   the other two: a low-alpha YELLOW composited over navy averages to grey-green,
+   so the $8 bay rendered as olive mud and the 2-for-$7 bay as dishwater. Both
+   were the correct arithmetic for paint and the wrong arithmetic for a lamp.
+   The wall is now one neutral navy in every bay -- it is the same material in
+   every bay of a real shop -- and the ONLY stage-coloured layer is the light,
+   blended with `screen` so it brightens the wall towards its own hue instead of
+   being averaged into it. Yellow light now reads as yellow light. */
+.deal-shelf{position:relative;padding:48px 0 24px;overflow:clip;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent);
+  background:
+    radial-gradient(ellipse 52% 300px at 50% 0,color-mix(in srgb,var(--stage) 9%,transparent),transparent 70%),
+    linear-gradient(180deg,#061b31 0,#07182c 46%,#040f1d 100%);
+  background-blend-mode:screen,normal}
+/* Slatwall. Seams at 1.5% white are all but invisible standing still -- they
+   exist so the wall has something to be READ AGAINST when the row is dragged,
+   which is what turns the fixed background into visible depth rather than a
+   flat panel that happens not to move. */
+.deal-shelf::before{content:"";position:absolute;z-index:0;inset:0;pointer-events:none;
+  background:repeating-linear-gradient(90deg,transparent 0 118px,rgba(190,228,255,.032) 118px 119px,transparent 119px 120px)}
+/* THE FIXTURE. The band across the top of each bay -- roughly 700 px of it at
+   1440 -- was empty wall beside the price, and the owner's standing rule is
+   "don't forget about blank leftovers visually as well". The answer there is
+   not a sentence: every phrase on this page is said once, and there is nothing
+   new and true to say beside a price. It is the thing the bay is obviously lit
+   BY. The section's top rule becomes the strip light, and the beam already
+   falling onto the shelf now has a source.
+
+   It is one absolutely positioned pseudo-element at the ceiling of the bay, so
+   it adds no height and moves no layout, and the lamp is the only place the
+   stage colour runs at full strength. */
+.deal-shelf::after{content:"";position:absolute;z-index:0;left:0;right:0;top:0;height:132px;pointer-events:none;
+  background:
+    linear-gradient(180deg,color-mix(in srgb,var(--stage) 92%,white) 0 2px,
+      color-mix(in srgb,var(--stage) 70%,transparent) 2px 3px,transparent 3px),
+    radial-gradient(ellipse 46% 132px at 50% 0,color-mix(in srgb,var(--stage) 26%,transparent),transparent 72%);
+  background-blend-mode:normal,screen}
 .deal-shelf[data-deal="2-for-5"]{--stage:#00d5ff}.deal-shelf[data-deal="8-each"]{--stage:#f5f739}.deal-shelf[data-deal="paper-2-for-7"]{--stage:#ffcf33}.deal-shelf[data-deal="pricing-pending"]{--stage:#8394a8}
 .shelf-heading{padding:0 18px;max-width:var(--max);margin:0 auto 14px;position:relative;z-index:2}
 /* the headline is an inline-block (.chrome needs a text-sized box), so the
@@ -590,8 +706,6 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
    108px headline. */
 .shelf-price h3{margin-top:10px;color:#fff;font:900 clamp(52px,14vw,84px)/.82 var(--display);letter-spacing:-.08em;text-transform:uppercase}
 .shelf-info{margin-top:10px;max-width:530px}
-.shelf-info b i{font:900 46px/.78 var(--display);font-style:normal;letter-spacing:-.06em;
-  text-shadow:0 0 26px color-mix(in srgb,var(--stage) 45%,transparent)}
 .shelf-note{font-weight:900;font-size:11px;letter-spacing:.16em;text-transform:uppercase;line-height:1.4;color:var(--stage);margin-top:0;max-width:34ch}
 /* NO scroll-snap. Measured with a real mouse: with `scroll-snap-type: x
    proximity` a 90 px drag of this row settled back to 0 — the drag was thrown
@@ -601,7 +715,72 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
    put it. That is the "grabbing side to side glitches badly" report. The row
    is 1:1 with the pointer now and stays exactly where it is released. Do not
    put snap back on a row that is also scrolled programmatically. */
-.product-grid{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:14px 16px 40px;scroll-padding-left:16px;scrollbar-width:none;background:linear-gradient(180deg,transparent calc(100% - 26px),rgba(0,213,255,.32) calc(100% - 25px),#dff8ff calc(100% - 22px),#274b66 calc(100% - 15px),#041328 calc(100% - 4px))}
+/* ================= THE SHELF IS ONE PLACE, NOT FOUR SLOTS =================
+   The weakness list, open for four sessions: "every shelf is a giant chrome price,
+   maybe three words, then a row of near-identical cards."
+
+   What was actually wrong, read off a full-resolution render rather than
+   guessed at:
+
+   (a) EVERY PRODUCT SAT IN ITS OWN 290px RING. Four identical discs in a row,
+       all the same diameter whatever stood in them, so a 31 fl oz bottle and a
+       46 fl oz jug read as exactly the same size. They looked like slots in a
+       vending machine. Each one also boxed its product off from its neighbours,
+       which is the opposite of a shelf.
+   (b) THERE WERE TWO FLOORS AND THEY DISAGREED. The only thing that looked like
+       a shelf edge was a bright line at the very BOTTOM of the grid -- below
+       the ADD buttons, 290px under the products' feet -- while the products'
+       contact shadows sat up at the bay line. Nothing stood on the shelf.
+
+   So: one wall and one floor per row, and the products stand on the floor.
+
+   The wall and the floor are BACKGROUNDS ON THE SCROLL CONTAINER, which is what
+   makes this a scene rather than a decoration: a background on an overflow box
+   paints against the padding box and does NOT scroll with the content, so
+   dragging the row slides the products along a shelf that stays put. That is
+   real parallax for no script and no extra element, and it still reads with
+   motion off, with GSAP dead and with no JS at all.
+
+   The floor is placed off --visual-h, the same one variable the bay height and
+   the per-product contact shadow are placed off, so the shelf cannot drift away
+   from the feet standing on it the way the old one had. */
+.product-grid{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:14px 16px 40px;scroll-padding-left:16px;scrollbar-width:none;
+  --floor:calc(var(--visual-h) + 14px);
+  /* lip = paint, the two light layers = screen, the cast shadow = paint */
+  background-blend-mode:normal,screen,screen,normal;
+  background:
+    /* the lit lip of the shelf board, at the product's feet */
+    linear-gradient(180deg,transparent calc(var(--floor) - 3px),
+      color-mix(in srgb,var(--stage) 55%,transparent) calc(var(--floor) - 2px),
+      #eafcff calc(var(--floor) - 1px),
+      color-mix(in srgb,var(--stage) 70%,#cfefff) calc(var(--floor) + 1px),
+      #2c5674 calc(var(--floor) + 5px),
+      #0a1e36 calc(var(--floor) + 13px),
+      transparent calc(var(--floor) + 22px)),
+    /* WHERE THE LIGHT LANDS. The row had no focal point: four products, evenly
+       lit, evenly spaced, nothing asking to be looked at first. A shop fixes
+       that with a lamp, not by making one product bigger -- and a lamp is
+       honest, where a "featured" slot picked by array order is not. The pool is
+       brightest at the middle of the bay and falls off to the ends, so a
+       product is lit as it passes and dims as it leaves. */
+    radial-gradient(ellipse 30% 120px at 50% var(--floor),color-mix(in srgb,var(--stage) 40%,transparent),transparent 70%),
+    radial-gradient(ellipse 66% 200px at 50% var(--floor),color-mix(in srgb,var(--stage) 9%,transparent),transparent 76%),
+    /* NO BEAM LAYER HERE. One used to start at full strength at row 0 of this
+       box, and a background on the scroll container begins at the PADDING BOX
+       EDGE -- which is a line halfway up a flat navy wall with nothing in the
+       scene to explain it. It printed a +12/255 step across the full width of
+       every bay, top and bottom. The beam belongs to the fixture, which is on
+       .deal-shelf::after and spans the whole section, so there is nothing to
+       step against. */
+    /* the shadow the shelf board casts down the wall beneath it. It fades OUT
+       before the bottom of the box: ending at .30 alpha exactly at 100% drew the
+       same hard seam at the other edge. */
+    linear-gradient(180deg,transparent calc(var(--floor) + 4px),rgba(0,0,0,.42) calc(var(--floor) + 20px),rgba(0,0,0,.26) 82%,transparent 100%)}
+/* The shelf board carries a depth face under its lip, so the row reads as a
+   plane with a front edge rather than a line drawn across a flat panel. */
+.product-grid::before{content:"";position:absolute;z-index:0;left:0;right:0;top:var(--floor);height:26px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(255,255,255,.10),transparent 60%),
+    repeating-linear-gradient(90deg,transparent 0 58px,rgba(255,255,255,.035) 58px 59px)}
 .product-grid::-webkit-scrollbar{display:none}
 .product-grid.is-scrollable{cursor:grab;-webkit-user-select:none;user-select:none}
 /* Nothing on this page is draggable; see the note in script.js. This is the
@@ -617,11 +796,18 @@ img{-webkit-user-drag:none}
    "bottom shadows aren't at the right height" report. Measured, not guessed —
    the ink bottom sits 1 px inside the bay (.product-image-wrap's bottom inset)
    and the ellipse is 52 px tall, so its centre belongs at --visual-h - 1. */
-.product-card{--visual-h:346px;flex:0 0 min(82vw,340px);min-height:552px;position:relative;display:flex;flex-direction:column;transform-style:preserve-3d}
-.product-card::before{content:"";position:absolute;left:50%;top:17px;width:290px;height:290px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--stage) 18%,#062344) 0 59%,#03142b 60% 64%,transparent 65%),var(--chrome-band);box-shadow:0 0 0 2px color-mix(in srgb,var(--stage) 82%,white),0 0 30px color-mix(in srgb,var(--stage) 30%,transparent),0 22px 36px rgba(0,0,0,.45)}
+.deal-shelf{--visual-h:346px}
+.product-card{flex:0 0 min(82vw,340px);min-height:552px;position:relative;display:flex;flex-direction:column;transform-style:preserve-3d}
+/* The 290px chrome disc is gone. It was the single thing stopping this row
+   from reading as a shelf: it gave every product the same silhouette and the
+   same apparent size, and it drew a hard edge between neighbours. What is left
+   is a soft wash of stage light BEHIND the product only -- no ring, no rim, no
+   edge -- so the product's own outline is the shape you see. */
+.product-card::before{content:"";position:absolute;z-index:0;left:50%;top:26px;width:300px;height:300px;transform:translateX(-50%);border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle,color-mix(in srgb,var(--stage) 16%,transparent) 0 38%,transparent 68%)}
 .product-card::after{content:"";position:absolute;z-index:1;left:18px;right:18px;top:calc(var(--visual-h) - 27px);height:52px;border-radius:50%;background:radial-gradient(ellipse,color-mix(in srgb,var(--stage) 46%,transparent) 0 26%,rgba(0,0,0,.42) 48%,transparent 72%);pointer-events:none}
 .product-visual{flex:0 0 auto;height:var(--visual-h);position:relative;z-index:3;display:grid;place-items:end center;padding:10px 4px 0}
-.product-visual::before{content:"";position:absolute;z-index:0;width:250px;height:250px;border-radius:50%;left:50%;top:37px;transform:translateX(-50%);border:2px solid color-mix(in srgb,var(--stage) 45%,transparent);box-shadow:inset 0 0 40px color-mix(in srgb,var(--stage) 20%,transparent);pointer-events:none}
+.product-visual::before{content:"";position:absolute;z-index:0;width:0;height:0;border:0;pointer-events:none}
 /* The change between two products on one card. It used to throw the incoming
    image 18 px in from the same side whichever way the visitor pressed, and
    flash the copy block to 25% opacity underneath — the "jumpy" in the owner's
@@ -648,8 +834,10 @@ img{-webkit-user-drag:none}
    a card look like it was blinking rather than turning over. No translate on
    the block itself: that nudged every rotating card and read as the whole page
    shifting up and down. */
-.product-card-copy.variant-pop h4,
-.product-card-copy.variant-pop .product-price strong{animation:variantIn .42s var(--ease-out)}
+/* Per ELEMENT, not per block: see `freshen` in script.js. Keep this
+   opacity-and-3px — a bigger translate nudges every rotating card. */
+.product-card-copy h4.is-fresh,
+.product-card-copy .product-size.is-fresh{animation:variantIn .42s var(--ease-out)}
 @keyframes variantIn{from{opacity:0;transform:translateY(3px)}}
 .product-brand{font:900 10px/1 var(--body);color:var(--stage);letter-spacing:.16em;text-transform:uppercase}
 .product-card-copy h4{font:900 22px/.98 var(--display);margin-top:8px;letter-spacing:-.035em}
@@ -718,19 +906,25 @@ img{-webkit-user-drag:none}
 .product-brand.has-dots{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:24px}
 .product-brand-text{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .variant-dots{display:flex;gap:17px;flex:0 0 auto;margin-right:2px}
-.variant-dots button{position:relative;width:7px;height:7px;border:0;padding:0;border-radius:50%;background:#536e82;transition:transform .2s,background .2s}
+.variant-dots button{position:relative;width:7px;height:7px;border:0;padding:0;border-radius:50%;background:#6d8ba1;transition:transform .2s,background .2s}
 .variant-dots button::after{content:"";position:absolute;inset:-8.5px}
 /* Grown with a ring, NOT transform:scale — scaling the button scaled its
    ::after hit pad too, so the current dot's target ran 28 px wide and its two
    neighbours 22 px, on a 24 px stride. The ink grows; the target does not. */
 .variant-dots button.is-current{background:var(--stage);box-shadow:0 0 0 2px var(--stage)}
-/* The price stays on the card, because a search result has to carry one and a
-   card can be seen a long way from its shelf headline — but it is a LABEL, not
-   a headline. At 36 px it printed the same three characters four times under a
-   108 px chrome heading saying exactly the same thing, fifteen times down the
-   page. The product name is what a card is for. */
-.product-price{margin-top:auto;padding-top:10px;display:flex;flex-direction:column}
-.product-price strong{font:900 17px/1 var(--display);color:var(--ice);letter-spacing:.02em;text-transform:uppercase}
+/* THE SIZE LINE, 2026-09-13, in the slot the price had. It sits under the NAME
+   rather than at the foot, and it carries `margin-bottom:auto`, so the slack a
+   stretched grid row hands the card falls between the size and the button
+   instead of into a hole under the title. `.add-button` keeps its own 14 px, so
+   the two never touch on a card with no slack to give. It keeps the price's ink
+   colour, which already measures AA on this ground. */
+.product-size{margin-top:7px;margin-bottom:auto;font:900 13px/1.25 var(--body);color:var(--ice);letter-spacing:.055em;text-transform:uppercase}
+/* WHICHEVER LINE IS LAST takes the slack. The availability note is off by
+   default (`showAvailability`), so the size line usually is last — but with the
+   note turned on the auto margin has to move, or a stretched grid row opens its
+   gap BETWEEN the size and the availability instead of above the button. */
+.product-size:has(+ .stock-note:not([hidden])){margin-bottom:0}
+.stock-note:not([hidden]){margin-bottom:auto}
 /* THE ADD BUTTON, rebuilt 2026-09-12. Owner: "I hate the ADD TO MY LIST, it's
    too long and too little — make it more appealing with nice pressing
    animations, especially if they press multiple times."
@@ -782,8 +976,17 @@ html.motion .add-button.is-added[data-press]::before{animation:addWash .5s var(-
 @media(prefers-reduced-motion:reduce){.add-plus{display:none}
   html.motion .add-button.is-added[data-press]{animation:none}
   html.motion .add-button.is-added[data-press]::before{animation:none}}
+/* The catalogue-failed box borrows the no-match box's shape, because they are
+   the same kind of moment for the visitor — an empty shelf with something to do
+   about it — and differs only in the mark and the ink, so the two cannot be
+   mistaken for each other. */
+.shelf-error{position:relative;z-index:3;margin:30px 18px;padding:44px 20px;text-align:center;border:1px solid rgba(224,21,133,.45);border-radius:30px;background:rgba(224,21,133,.07)}
+.shelf-error>span{display:grid;place-items:center;width:60px;height:60px;border-radius:50%;margin:auto;background:var(--pink);color:var(--on-pink);font:900 30px/1 var(--display)}
+.shelf-error h2{font:900 29px/1 var(--display);margin-top:18px}
+.shelf-error p{margin:10px auto 20px;max-width:42ch;font:700 14px/1.6 var(--body);color:#cfe4f1}
+.shelf-error .btn{display:inline-flex}
 .empty-results{position:relative;z-index:3;margin:30px 18px;padding:44px 20px;text-align:center;border:1px solid rgba(141,235,255,.3);border-radius:30px;background:rgba(255,255,255,.06)}
-.empty-results>span{display:grid;place-items:center;width:60px;height:60px;border-radius:50%;margin:auto;background:var(--pink);font:900 30px/1 var(--display)}
+.empty-results>span{display:grid;place-items:center;width:60px;height:60px;border-radius:50%;margin:auto;background:var(--pink);color:var(--on-pink);font:900 30px/1 var(--display)}
 .empty-results h2{font:900 29px/1 var(--display);margin-top:18px}
 .empty-results p{font-size:13px;color:#bdd3e2;margin-top:8px}
 .empty-results button{margin-top:18px;border:0;border-radius:99px;padding:13px 18px;background:var(--cyan);color:var(--navy);font-weight:900}
@@ -888,7 +1091,7 @@ html.no-js .plate-medal{display:none}
 .sources>div:first-child>p:last-child{max-width:560px;font-size:15px;font-weight:700;line-height:1.55;color:#3d5a70;margin-top:16px}
 .receipt{position:relative;color:var(--navy);margin-top:44px;background:#fff;padding:34px 22px 24px;box-shadow:0 0 0 1px #b9d0de,6px 6px 0 var(--cyan),12px 12px 0 var(--pink),0 26px 44px rgba(6,32,56,.22);transform:rotate(-.6deg)}
 .receipt::before{content:"";position:absolute;left:50%;top:-24px;width:118px;height:34px;transform:translateX(-50%);border-radius:6px;background:linear-gradient(180deg,#f7fcff,#7895aa 19%,#173a57 39%,#d6e7f0 61%,#395d76 79%,#0b2943);box-shadow:0 4px 9px rgba(0,0,0,.4),inset 0 2px 0 #fff}
-.receipt h3{font:900 20px/1 var(--display)}
+
 /* the ledger: how every store price on the site is sourced, three tiers, counted */
 .source-ledger{list-style:none;margin:18px 0 4px;padding:0;display:grid;gap:1px;background:#dce8ef;border:1px solid #dce8ef}
 .source-ledger li{display:grid;grid-template-columns:56px 1fr;align-items:center;gap:14px;padding:13px 14px;background:#fff}
@@ -948,7 +1151,14 @@ html.no-js .plate-medal{display:none}
 @media(prefers-reduced-motion:no-preference){
   html.motion [data-price-swap] .price-tag{opacity:0;translate:16px 0;transition:opacity .5s var(--ease-out),translate .5s var(--ease-out)}
   html.motion [data-price-swap].is-swapped .price-tag{opacity:1;translate:0 0}
-  html.motion [data-price-swap].is-swapped .price-was{opacity:.55;translate:-4px 0}
+  /* NOT opacity:.55. #4c6376 at 55% over the white receipt composites to
+     #9da9b4 — 2.40:1, against 4.5 needed — and `.is-swapped` is added once on
+     scroll and never removed, so the store price this whole section exists to
+     document sat permanently below AA on 34 of 38 rows. The de-emphasis is real
+     and worth keeping; it is done with a lighter INK at full opacity instead,
+     which measures 4.93:1. `.price-was` is not one of the 49 contrast targets,
+     which is why the gate never saw it. */
+  html.motion [data-price-swap].is-swapped .price-was{color:#5e7384;translate:-4px 0}
   /* the glint that crosses the tag as it lands */
   html.motion [data-price-swap] .price-tag::after{content:"";position:absolute;top:-60%;bottom:-60%;left:0;width:40%;
     background:linear-gradient(100deg,transparent,rgba(255,255,255,.9),transparent);translate:-220% 0;rotate:12deg}
@@ -976,7 +1186,7 @@ html.no-js .plate-medal{display:none}
 .footer-mark{display:grid;justify-items:center;gap:10px;font-size:34px}
 .footer-mark i{font:400 1em/1 var(--brush);color:var(--pink);font-style:normal;letter-spacing:0;transform:rotate(-2deg)}
 .footer-mark img{width:76px;height:auto}
-.footer p{font-weight:800;font-size:13px;line-height:1.45}
+
 .footer small{display:block;font-size:10px;line-height:1.5;color:#6f8ba1}
 
 /* ---------- drawer + request ---------- */
@@ -990,7 +1200,7 @@ html.no-js .plate-medal{display:none}
 .drawer>header::before{content:"";position:absolute;left:0;right:0;top:0;height:7px;background:var(--chrome-band);box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 #07172a}
 .drawer>header>div{flex:1 1 auto;min-width:0}
 .drawer-mark{flex:0 0 auto;width:42px;height:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
-.drawer>header p{font:900 8px/1 var(--body);letter-spacing:.14em;color:var(--cyan)}
+
 /* "PICKUP LIST" wrapped to two lines at or below 370 px, splitting the words
    and pushing the count badge onto the second line — and the extra 25 px of
    header ate the already-tiny list area. */
@@ -1000,9 +1210,9 @@ html.no-js .plate-medal{display:none}
   .drawer>header h2{font-size:23px;gap:8px}
   .drawer-mark{width:34px}
 }
-.drawer>header h2 b{min-width:26px;height:26px;padding:0 7px;border-radius:99px;background:var(--pink);color:#fff;font:900 12px/26px var(--body);text-align:center}
+.drawer>header h2 b{min-width:26px;height:26px;padding:0 7px;border-radius:99px;background:var(--pink);color:var(--on-pink);font:900 12px/26px var(--body);text-align:center}
 .drawer>header button{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;font-size:25px;transition:background .2s}
-@media(hover:hover){.drawer>header button:hover{background:var(--pink)}}
+@media(hover:hover){.drawer>header button:hover{background:var(--pink);color:var(--on-pink)}}
 .pair-status{padding:13px 18px;background:#4b1236;color:#fff;font-size:11px;font-weight:800;border-left:4px solid var(--pink)}.pair-status p+p{margin-top:6px}
 /* flex-basis:0 with a 96px floor. At 400% browser zoom the summary is taller
    than the whole drawer, and `flex:1` on this let the list keep 24px while the
@@ -1031,12 +1241,24 @@ html.no-js .plate-medal{display:none}
   .cart-line-controls .stepper button:hover{background:var(--cyan);color:var(--ink)}
   .cart-line-controls .remove-line:hover{color:var(--pink);border-color:var(--pink)}
 }
-.cart-line-total{font:900 15px/1 var(--display);color:var(--yellow);letter-spacing:-.02em}
+.cart-line-total{font:900 15px/1 var(--display);color:var(--yellow);letter-spacing:-.02em;white-space:nowrap}
+/* BELOW ~304 px THE MONEY WAS BEING CUT IN HALF. The line is a three-column grid
+   (72px / 1fr / auto) and the middle column will not shrink below its content's
+   min-content width unless it is told to, so the auto column ran past the edge
+   and the drawer's own overflow:hidden sliced it: measured at 280 px — a Galaxy
+   Fold cover screen — the lines read "$7.0" and "$24" while the footer said
+   "$31.00". Same shape as trap 29, which sliced the flyer. Found by an audit
+   2026-09-12. Clean at 304 px and up either way. */
+@media(max-width:340px){
+  .cart-line{grid-template-columns:52px minmax(0,1fr) auto;gap:8px;padding:10px 8px}
+  .cart-line-copy h4{font-size:13px}
+  .cart-line-total{font-size:13px}
+}
 .cart-line-total.is-deal{font:900 8px/1.3 var(--body);letter-spacing:.1em;color:#8fa9bb;text-align:right;max-width:52px}
 .cart-empty{text-align:center;margin:auto;padding:36px 30px}
 .cart-empty-mark{width:96px;height:auto;margin:0 auto 18px;opacity:.32;filter:grayscale(.4)}
 .cart-empty h3{font:900 21px/1 var(--display);letter-spacing:-.02em}
-.cart-empty p{font-size:12px;line-height:1.5;color:#94afc1;margin:10px auto 0;max-width:26ch}
+
 .cart-empty button{margin-top:18px;border:0;border-radius:99px;padding:13px 18px;background:var(--cyan);color:var(--navy);font-weight:900}
 .cart-summary{padding:16px 19px 22px;border-top:1px solid rgba(141,235,255,.23);background:#06172d;flex:0 1 auto;overflow-y:auto;overscroll-behavior:contain}
 /* ---- the claw-rip savings line ----
@@ -1076,7 +1298,7 @@ html.motion .rip-claw{display:block}
 .delivery-meter i span{display:block;height:100%;width:100%;transform:scaleX(0);transform-origin:left;border-radius:99px;background:linear-gradient(90deg,var(--cyan),#7df3ff);transition:transform .45s var(--ease-out)}
 .delivery-meter[hidden]{display:none}
 .delivery-below{display:block;margin-top:7px;font-size:10.5px;color:#8fa9bb}
-.delivery-below b{color:#c7dbe8;font-weight:800}
+
 .delivery-stamp{position:relative;display:grid;justify-items:center;gap:2px;width:max-content;margin:2px auto 0;
   padding:11px 20px 9px;rotate:-7deg;color:var(--cyan);text-align:center;
   border:2px solid var(--cyan);border-radius:8px;background:rgba(0,213,255,.07);
@@ -1085,7 +1307,7 @@ html.motion .rip-claw{display:block}
 .delivery-stamp b{display:grid;font:900 20px/.86 var(--display);letter-spacing:.02em;text-shadow:0 2px 0 rgba(0,32,45,.7)}
 .delivery-stamp b i{font-style:normal;font-size:25px;letter-spacing:-.01em}
 .delivery-stamp small{font:900 7px/1 var(--body);letter-spacing:.16em;color:#9fe9ff}
-.delivery-below[hidden]{display:none}
+
 html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,1.5,.4,1) 1}
 @keyframes stampLand{
   0%{transform:scale(1.9);opacity:0;rotate:-19deg}
@@ -1098,7 +1320,7 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 /* 44px was "way too big"; the ordering the owner asked for is kept — the
    cash total stays larger than the yellow saving (34 vs 27). */
 .cart-total strong{font:900 34px/.86 var(--display);color:#fff;letter-spacing:-.05em;text-shadow:0 3px 0 rgba(0,0,0,.35)}
-.cart-summary>button{width:100%;border:0;border-radius:99px;background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:#fff;min-height:52px;margin-top:15px;font:900 11px/1 var(--display);letter-spacing:.06em;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 5px 0 #7a0b4d}
+.cart-summary>button{width:100%;border:0;border-radius:99px;background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:var(--on-pink);min-height:52px;margin-top:15px;font:900 11px/1 var(--display);letter-spacing:.06em;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 5px 0 #7a0b4d}
 .cart-summary>button:disabled{filter:grayscale(.7);opacity:.6;cursor:not-allowed}
 .cart-summary>small{display:block;text-align:center;font-size:8px;line-height:1.4;color:#7f98aa;margin-top:11px}
 .request{width:min(560px,calc(100% - 22px));max-height:calc(100svh - 22px);padding:0;border:1px solid rgba(141,235,255,.5);border-radius:24px;background:linear-gradient(180deg,#071e3b,#020916);color:#fff;box-shadow:0 30px 100px rgba(0,0,0,.7);overflow:auto}
@@ -1110,7 +1332,7 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 .request header p,.request-ready>p:first-of-type{font:900 8px/1 var(--body);color:var(--cyan);letter-spacing:.14em}
 .request h2{font:900 27px/.9 var(--display);margin-top:5px;letter-spacing:-.04em}
 .request header button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:22px}
-.request form>p{font-size:11px;line-height:1.45;color:#9eb5c5;margin:17px 0}
+
 .request label{display:block;font-size:10px;font-weight:900;margin-top:13px;color:#c7dbe8;letter-spacing:.06em}
 .request input,.request select,.request textarea{display:block;width:100%;margin-top:7px;padding:12px;border-radius:12px;border:1px solid rgba(141,235,255,.3);background:rgba(255,255,255,.08);color:#fff;outline:none;transition:border-color .2s}
 .request input:focus,.request select:focus,.request textarea:focus{border-color:var(--cyan)}
@@ -1118,8 +1340,8 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 .request-total{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding:14px;border:1px solid rgba(141,235,255,.25);border-radius:14px}
 .request-total span{font-size:10px}
 .request-total b{font:900 25px/1 var(--display);color:var(--yellow)}
-.request-submit,.ready-actions button{width:100%;min-height:50px;border:0;border-radius:99px;background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:#fff;margin-top:16px;font:900 11px/1 var(--display);letter-spacing:.06em;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 5px 0 #7a0b4d}
-.request form>small{display:block;text-align:center;font-size:8px;color:var(--cyan);margin-top:11px;letter-spacing:.14em}
+.request-submit,.ready-actions button{width:100%;min-height:50px;border:0;border-radius:99px;background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:var(--on-pink);margin-top:16px;font:900 11px/1 var(--display);letter-spacing:.06em;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 5px 0 #7a0b4d}
+
 .ready-stamp{display:grid;place-items:center;width:76px;height:76px;border:4px solid var(--yellow);border-radius:50%;font:900 15px/1 var(--display);color:var(--yellow);transform:rotate(-8deg)}
 .request-ready>p{font-size:11px;line-height:1.45;color:#9fb7c7;margin-top:13px}
 .request-ready h2{margin-top:6px}
@@ -1128,12 +1350,12 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 .ready-actions button:last-child{background:#24445e;box-shadow:inset 0 2px 0 rgba(255,255,255,.2),0 5px 0 #0f2236}
 .toast{position:fixed;z-index:1600;left:50%;bottom:92px;transform:translate(-50%,25px);opacity:0;pointer-events:none;padding:13px 18px;border-radius:99px;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:.3s var(--ease-out)}
 .toast.is-visible{opacity:1;transform:translate(-50%,0)}
-.cart-fab{position:fixed;right:20px;bottom:22px;z-index:700;border:1px solid rgba(255,255,255,.42);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#e90b83);color:#fff;padding:11px 11px 11px 17px;display:none;align-items:center;gap:10px;font:900 9px/1 var(--display);text-transform:uppercase;letter-spacing:.08em;box-shadow:0 7px 0 #69063f,0 16px 35px rgba(0,0,0,.4)}
+.cart-fab{position:fixed;right:20px;bottom:22px;z-index:700;border:1px solid rgba(255,255,255,.42);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#ef1a8d);color:var(--on-pink);padding:11px 11px 11px 17px;display:none;align-items:center;gap:10px;font:900 9px/1 var(--display);text-transform:uppercase;letter-spacing:.08em;box-shadow:0 7px 0 #69063f,0 16px 35px rgba(0,0,0,.4)}
 .cart-fab b{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:var(--ink)}
 /* Below 760 the pink bar owns the pickup list; the nav chip said the same
    words at the top of the same screen. */
 @media(max-width:759px){.nav-list{display:none}}
-.mobile-pickup-bar{position:fixed;z-index:800;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));min-height:58px;border:1px solid rgba(255,255,255,.6);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#e90b83);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 18px;box-shadow:0 6px 0 #69063f,0 14px 35px rgba(0,0,0,.5);font:900 10px/1 var(--display);letter-spacing:.06em}
+.mobile-pickup-bar{position:fixed;z-index:800;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));min-height:58px;border:1px solid rgba(255,255,255,.6);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#ef1a8d);color:var(--on-pink);display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 18px;box-shadow:0 6px 0 #69063f,0 14px 35px rgba(0,0,0,.5);font:900 10px/1 var(--display);letter-spacing:.06em}
 .mobile-pickup-bar span{display:flex;align-items:center;gap:8px}
 .mobile-pickup-bar span b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:var(--ink)}
 .mobile-pickup-bar>strong{font-size:16px;color:var(--yellow)}
@@ -1168,7 +1390,6 @@ html.motion .deal-shelf .product-card{opacity:0}
      100vh rather than 100svh is deliberate on a desktop, where there is no
      collapsing URL bar; min() keeps it honest on a short window. */
   .hero{height:100vh;min-height:min(760px,100vh);max-height:1000px}
-  .hero-plate img{object-position:50% 50%}
   .hero-bubbles{display:block}
   .collab-pill{margin-top:20px;font-size:11px}
   .hero-glow{height:56px}
@@ -1195,13 +1416,13 @@ html.motion .deal-shelf .product-card{opacity:0}
      while column one resolved to 0 px and left 606 px of empty row beside it.
      All three heads sit on the gutter now. */
   .shelf-price h3{font-size:clamp(78px,7.6vw,108px)}
-  .shelf-info{margin:0 0 18px}.shelf-info b i{font-size:64px}.shelf-info b span{font-size:11px}.shelf-note{font-size:12px}
+  .shelf-info{margin:0 0 18px}.shelf-note{font-size:12px}
   .product-grid{gap:3px;padding:14px var(--gutter) 46px;scroll-padding-left:var(--gutter)}
-  .product-card{--visual-h:384px;flex-basis:390px;min-height:596px}
+  .deal-shelf{--visual-h:384px}
+  .product-card{flex-basis:390px;min-height:596px}
   @media(hover:hover){.product-card:hover .product-image-wrap.is-current img{--lift:-8px}}
-  .product-card::before{width:330px;height:330px}.product-card::after{left:22px;right:22px}
-  .product-visual::before{width:288px;height:288px}
-  .product-card-copy{min-height:182px;padding:19px 25px 24px}.product-card-copy h4{font-size:26px}.product-price strong{font-size:18px}
+  .product-card::before{width:340px;height:340px}.product-card::after{left:22px;right:22px}
+  .product-card-copy{min-height:182px;padding:19px 25px 24px}.product-card-copy h4{font-size:26px}.product-size{font-size:13.5px}
   .rules{padding:110px var(--gutter) 120px}
   .plates{grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
   .plate{padding:24px 24px 26px;gap:12px}
@@ -1210,7 +1431,7 @@ html.motion .deal-shelf .product-card{opacity:0}
      160 px of empty plate. They align on their content down here instead. */
   @media(max-width:900px){.plate .chips,.plate .btn,.plate .channel-line{margin-top:14px}}
   .plate h3{font-size:24px}.plate p{font-size:15px}
-  /* The intro STICKS. HANDOFF §7.4: "PRICE NOTES has a large empty left
+  /* The intro STICKS. The weakness list: "PRICE NOTES has a large empty left
      column below the intro — editorial airiness at 1440, a hole at 1728." The
      receipt is 30-odd rows tall and the column beside it was blank for all of
      them. Sticking the headline to the top of the viewport fills the column
@@ -1224,41 +1445,78 @@ html.motion .deal-shelf .product-card{opacity:0}
   .receipt{margin-top:16px;transform:rotate(-.8deg);box-shadow:0 0 0 1px #b9d0de,9px 9px 0 var(--cyan),18px 18px 0 var(--pink),0 26px 44px rgba(6,32,56,.22)}
   .footer{padding:80px 20px 110px}
   .footer-in{padding-top:110px}
-  .footer-mark{font-size:48px}.footer p{font-size:15px}
+  .footer-mark{font-size:48px}
   .mobile-pickup-bar{display:none!important}
   .cart-fab{display:flex}
   .cart-fab[hidden]{display:none!important}
 }
-/* FAMILY B: the two-column hero. Gated on the SAME aspect-ratio test the
-   <picture> uses to choose the plate, so a portrait window simply never enters
-   this block and falls through to the centred family A above — which is what
-   the old "portrait tablets" override was hand-reversing, one property at a
-   time, only above 900 px tall. Every value here is one continuous expression
-   from 760 px to 2560 px: no 1024 step, no 1200 step, no 1600 step. */
-@media(min-width:760px) and (min-aspect-ratio:1/1){
+/* FAMILY B: the two-column hero. Gated on EXACTLY the condition the <picture>,
+   the two preloads and `object-position` use, so the layout a window gets and
+   the artwork it is given can never disagree.
+
+   This comment claimed that was already true while the query below it read
+   `@media(min-width:760px)` — width alone — for a day. The wedge it left was
+   real: a LANDSCAPE window narrower than 760 px and taller than 640 px (750x700,
+   or 1440x900 at 192% browser zoom) took the landscape plate from the shared
+   condition, missed this band on width, missed the short-wide band on height,
+   and landed in centred family A with `.hero-cta` still `display:none` from the
+   base sheet — the hero's only button, gone, on a window wide enough to show it.
+
+   Every value here is one continuous expression from 760 px to 2560 px: no 1024
+   step, no 1200 step, no 1600 step. */
+@media(min-aspect-ratio:1/1), (min-width:760px){
   .hero-shade{background:linear-gradient(90deg,rgba(1,8,21,.9) 0,rgba(1,8,21,.6) 32%,transparent 56%),linear-gradient(180deg,rgba(2,8,22,.32),transparent 24%,transparent 62%,rgba(2,8,22,.5) 92%,var(--navy))}
   .hero-column{display:contents}
   .hero-copy{position:absolute;z-index:6;left:var(--gutter);right:auto;top:50%;bottom:auto;transform:translateY(-56%);width:min(44vw,620px);text-align:left;align-items:flex-start}
   .hero-price{position:absolute;z-index:5;left:71%;top:32%;transform:translate(-50%,-50%);width:max-content}
   .hero-title{justify-items:start;margin-top:30px}
-  .hero-sub{display:block;max-width:440px;margin-top:16px;font-size:14.5px}
+  /* THE SENTENCE IS A WALL TOO, and it was the one starving the line-up.
+     `.hero-sub` is in STAGE_OBSTACLES, so the row may not stand on it — and at
+     874x1290 a 385 px sentence shoved the whole line-up 134 px right, a third
+     of its span, for four bottles 186 px tall where a desktop gets 315.
+     (Measured 2026-09-13; the solver was right, the geometry was wrong.)
+
+     Where the row's left end actually is: the plate is `cover`, its podium
+     centre sits at 0.661 of the plate width and its half-width at 0.299, and
+     the row starts at 0.84 of that half-width. Below about 1.78:1 the plate is
+     driven by HEIGHT, so in hero pixels that left end is
+
+        50vw - max(9.0311vw, 0.160468 x hero-height)
+
+     where hero-height is min(100vh, 1000px). The second term of the max() is
+     the height-driven crop; the first is what takes over once the window is
+     wider than the plate's own 1672/941, where the crop is driven by WIDTH and
+     the row's left end stops moving with the height at all.
+
+     The 14 px is STAGE_CLEAR, the gap the solver insists on between the row and
+     any copy it meets. Without it this rule put the sentence's right edge
+     exactly ON that left end and the row cleared it by five pixels — supplied
+     by STAGE_BACK's perspective shrink pulling the outermost bottle in off its
+     own slot, which is a side effect, not a margin. Budget it here instead.
+
+     Above ~1460 px the 440 px cap wins again and the line is the same one line
+     it always was. */
+  .hero-sub{display:block;margin-top:16px;font-size:14.5px;
+    max-width:clamp(176px,calc(50vw - max(9.0311vw,.160468 * min(100vh,1000px)) - var(--gutter) - 14px),440px)}
   .hero-cta{display:flex;margin-top:19px;justify-content:flex-start;gap:10px}
   .hero-cta .btn{min-height:50px}
   .hero-beast{font-size:clamp(46px,min(12vw,16vh),168px)}
-  .hero-stockup{font-size:clamp(26px,min(7.6vw,11.5vh),106px);margin-left:.06em;margin-top:-.06em}
+  .hero-stockup{--slogan-base:clamp(26px,min(7.6vw,11.5vh),106px);margin-left:0;margin-top:-.11em}
   .chrome-price{font-size:clamp(24px,min(4.2vw,6.4vh),58px)}
   .chrome-huge{font-size:clamp(60px,min(10.5vw,16vh),140px)}
   .hero-glow{height:64px}
   .hero-cast{height:30px}
 }
 
-/* The CENTRED hero (family A) gets a little more room to breathe on a portrait
-   tablet, and a lot less on a short window. Sizes are not touched here — they
-   are one continuous expression at the top of this file. */
-@media(min-width:760px) and (max-aspect-ratio:1/1){
-  .hero-shade{background:linear-gradient(180deg,rgba(2,8,22,.6),transparent 24%,transparent 64%,rgba(2,8,22,.45) 94%,var(--navy))}
-  .hero-column{left:24px;right:24px;gap:clamp(10px,3vh,34px)}
-}
+/* GONE, 2026-09-13: `@media(min-width:760px) and (max-aspect-ratio:1/1)`.
+   It tuned the CENTRED family for a portrait tablet, and since the plate, the
+   anchor and the layout were put on one shared condition (the last of those on
+   2026-09-13, a day later than this note first claimed) a portrait window 760 px
+   or wider no longer reaches that family at all. Half of it was dead —
+   `.hero-column` is `display:contents` up there, so left/right/gap bought
+   nothing. The other half was not: it replaced the two-column band's LEFT-DARK
+   scrim with a top-and-bottom one, so on every portrait tablet the hero copy
+   sat on the left with no scrim under it. A dead rule that was still painting. */
 @media(max-height:820px){
   .collab-pill{margin-top:10px;padding:5px 11px 5px 7px;font-size:8px}
   .hero-column{gap:clamp(4px,1.4vh,14px)}
@@ -1307,14 +1565,25 @@ html.motion .deal-shelf .product-card{opacity:0}
    lockup stops leaving the podium enough room, not a device size. */
 @media(min-aspect-ratio:1/1) and (max-height:640px){
   .hero-beast{font-size:clamp(30px,min(9vw,17vh),96px)}
-  .hero-stockup{font-size:clamp(20px,min(6vw,11vh),64px)}
+  .hero-stockup{--slogan-base:clamp(20px,min(6vw,11vh),64px)}
   .hero-title{margin-top:10px}
   .kicker{font-size:8px}
   .collab-pill{margin-top:8px;padding:6px 11px;font-size:8px}
   .collab-pill img{width:20px;height:auto}
   .hero-sub{margin-top:8px;font-size:12px;max-width:340px}
-  .hero-cta{margin-top:10px}
+  /* THE BAND WAS SIZING A BUTTON IT NEVER SHOWED. `.hero-cta` is display:none in
+     the base and only turned on in the two-column desktop band, which carries
+     `min-width:760px` -- so a landscape window NARROWER than 760 kept the
+     portrait-phone rule and lost the hero's only call to action, while 844x390
+     (same band, wider) showed it fine. Measured: hidden at 720x450 and 640x360,
+     visible at 844x390 and 932x430. The reason the portrait phone has no button
+     is that nothing else fits beside the lockup, pill, price block, dial and
+     bottles -- that is an argument about VERTICAL room, and it does not hold in
+     a landscape window, where the button demonstrably fits. Same class of bug as
+     the plate that was chosen by width: a width gate standing in for a shape. */
+  .hero-cta{display:flex;justify-content:flex-start;margin-top:10px}
   .hero-cta .btn{min-height:42px;padding:0 18px;font-size:11px}
+  .hero-price-in{--dial-space:30px}
   .hero-dial{margin-top:6px}
   .chrome-price{font-size:clamp(20px,7vh,44px)}
   .chrome-huge{font-size:clamp(34px,15vh,92px)}
@@ -1345,4 +1614,199 @@ html.motion .deal-shelf .product-card{opacity:0}
 @media(prefers-reduced-motion:reduce){
   html{scroll-behavior:auto}
   *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
+}
+
+/* THE HERO LINES START HIDDEN IN CSS, not by GSAP's immediate render.
+   `fromTo("[data-hero-line]", {y:22, opacity:0}, …)` writes its START values the
+   moment the TIMELINE IS BUILT — which is before the intro plays — so the three
+   copy obstacles sat 22 px low in the DOM, and every re-solve scheduled after
+   that (the ResizeObserver's first delivery, fonts.ready, the plate's load)
+   measured them there and poisoned the obstacle cache the intro then used for
+   its whole run. When the intro landed and the cache was thrown away, the
+   line-up re-solved against the true boxes and stepped sideways in ONE FRAME:
+   measured 5.31 px at 1440, 5.33 at 1728, 15.27 at 1024. That is the tail of the
+   owner's own report — "when it all loads the bottles and the 2 for 5 jumps".
+   With the hidden state here, the tween can be `immediateRender:false` and the
+   DOM never holds the intro's start geometry before the intro runs.
+   Only under html.motion: a no-JS or reduced-motion visit must see them. */
+html.motion [data-hero-line]{opacity:0}
+/* ...unless the splash was already given up on and the page is on screen. Every
+   hidden state the entrance relies on is cancelled together, so a very late
+   beast.js cannot blank a hero the visitor is already reading. */
+html.motion.late-boot [data-hero-line],
+html.motion.late-boot [data-hero-copy],
+html.motion.late-boot [data-hero-price],
+html.motion.late-boot [data-hero-beast],
+html.motion.late-boot [data-hero-stock],
+html.motion.late-boot .hero-copy-in,
+html.motion.late-boot .hero-price-in{opacity:1!important}
+
+.print-variants{display:none}
+
+/* ================= WINDOWS HIGH CONTRAST / forced-colors =================
+   Found by an audit on 2026-09-12, and it had never been rendered by anything:
+   the string `forced-colors` appeared in no stylesheet and in no QA script, and
+   the one checklist line that mentioned the mode was guarding a custom cursor
+   that had already been deleted.
+
+   In forced-colors the browser throws away `background-image` and forces
+   `background-color` towards transparent. Every panel on this page is a
+   GRADIENT, so every panel simply stopped existing: measured on the open
+   drawer, `.drawer` came back `background-image:none`, `background-color:
+   rgba(255,255,255,0)` and `border:0px none` — 440x900 of nothing. The wheel
+   dialog was fully transparent over the hero photograph, its caption reading as
+   black text on a picture of a washing machine, and MAKE MY REQUEST — the
+   primary conversion control — rendered as bare text with no button at all.
+
+   The fix is not colours, it is BOXES: anything that was a panel gets a system
+   `Canvas` fill and a `CanvasText` border, so the shape survives whatever
+   palette the visitor has chosen. System colour keywords are used deliberately;
+   a literal colour here is ignored, and should be. */
+@media (forced-colors: active) {
+  /* `.console-field` is the ONLY text input on the storefront and its only
+     boundary on screen is a box-shadow, which this mode throws away: it printed
+     as a magnifier glyph and a placeholder floating on bare Canvas. */
+  .console,.console-field,
+  .drawer,.wheel-dialog,.ticket-dialog,.receipt,.plate,
+  .product-card-copy,.cart-line,.wheel-in,.request,.spin-band,.cart-summary{
+    background-color:Canvas!important;
+    border:1px solid CanvasText!important;
+    background-image:none!important}
+  /* NO `forced-color-adjust:none` anywhere in here. It opts an element OUT of
+     the palette the visitor has chosen, and the visitor has chosen it because
+     they need it — keeping our navy-on-navy in a high-contrast mode would be
+     the site overruling an accessibility setting to protect its own looks.
+     What is restored here is the BOX, not the colour. */
+  /* Controls must read as controls. Without a border these are naked words. */
+  /* `.qty button` matched nothing — there is no `.qty` anywhere in the
+     project; the stepper lives in `.cart-line-controls`. */
+  .btn,.add-button,.cart-summary>button,.request-submit,.ready-actions button,
+  .spin-go,.variant-arrow,.variant-dots button,.cart-line-controls button{
+    border:1px solid ButtonText!important;background-color:ButtonFace!important;color:ButtonText!important}
+  .add-button:disabled,.cart-summary>button:disabled{color:GrayText!important;border-color:GrayText!important}
+  /* Which product the card is showing is carried by the dot's FILL, and
+     ButtonFace flattens all four to the same white. Highlight is the system's
+     own "this one is selected". */
+  .variant-dots button[aria-current="true"],.variant-dots button.is-current{
+    background-color:Highlight!important;border-color:Highlight!important}
+  /* The scrim behind a dialog inverts to near-white and stops reading as
+     "everything behind this is inert", so it is replaced by the panel border
+     above doing that job instead. */
+  .drawer-scrim{background-color:Canvas!important;opacity:.9}
+  /* The hero price's pool of shade becomes an opaque slab in this mode and
+     printed straight through the numerals. It has nothing to do in a palette
+     the visitor controls. */
+  .hero-price-in::before,.deal-shelf::after,.product-card::before{display:none!important}
+  /* Keep the focus ring visible against any palette. */
+  :focus-visible{outline:2px solid Highlight!important;outline-offset:2px}
+}
+
+/* ========================= Cmd-P ON THE STOREFRONT =========================
+   HANDOFF has claimed since session 5 that "there is a small @media print block
+   so Cmd-P on the storefront produces something legible". There was not: an
+   audit on 2026-09-12 found `@media print` in exactly one file in the project,
+   `flyer.css`, and it had never been in `beast.css` at all. Measured with print
+   media emulated and backgrounds off, which is Chromium's default: 40 text
+   styles, **27 below 3:1, 11 at or under 1.15:1, and three at exactly 1.00:1** —
+   white on white. The `2 FOR $5` shelf head, `PICKUP LIST` and `NOTHING ON THE
+   LIST` printed as nothing at all, and the fixed nav printed over the content.
+
+   THE FLYER IS THE PRINT PIECE. This is not trying to be one. It is here so
+   that a person who presses Cmd-P gets a readable list of what is on the shelf
+   and how to ask for it, on white paper, instead of five pages of dark navy or
+   a sheet of invisible ink. Everything that is scene rather than substance is
+   simply not printed. */
+@media print {
+  html,body{background:#fff!important;color:#111!important}
+  /* EVERY shadow, including pseudo-elements. Chromium's PDF rasteriser flattens
+     a blurred box-shadow into a hard-edged fill, so each one prints as a solid
+     slab of colour. Scoping this to containers was not enough — `*` does not
+     match `::before`, and `.receipt::before` printed a grey frame with a white
+     hole in it. Same family as trap 26: the artefact nobody opened. */
+  *,*::before,*::after{box-shadow:none!important;text-shadow:none!important;filter:none!important}
+  /* the scene, the chrome and everything that only exists to move */
+  .hero-scene,.hero-stage,.hero-plate,.hero-glow,.hero-cast,.hero-reflect,
+  /* `.request-dialog` and `.search-shell` were in this list and match NOTHING:
+     the request dialog is `.request` and the search box is `.console`. A dead
+     selector in a hide-list is a thing that does not get hidden — the search
+     field printed. Found by an audit 2026-09-12. */
+  .nav,.mobile-pickup-bar,.cart-fab,.boot,.drawer,.drawer-scrim,.toast,
+  .spin-band,.wheel-dialog,.ticket-dialog,.request,.claw,.footer-giant,
+  .variant-arrow,.variant-dots,.add-button,.console,.stages,
+  .savings-rip,.hero-dial,.hero-cta,.skip-link,.kicker i,
+  .collab-pill img,.footer-mark img{display:none!important}
+  /* the hero reserves a viewport of height it does not need on paper: without
+     this the first sheet is the lockup and then most of a blank page */
+  .hero{min-height:0!important;max-height:none!important;height:auto!important;padding:0 0 12px!important}
+  /* the cap above is measured off a podium this sheet does not print */
+  .hero-sub{max-width:none!important}
+  .hero-column,.hero-copy,.hero-copy-in{position:static!important;transform:none!important;
+    width:auto!important;inset:auto!important}
+  .hero-price{position:static!important;transform:none!important;margin:6px 0 0!important}
+  .hero-title{margin:0!important}
+  /* chrome type is painted into a pseudo-element with background-clip:text and
+     prints as an opaque slab or as nothing; print the real glyphs instead */
+  .chrome{color:#111!important;-webkit-text-fill-color:#111!important}
+  .chrome::before,.chrome::after{display:none!important}
+  .brush{color:#111!important;text-shadow:none!important}
+  .brush::after{display:none!important}
+  /* every panel becomes paper */
+  .hero,.hero-column,.hero-copy,
+  .deal-shelf,.product-grid,.product-card,.product-card-copy,.plate,.receipt,
+  .rules,.sources,.shop,.footer,.plates-towns,.spin-invite,.console,.stage-bar,
+  .cart-line,.savings-rip,.delivery-row,.source-ledger,.receipt-head{
+    background:none!important;background-image:none!important;
+    box-shadow:none!important;color:#111!important}
+  .deal-shelf::before,.deal-shelf::after,.product-grid::before,
+  .product-card::before,.product-card::after,.product-visual::before,
+  .sources::before{display:none!important}
+  /* the row is a row on screen because it scrolls; on paper it is a list */
+  .product-grid{display:block!important;overflow:visible!important;padding:0!important}
+  .product-card{display:block!important;min-height:0!important;page-break-inside:avoid;
+    break-inside:avoid;border-bottom:1px solid #bbb;padding:8px 0}
+  .product-visual{height:auto!important;padding:0!important}
+  .product-image-wrap{position:static!important;opacity:1!important;transform:none!important}
+  .product-image-wrap:not(.is-current){display:none!important}
+  .product-image-wrap img{position:static!important;width:64px!important;height:64px!important;
+    filter:none!important;transform:none!important}
+  /* every product on the shelf, not just the one each card happens to be showing */
+  .print-variants{display:block!important;margin:4px 0 0;padding:0;list-style:none;
+    font:700 11px/1.45 var(--body);color:#333!important}
+  .print-variants li{margin:0}
+  .product-card-copy{text-align:left!important;border:0!important;clip-path:none!important;
+    padding:0!important;min-height:0!important;display:block!important}
+  .product-card{display:flex!important;flex-direction:row!important;align-items:center;gap:14px}
+  .product-visual{flex:0 0 64px}
+  /* .product-size is here because it keeps --ice, which is 1.36:1 on white.
+     It was on the hide-list instead until 2026-09-13, and taking it off the
+     hide-list without putting it on this one traded a missing line for an
+     unreadable one. */
+  .product-brand,.product-size,.shelf-note,.stock-note{color:#333!important}
+  /* THE PART THAT TELLS A PERSON HOW TO ASK. Measured off the rasterised PDF
+     before this: "Text your list to (323) 301-9200." at 3.68:1, the three order
+     steps at 2.88:1, the six towns and every kicker at 3.01:1, "ON THE WHEEL" at
+     2.40:1. `.rules` and `.sources` were given #111 but each of these children
+     sets its own colour, so they kept the palette they use on navy. The phone
+     number is the single most important string on the sheet. */
+  .rules *,.sources *,.plate *,.mini-steps *,.chips *,.chips-pink *,
+  .kicker,.towns-label,.channel-line *,.cash-stamp *,.plate-medal *,
+  .delivery-stamp *,.source-ledger *,.receipt *{color:#111!important}
+  .chips li,.chips-pink li{border:1px solid #555!important}
+  .shelf-price h3{font-size:24pt!important;color:#111!important}
+  a{color:#111!important;text-decoration:underline}
+  .deal-shelf{page-break-inside:auto;border-top:2px solid #111;padding:10px 0!important}
+  /* THE SHELVES PRINTED AS NOTHING BUT THEIR BORDER LINES. Everything below the
+     fold is revealed by ScrollTrigger, and a print never scrolls — so every
+     product sat at opacity 0 and the paper came out blank apart from three 1 px
+     rules. Measured before this: the only ink on a 7,603 px print render was the
+     lockup and three horizontal lines. Reveals are undone here rather than in
+     the motion layer, because the motion layer is allowed not to run at all. */
+  [data-reveal],[data-split],.shop,.shop *,.deal-shelf,.deal-shelf *,.rules,.rules *,
+  .sources,.sources *,.footer,.footer *{
+    opacity:1!important;visibility:visible!important;
+    transform:none!important;translate:none!important;filter:none!important;
+    clip-path:none!important;animation:none!important}
+  /* ...except the variant that is not showing, which must stay gone: display
+     beats the opacity override above. */
+  .product-image-wrap:not(.is-current){display:none!important}
 }
