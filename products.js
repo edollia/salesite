@@ -1,0 +1,207 @@
+(function () {
+  "use strict";
+
+  /* Authoritative inventory: the owner's CURRENT CONSOLIDATED MASTER supplied
+     2026-09-08. Older deal-folder files remain archived on disk, but neither
+     their item membership nor their quantities override this manifest. */
+  const INVENTORY_DATE = "2026-09-12";
+  const TARGET_EVO = "https://www.target.com/p/-/A-89766596";
+  const TARGET_PUREX = "https://www.target.com/p/-/A-17079306";
+  const TARGET_TIDE_DOWNY_PODS = "https://www.target.com/p/-/A-89734517";
+  const TARGET_TIDE_OXI_PODS = "https://www.target.com/p/-/A-84114514";
+  const TARGET_GAIN_HIBISCUS = "https://www.target.com/p/-/A-94370623";
+  const TARGET_DOWNY_CALM = "https://www.target.com/p/-/A-91290877";
+  const TARGET_GAIN_SOFTENER = "https://www.target.com/p/-/A-95266953";
+  const TARGET_TOILET_PAPER = "https://www.target.com/p/-/A-89685857";
+  const TARGET_PAPER_TOWELS = "https://www.target.com/p/-/A-79727136";
+  const WALMART_DOWNY_GENTLE = "https://www.walmart.com/ip/16584363088";
+  const KROGER_ALL = "https://www.kroger.com/p/item/0007261347427";
+
+  window.SITE_CONFIG = Object.freeze({
+    businessName: "Stock-Up",
+    city: null,
+    serviceCities: Object.freeze(["Temecula", "Hemet", "Winchester", "Menifee", "Murrieta", "French Valley"]),
+    state: "California",
+    publicUrl: null,
+    /* THE CONTACT CHANNEL. Owner, 2026-09-12: checkout becomes a one-press
+       text. Set this to { kind: "sms", value: "+1XXXXXXXXXX", label: "..." }
+       and the request dialog's primary action turns into SEND THE TEXT, which
+       opens Messages with the whole request already written and the seller's
+       number already in the To field. Until it is set the dialog keeps the
+       copy-and-paste flow, the contact line stays hidden, and nothing on the
+       page claims an address that does not exist. `value` must be E.164. */
+    contactChannel: Object.freeze({ kind: "sms", value: "+13233019200", label: "Text" }),
+    pickupArea: null,
+    pickupSchedule: null,
+    salesTaxPolicy: null,
+    /* 2026-09-12, the owner's decision: THERE IS NO LONGER A FREE-DELIVERY
+       THRESHOLD. Delivery always carries the seller's small fee; the only way
+       it is waived is the FREE DELIVERY prize on the wheel, and that prize
+       itself needs a list of `minItems` items. `freeMinimumItems: null` is the
+       switch — every surface that used to write "20" into the page now reads
+       the prize instead, and the gauge that counted to 20 is gone rather than
+       left counting to nothing. Setting a number here restores the old rule
+       everywhere at once; nothing hard-codes one. */
+    delivery: Object.freeze({
+      enabled: true,
+      freeMinimumItems: null
+    }),
+    /* The catalogue rotation. 2000 ms at the owner's instruction 2026-09-12
+       ("reduce the time to 2 seconds per item"); `catalogVariantHoldMs` is how
+       long a card stays put after a visitor touches it before the loop picks
+       it up again — 7000 ms, also theirs. */
+    catalogVariantIntervalMs: 2000,
+    catalogVariantHoldMs: 7000,
+    /* THE PRIZE WHEEL — business facts, so they live here with the prices and
+       beast.js may not invent one.
+
+       `weight` is a PERCENTAGE. The eleven weights sum to exactly 100 and
+       check-integrity.mjs fails the build if they ever stop doing so, so the
+       odds printed under the wheel are the odds the wheel actually runs.
+       The owner's numbers of 2026-09-12 were 70 TRY AGAIN / 20 $5 OFF /
+       5 $10 OFF / 5 FREE DELIVERY / 1 FREE CAR, plus a 5% Dutch Bros added
+       afterwards and a FREE ITEM with no number — 106 before anything was
+       drawn. $5 OFF is the one that moved, 20 -> 13, because the 70% was the
+       number they led with and the one that protects the business.
+
+       SEGMENT GEOMETRY IS THE WEIGHT. A 1% prize is a 3.6-degree sliver and is
+       drawn as one; its art sits on a flag outside the rim so it can still be
+       read. Fattening a jackpot wedge to make it legible would show a shopper
+       better odds than they are getting, which is the one thing a prize wheel
+       must not do.
+
+       `min`      dollar minimum on the cash total
+       `minItems` item minimum instead of a dollar one
+       `delivery` waives the delivery fee
+       `art`      a symbol id in prize-art.js   `brandArt` an external mark
+       `terms`    the sentence the winning ticket prints. Owner's words. */
+    wheelPrizes: Object.freeze([
+      Object.freeze({ id: "off5", label: "$5 OFF", note: "MIN $40", min: 40, weight: 13,
+        art: "off-coin", tone: "cyan",
+        terms: "$5 off your list when it comes to $40 or more. Cash, in person, when you collect." }),
+      Object.freeze({ id: "miss-a", label: "TRY AGAIN", weight: 14, art: "try-again" }),
+      Object.freeze({ id: "free-delivery", label: "FREE DELIVERY", note: "15+ ITEMS", minItems: 15, delivery: true, weight: 5,
+        art: "free-delivery", tone: "pink",
+        terms: "No delivery fee, inside the six towns, on one request of 15 items or more." }),
+      Object.freeze({ id: "miss-b", label: "TRY AGAIN", weight: 14, art: "try-again" }),
+      Object.freeze({ id: "off10", label: "$10 OFF", note: "MIN $50", min: 50, weight: 5,
+        art: "off-coin", tone: "chrome",
+        terms: "$10 off your list when it comes to $50 or more. Cash, in person, when you collect." }),
+      Object.freeze({ id: "free-car", label: "FREE CAR", note: "MIN $50", min: 50, weight: 1, top: true,
+        art: "car", tone: "gold",
+        terms: "A car. A very small one \u2014 it is a Hot Wheels. Yours with a list of $50 or more." }),
+      Object.freeze({ id: "miss-c", label: "TRY AGAIN", weight: 14, art: "try-again" }),
+      Object.freeze({ id: "dutch-bros", label: "DUTCH BROS", note: "MIN $35", min: 35, weight: 5,
+        brandArt: "dutch-bros", tone: "violet",
+        terms: "One Dutch Bros drink on me with a list of $35 or more. I hand it over when you collect." }),
+      Object.freeze({ id: "miss-d", label: "TRY AGAIN", weight: 14, art: "try-again" }),
+      Object.freeze({ id: "free-item", label: "1 FREE ITEM", note: "MIN $40", min: 40, weight: 1, top: true,
+        art: "free-item", tone: "gold",
+        terms: "Any one item on your list, free. You pick it. Your list has to come to $40 or more." }),
+      Object.freeze({ id: "miss-e", label: "TRY AGAIN", weight: 14, art: "try-again" })
+    ])
+  });
+
+  /* label   = the full rule, used in the pickup list and the request text
+     cardLabel = the short price shown on a product card (the photo says the rest)
+     The $7 stage was folded into $8 on 2026-09-09, and the $4 softener stage into
+     the any-two-for-$7 stage on 2026-09-10, both at the owner's instruction.
+     There is no third label: a `cartLabel` field existed for years and nothing
+     ever read it. Warnings use cardLabel || label. */
+  const DEALS = {
+    "2-for-5": { label: "2 for $5 · 1 for $3", cardLabel: "2 for $5", bundleQuantity: 2, bundlePrice: 5, singlePrice: 3 },
+    "8-each": { label: "$8 each", bundleQuantity: 1, bundlePrice: 8 },
+    "paper-2-for-7": { label: "2 for $7", cardLabel: "2 for $7", bundleQuantity: 2, bundlePrice: 7 },
+    "pricing-pending": { label: "Price pending", bundleQuantity: 1, bundlePrice: null }
+  };
+  window.DEAL_DEFINITIONS = Object.freeze(Object.fromEntries(Object.entries(DEALS).map(([id, deal]) => [id, Object.freeze({
+    ...deal,
+    effectiveUnitPrice: deal.bundlePrice === null ? null : deal.bundlePrice / deal.bundleQuantity
+  })])));
+
+  const product = (record) => {
+    const dealGroup = record.dealGroup || "pricing-pending";
+    const deal = window.DEAL_DEFINITIONS[dealGroup];
+    const imageId = record.imageId || record.id;
+    return Object.freeze({
+      inventoryDate: INVENTORY_DATE,
+      inventorySource: "CURRENT CONSOLIDATED MASTER",
+      inStock: record.inventoryQuantity > 0,
+      pricingStatus: dealGroup === "pricing-pending" ? "pending" : "active",
+      bundleQuantity: deal.bundleQuantity,
+      bundlePrice: deal.bundlePrice,
+      effectiveUnitPrice: deal.effectiveUnitPrice,
+      comparePrice: null,
+      sourceRetailer: null,
+      sourceUrl: null,
+      sourceStatus: dealGroup === "pricing-pending" ? "pricing_pending" : "working_value",
+      ...record,
+      dealGroup,
+      image: record.image || `assets/products-master/${imageId}.webp`,
+      imagePng: record.imagePng || `assets/products-master/${imageId}.png`
+    });
+  };
+
+  window.PRODUCTS = Object.freeze([
+    product({ id: "arm-hammer-oxiclean-fresh-21-loads", sourcePath: "2x$5/900.jpg.avif", brand: "Arm & Hammer", name: "Plus OxiClean Stain Fighters", variant: "Fresh Scent · blue-label 3X Stain Fighters", size: "27.5 fl oz · 21 loads", category: "Liquid detergent", inventoryQuantity: 15, inventoryUnit: "bottles", packaging: "Orange bottle · blue cap · blue label", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 3.84, searchTags: ["arm hammer", "oxiclean", "stain fighters", "fresh scent", "blue label", "21 loads"], alt: "Arm and Hammer Plus OxiClean Stain Fighters Fresh Scent detergent, 27.5 fluid ounces and 21 loads" }),
+    product({ id: "arm-hammer-odor-blasters-21-loads", sourcePath: "2x$5/Arm-Hammer-Plus-OxiClean-Odor-Blasters-Fresh-Burst-21-Loads-Liquid-Laundry-Detergent-27-5-Fl-oz_68cb7644-83a6-4412-80f3-038a51866a1c.9ff42a98b32e98865196614abe46a004.png.webp", brand: "Arm & Hammer", name: "Plus OxiClean Odor Blasters", variant: "Fresh Burst · purple-label 3X Odor Fighters", size: "27.5 fl oz · 21 loads", category: "Liquid detergent", inventoryQuantity: 3, inventoryUnit: "bottles", packaging: "Orange bottle · purple cap · purple label", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 3.84, searchTags: ["arm hammer", "oxiclean", "odor blasters", "fresh burst", "purple label", "21 loads"], alt: "Arm and Hammer Plus OxiClean Odor Blasters Fresh Burst detergent, 27.5 fluid ounces and 21 loads" }),
+    product({ id: "tide-simply-all-in-one-24-loads", sourcePath: "2x$5/large_bd1cd84d-bb0a-483b-b5a3-38118c0b8f84.jpg", brand: "Tide", name: "Simply All in One", variant: "Refreshing Breeze · small bottle", size: "32 fl oz · 24 loads", category: "Liquid detergent", inventoryQuantity: 20, inventoryUnit: "bottles", packaging: "Yellow bottle · blue/green label · clear dosing cap", quantityNote: "12 originally + 5 later = 17; 17 + 3 from Group 2 (2026-09-12) = 20", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 3.74, searchTags: ["tide", "simply", "all in one", "refreshing breeze", "small", "24 loads"], alt: "Tide Simply All in One Refreshing Breeze detergent, 32 fluid ounces and 24 loads" }),
+    product({ id: "tide-simply-oxi-febreze-22-loads", sourcePath: "2x$5/Tide-Simply-Oxi-Boost-Febreze-Odor-Defense-31-fl-oz-22-Loads-Tough-on-Stains-and-Odors-Febreze-Sunny-Breeze-Scent_573bb246-0283-4f25-8228-0939943515f4.b7b4c1d7d71643181ae353dca88aa0cd.jpeg.webp", brand: "Tide", name: "Simply Oxi Boost + Febreze", variant: "Sunny Breeze · Odor Defense", size: "30–31 fl oz · 22 loads", category: "Liquid detergent", inventoryQuantity: 23, inventoryUnit: "bottles", packaging: "Yellow bottle · dark-purple cap/label", quantityNote: "Five total across 30 fl oz and 31 fl oz package generations; exact split unknown; 5 + 18 from Group 2 (2026-09-12) = 23", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 4.97, searchTags: ["tide", "simply", "oxi", "febreze", "odor defense", "sunny breeze", "22 loads"], alt: "Tide Simply Oxi Boost plus Febreze Odor Defense Sunny Breeze detergent, 22 loads" }),
+    product({ id: "arm-hammer-sensitive-skin-28-loads", sourcePath: "2x$5/3320097562.jpg", brand: "Arm & Hammer", name: "Sensitive Skin Free & Clear", variant: "Hypoallergenic · no perfumes or dyes", size: "28 fl oz · 28 loads", category: "Liquid detergent", inventoryQuantity: 2, inventoryUnit: "bottles", packaging: "White bottle · white cap · green/white label", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 5, searchTags: ["arm hammer", "sensitive skin", "free clear", "hypoallergenic", "28 loads"], alt: "Arm and Hammer Sensitive Skin Free and Clear detergent, 28 fluid ounces and 28 loads" }),
+    product({ id: "tide-simply-all-in-one-85-loads", cardGroup: "tide-liquid-big", sourcePath: "7dolla/26840_1.jpg", brand: "Tide", name: "Simply All in One", variant: "Refreshing Breeze · large bottle", size: "107 fl oz · 85 loads", category: "Liquid detergent", inventoryQuantity: 8, quantityNote: "7 + 1 from Group 2 (2026-09-12) = 8", inventoryUnit: "bottles", packaging: "Large yellow bottle · blue label · dosing cap", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 10.48, searchTags: ["tide", "simply", "all in one", "refreshing breeze", "large", "85 loads"], alt: "Tide Simply All in One Refreshing Breeze detergent, 107 fluid ounces and 85 loads" }),
+    product({ id: "tide-simply-oxi-stain-22-loads", sourcePath: "2x$5/large_222759d8-8d18-48ae-9ed8-f07f1f54877a.png", brand: "Tide", name: "Simply Oxi + Stain", variant: "Refreshing Breeze · small bottle", size: "31 fl oz · 22 loads", category: "Liquid detergent", inventoryQuantity: 7, quantityNote: "5 + 2 from Group 2 (2026-09-12) = 7", inventoryUnit: "bottles", packaging: "Yellow bottle · orange/blue label", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 4.97, searchTags: ["tide", "simply", "oxi", "stain", "refreshing breeze", "small", "22 loads"], alt: "Tide Simply Oxi and Stain Refreshing Breeze detergent, 31 fluid ounces and 22 loads" }),
+    product({ id: "tide-simply-free-sensitive-24-loads", sourcePath: "2x$5/6dba0bdf-5c19-4f0f-a8db-ad18310d7632.5351613ce2f9c21ab349cefe5fb80890.jpeg.webp", brand: "Tide", name: "Simply Free & Sensitive", variant: "Unscented · no dyes or perfumes", size: "32 fl oz · 24 loads", category: "Liquid detergent", inventoryQuantity: 2, inventoryUnit: "bottles", packaging: "White bottle · yellow/white label", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 6.99, searchTags: ["tide", "simply", "free sensitive", "unscented", "24 loads"], alt: "Tide Simply Free and Sensitive detergent, 32 fluid ounces and 24 loads" }),
+    product({ id: "all-free-clear-original-30oz", sourcePath: "2x$5/0072613739431_1_A1C1_0600.png", brand: "all", name: "Free Clear — The Original", variant: "100% free of perfumes and dyes · small bottle", size: "30 fl oz · 24 loads", category: "Liquid detergent", inventoryQuantity: 2, inventoryUnit: "bottles", packaging: "White bottle · blue/white label", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 6.29, sourceRetailer: "Kroger", sourceUrl: KROGER_ALL, sourceStatus: "verified", sourceUnverifiable: "2026-09-12: kroger.com returns an HTTP/2 protocol error to an automated browser, so this citation could not be re-opened. It is kept because nothing suggests it is wrong, and flagged because nothing confirms it is right.", searchTags: ["all", "free clear", "original", "unscented", "small", "24 loads"], alt: "all Free Clear The Original detergent, 30 fluid ounces and 24 loads" }),
+    product({ id: "snuggle-blue-sparkle-40-loads", sourcePath: "2x$5/08cb3868-c18a-433d-832c-1f7065e89b9b.jpg", brand: "Snuggle", name: "Blue Sparkle", variant: "Cuddle-Up Fresh", size: "27.2 fl oz · 40 loads", category: "Fabric softener", inventoryQuantity: 1, inventoryUnit: "bottle", packaging: "Blue bottle · blue cap · teddy-bear label", inventoryStatus: "photo-confirmed", dealGroup: "2-for-5", comparePrice: 5, searchTags: ["snuggle", "blue sparkle", "cuddle up fresh", "fabric softener", "40 loads"], alt: "Snuggle Blue Sparkle Cuddle-Up Fresh fabric softener, 27.2 fluid ounces and 40 loads" }),
+    product({ id: "tide-simply-oxi-stain-70-loads", cardGroup: "tide-liquid-big", sourcePath: "7dolla/1692594.webp", brand: "Tide", name: "Simply Oxi + Stain", variant: "Refreshing Breeze · large bottle", size: "94 fl oz · 70 loads", category: "Liquid detergent", inventoryQuantity: 2, inventoryUnit: "bottles", packaging: "Large yellow bottle · blue/orange label · dosing cap", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 9.38, searchTags: ["tide", "simply", "oxi", "stain", "refreshing breeze", "large", "70 loads"], alt: "Tide Simply Oxi and Stain Refreshing Breeze detergent, 94 fluid ounces and 70 loads" }),
+    product({ id: "tide-simply-daybreak-85-loads", cardGroup: "tide-liquid-big", sourcePath: "assets/inventory-sources/master-2026-09/tide-simply-daybreak-107oz-edited.png", brand: "Tide", name: "Simply All in One", variant: "Daybreak Fresh", size: "107 fl oz · 85 loads", category: "Liquid detergent", inventoryQuantity: 8, quantityNote: "5 + 3 from Group 2 (2026-09-12) = 8", inventoryUnit: "bottles", packaging: "Large yellow bottle · green label · dosing cap", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 10.48, imageSourceUrl: "https://www.homedepot.com/p/340972664", searchTags: ["tide", "simply", "all in one", "daybreak fresh", "large", "85 loads", "107 oz"], alt: "Tide Simply All in One Daybreak Fresh detergent, 107 fluid ounces and 85 loads" }),
+    product({ id: "all-free-clear-original-73oz", sourcePath: "assets/inventory-sources/master-2026-09/all-free-clear-original-73oz.jpg", brand: "all", name: "Free Clear — The Original", variant: "100% free of perfumes and dyes · large bottle", size: "73 fl oz · 58 loads", category: "Liquid detergent", inventoryQuantity: 15, quantityNote: "9 + 6 from Group 2 (2026-09-12) = 15", inventoryUnit: "bottles", packaging: "Large white bottle · blue/white label", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 11.99, sourceStatus: "working_value", imageSourceUrl: "https://www.kroger.com/p/all-free-clear-laundry-detergent/0007261347415", searchTags: ["all", "free clear", "original", "unscented", "large", "58 loads", "73 oz"], alt: "all Free Clear The Original detergent, 73 fluid ounces and 58 loads" }),
+    product({ id: "purex-advanced-oxi-morning-burst-85-loads", sourcePath: "7dolla/719CC47yAgL._AC_UF350,350_QL80_.jpg", brand: "Purex", name: "Advanced Oxi", variant: "Fresh Morning · cold-water power", size: "128 fl oz · 85 loads", category: "Liquid detergent", inventoryQuantity: 14, inventoryUnit: "bottles", packaging: "Dark-blue bottle · orange/white label", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 9.97, searchTags: ["purex", "advanced oxi", "fresh morning", "cold water", "85 loads", "128 oz"], alt: "Purex Advanced Oxi Fresh Morning detergent, 128 fluid ounces and 85 loads" }),
+    product({ id: "purex-fresh-mountain-breeze-115-loads", sourcePath: "7dolla/001081069-1.webp", brand: "Purex", name: "Fresh Mountain Breeze", variant: "Floral and woody notes", size: "150 fl oz · 115 loads", category: "Liquid detergent", inventoryQuantity: 17, inventoryUnit: "bottles", packaging: "Dark-blue bottle · white/green mountain label", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 9.99, sourceRetailer: "Target", sourceUrl: TARGET_PUREX, sourceStatus: "verified", sourceTitle: "Purex Fresh Mountain Breeze HE Liquid Laundry Detergent 115 Loads - 150 fl oz : Target", sourcePrice: 9.99, sourceCheckedOn: "2026-09-12", searchTags: ["purex", "fresh mountain breeze", "floral", "woody", "115 loads", "150 oz"], alt: "Purex Fresh Mountain Breeze detergent, 150 fluid ounces and 115 loads" }),
+    product({ id: "suavitel-field-flowers-105-loads", sourcePath: "7dolla/suavitel-fabric-softeners-61043164-64_1000.jpg.avif", brand: "Suavitel", name: "Field Flowers", variant: "Field Flowers · blue bottle", size: "105 fl oz · 105 small loads", category: "Fabric softener", inventoryQuantity: 1, inventoryUnit: "bottle", packaging: "Blue bottle · floral label", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 8.47, sourceStatus: "working_value", searchTags: ["suavitel", "field flowers", "blue", "fabric softener", "105 loads"], alt: "Suavitel Field Flowers fabric softener, 105 fluid ounces and 105 small loads" }),
+    product({ id: "suavitel-morning-sun-105-loads", sourcePath: "7dolla/f76e0a66-7a6c-4ff4-8aa7-a39c0c06b5d2.569496cdbc604546d278c3a2e25e7cf5.jpeg.webp", brand: "Suavitel", name: "Morning Sun", variant: "Morning Sun · yellow bottle", size: "105 fl oz · 105 small loads", category: "Fabric softener", inventoryQuantity: 2, inventoryUnit: "bottles", packaging: "Yellow bottle · sunflower/floral label", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 8.47, sourceStatus: "working_value", searchTags: ["suavitel", "morning sun", "yellow", "fabric softener", "105 loads"], alt: "Suavitel Morning Sun fabric softener, 105 fluid ounces and 105 small loads" }),
+    product({ id: "suavitel-soothing-lavender-105-loads", sourcePath: "7dolla/suavitel-fabric-softeners-61043170-combo6-64_1000.jpg.avif", brand: "Suavitel", name: "Soothing Lavender", variant: "Lavender", size: "105 fl oz · 105 small loads", category: "Fabric softener", inventoryQuantity: 3, inventoryUnit: "bottles", packaging: "Purple bottle · lavender label", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 8.47, sourceStatus: "working_value", searchTags: ["suavitel", "soothing lavender", "purple", "fabric softener", "105 loads"], alt: "Suavitel Soothing Lavender fabric softener, 105 fluid ounces and 105 small loads" }),
+    product({ id: "suavitel-holiday-white-christmas", sourcePath: "7dolla/0750954665980.png", brand: "Suavitel", name: "Blanca Navidad / White Christmas", variant: "Limited-edition holiday scent", size: "101 fl oz · load count unconfirmed", category: "Fabric softener", inventoryQuantity: 3, inventoryUnit: "bottles", packaging: "White bottle · Christmas/holiday graphics", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 8.47, sourceStatus: "working_value", searchTags: ["suavitel", "blanca navidad", "white christmas", "holiday", "fabric softener", "101 oz"], alt: "Suavitel Blanca Navidad White Christmas holiday fabric softener, 101 fluid ounces" }),
+    product({ id: "tide-evo-free-gentle-16ct", cardGroup: "tide-evo", sourcePath: "7dolla/Screenshot 2026-08-27 at 6.07.47 PM.png", brand: "Tide", name: "evo Laundry Detergent Tiles", variant: "Free & Gentle", size: "16 tiles · 16 medium loads", category: "Laundry detergent tiles", inventoryQuantity: 6, quantityNote: "2 + 4 from Group 2 (2026-09-12) = 6", inventoryUnit: "boxes", packaging: "Orange/light-blue box", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 9.99, sourceRetailer: "Target", sourceUrl: TARGET_EVO, sourceStatus: "category_reference", sourceTitle: "Tide Evo Original Laundry Detergent Tiles - 16ct: Box, Cold Water Detergent, Dye-Free, High Efficiency : Target", sourcePrice: 9.99, sourceCheckedOn: "2026-09-12", searchTags: ["tide", "evo", "tiles", "free gentle", "sensitive", "16 count"], alt: "Tide evo Free and Gentle laundry detergent tiles, 16 medium loads" }),
+    product({ id: "tide-evo-original-16ct", cardGroup: "tide-evo", sourcePath: "7dolla/GUEST_60ebfa06-ee8e-4728-9e9a-7446621eed1d.avif", brand: "Tide", name: "evo Laundry Detergent Tiles", variant: "Original Scent", size: "16 tiles · 16 medium loads", category: "Laundry detergent tiles", inventoryQuantity: 6, quantityNote: "2 + 4 from Group 2 (2026-09-12) = 6", inventoryUnit: "boxes", packaging: "Orange/navy box", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 9.99, sourceRetailer: "Target", sourceUrl: TARGET_EVO, sourceStatus: "verified", sourceTitle: "Tide Evo Original Laundry Detergent Tiles - 16ct: Box, Cold Water Detergent, Dye-Free, High Efficiency : Target", sourcePrice: 9.99, sourceCheckedOn: "2026-09-12", searchTags: ["tide", "evo", "tiles", "original scent", "16 count"], alt: "Tide evo Original Scent laundry detergent tiles, 16 medium loads" }),
+    product({ id: "tide-evo-spring-blast-16ct", cardGroup: "tide-evo", sourcePath: "assets/inventory-sources/master-2026-09/tide-evo-spring-blast-16ct.jpg", brand: "Tide", name: "evo Laundry Detergent Tiles", variant: "Spring Blast", size: "16 tiles · 16 medium loads", category: "Laundry detergent tiles", inventoryQuantity: 3, inventoryUnit: "boxes", packaging: "Orange/purple box", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 9.99, sourceRetailer: "Target", sourceUrl: TARGET_EVO, sourceStatus: "category_reference", sourceTitle: "Tide Evo Original Laundry Detergent Tiles - 16ct: Box, Cold Water Detergent, Dye-Free, High Efficiency : Target", sourcePrice: 9.99, sourceCheckedOn: "2026-09-12", imageSourceUrl: "https://www.homedepot.com/p/339818224", searchTags: ["tide", "evo", "tiles", "spring blast", "16 count"], alt: "Tide evo Spring Blast laundry detergent tiles, 16 medium loads" }),
+    product({ id: "tide-power-pods-downy-25ct", cardGroup: "tide-pods", sourcePath: "assets/inventory-sources/master-2026-09/tide-power-pods-downy-25ct.jpg", brand: "Tide", name: "Power PODS + Downy", variant: "Soft Boosters + April Fresh", size: "35 oz · 25 XL pods", category: "Laundry pods", inventoryQuantity: 24, inventoryUnit: "tubs", packaging: "Orange tub · pink/gray label", quantityNote: "One XL pod equals two regular pods; 5 + 19 from Group 2 (2026-09-12) = 24", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 12.99, sourceRetailer: "Target", sourceUrl: TARGET_TIDE_DOWNY_PODS, sourceStatus: "verified", sourceTitle: "Tide + Downy April Fresh HE Deep Cleaning Concentrated Laundry Detergent Pods 25 Pacs - 35oz : Target", sourcePrice: 12.99, sourceCheckedOn: "2026-09-12", imageSourceUrl: "https://www.walmart.com/ip/5032932766", searchTags: ["tide", "power pods", "downy", "soft boosters", "april fresh", "25 xl", "35 oz"], alt: "Tide Power PODS plus Downy Soft Boosters April Fresh, 25 XL pods in a 35 ounce tub" }),
+    product({ id: "tide-power-pods-odor-oxi-25ct", cardGroup: "tide-pods", sourcePath: "assets/inventory-sources/master-2026-09/tide-power-pods-odor-oxi-25ct.png", brand: "Tide", name: "Power PODS Odor + Oxi Defense", variant: "Advanced Odor + Stain Fighter", size: "37 oz · 25 XL pods", category: "Laundry pods", inventoryQuantity: 10, quantityNote: "4 + 6 from Group 2 (2026-09-12) = 10", inventoryUnit: "tubs", packaging: "Orange tub · blue/gray label", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 12.99, sourceRetailer: "Target", sourceUrl: TARGET_TIDE_OXI_PODS, sourceStatus: "verified", sourceTitle: "Tide Odor + Oxi Original HE Deep Cleaning Concentrated Laundry Detergent Pods: 25 Capsules with Fresh Scent - 37oz : Target", sourcePrice: 12.99, sourceCheckedOn: "2026-09-12", imageSourceUrl: "https://delivery.publix.com/store/publix/products/26182157", searchTags: ["tide", "power pods", "odor", "oxi", "defense", "25 xl", "37 oz"], alt: "Tide Power PODS Odor and Oxi Defense, 25 XL pods in a 37 ounce tub" }),
+    product({ id: "gain-happy-hibiscus-25ct", sourcePath: "assets/inventory-sources/master-2026-09/gain-happy-hibiscus-25ct.jpg", brand: "Gain", name: "Gain Plus Happy Hibiscus", variant: "4X Oxi · 3X Fresh · 2X Febreze · Color Guard", size: "35 oz · 25 2X-bigger flings", category: "Laundry flings", inventoryQuantity: 3, inventoryUnit: "tubs", packaging: "Green tub · pink lid · hibiscus graphics", inventoryStatus: "photo-confirmed", dealGroup: "8-each", comparePrice: 9.99, sourceStatus: "working_value", sourceRemovedOn: "2026-09-12", sourceRemovedWhy: "cited Target A-94370623, which is Gain Super Flings Hibiscus Hula 18 Pacs / 25 oz — a SMALLER pack than the 25-fling 35 oz one sold here", imageSourceUrl: "https://www.cvs.com/shop/gain-super-flings-laundry-detergent-pacs-happy-hibiscus-hula-scent-25-ct-prodid-314760", searchTags: ["gain", "happy hibiscus", "hibiscus hula", "flings", "febreze", "25 count", "35 oz"], alt: "Gain Plus Happy Hibiscus laundry flings, 25 count in a green tub with pink lid" }),
+    /* ---- GROUP 2, added 2026-09-12. Seven products the restock brought that
+       this manifest did not carry. Their packshots were produced by the owner's
+       Codex from researched retail images and background-removed with Apple's
+       Vision segmentation (scripts/remove-packshot-background.swift), so the
+       labels are the real ones. `sourcePath` points at the master itself
+       because the master IS the source for these — there is no owner photograph
+       behind them, and that is recorded rather than disguised.
+
+       PRICE STAGE: the owner's decision, "same pricing" — a 42-count tub sells
+       at $8 exactly like the 25-count tubs already on that shelf. That is a
+       steeper discount than anything else here (a 42-count tub is roughly
+       1.7x the 25-count) and it was their call, made knowingly.
+
+       comparePrice is null on all seven. None of them has a checked store
+       price yet, and this file may not invent one: they show "No comparison
+       price listed" and are left out of any saving until someone opens a real
+       listing for each. That is the top open item in HANDOFF §4. ---- */
+    product({ id: "tide-simply-daybreak-24-loads", sourcePath: "assets/products-master/tide-simply-daybreak-24-loads.png", brand: "Tide", name: "Simply All in One", variant: "Daybreak Fresh · small bottle", size: "31 fl oz · 24 loads", category: "Liquid detergent", inventoryQuantity: 3, inventoryUnit: "bottles", packaging: "Yellow bottle · green label · clear dosing cap", quantityNote: "3 from Group 2 (2026-09-12)", inventoryStatus: "packshot-confirmed", dealGroup: "2-for-5", comparePrice: null, sourceStatus: "working_value", imageSourceType: "Retail packshot, background removed with Vision segmentation", searchTags: ["tide", "simply", "all in one", "daybreak", "green", "24 loads", "31 oz"], alt: "Tide Simply All in One Daybreak Fresh detergent, 31 fluid ounces and 24 loads" }),
+    product({ id: "tide-pods-spring-meadow-42ct", sourcePath: "assets/products-master/tide-pods-spring-meadow-42ct.png", brand: "Tide", name: "PODS 3-in-1", variant: "Spring Meadow · Coldwater Clean", size: "32 oz · 42 pacs", category: "Laundry pods", inventoryQuantity: 7, inventoryUnit: "tubs", packaging: "Orange tub · purple label", quantityNote: "7 from Group 2 (2026-09-12)", inventoryStatus: "packshot-confirmed", dealGroup: "8-each", comparePrice: null, sourceStatus: "working_value", imageSourceType: "Retail packshot, background removed with Vision segmentation", searchTags: ["tide", "pods", "3 in 1", "spring meadow", "coldwater", "42 pacs", "purple"], alt: "Tide PODS 3-in-1 Spring Meadow laundry pods, 42 pacs" }),
+    product({ id: "tide-free-gentle-pods-42ct", sourcePath: "assets/products-master/tide-free-gentle-pods-42ct.png", brand: "Tide", name: "PODS Free & Gentle", variant: "Unscented · no added dyes or perfumes", size: "31 oz · 42 pacs", category: "Laundry pods", inventoryQuantity: 11, inventoryUnit: "tubs", packaging: "White tub · pale-blue label", quantityNote: "11 from Group 2 (2026-09-12)", inventoryStatus: "packshot-confirmed", dealGroup: "8-each", comparePrice: null, sourceStatus: "working_value", imageSourceType: "Retail packshot, background removed with Vision segmentation", searchTags: ["tide", "pods", "free gentle", "unscented", "42 pacs", "sensitive"], alt: "Tide PODS Free and Gentle unscented laundry pods, 42 pacs" }),
+    product({ id: "gain-flings-original-42ct", sourcePath: "assets/products-master/gain-flings-original-42ct.png", brand: "Gain", name: "flings! Original", variant: "3-in-1 · Oxi Boost + Febreze", size: "42 flings", category: "Laundry pods", inventoryQuantity: 21, inventoryUnit: "tubs", packaging: "Green tub · green lid", quantityNote: "21 from Group 2 (2026-09-12)", inventoryStatus: "packshot-confirmed", dealGroup: "8-each", comparePrice: null, sourceStatus: "working_value", imageSourceType: "Retail packshot, background removed with Vision segmentation", searchTags: ["gain", "flings", "original", "oxi", "febreze", "42", "green"], alt: "Gain flings Original laundry detergent pods, 42 flings" }),
+    product({ id: "tide-power-pods-oxi-boost-25ct", sourcePath: "assets/products-master/tide-power-pods-oxi-boost-25ct.png", brand: "Tide", name: "Power PODS Oxi Boost", variant: "Set-In Stain Removal + Oxi Power", size: "37 oz · 25 XL pods", category: "Laundry pods", inventoryQuantity: 7, inventoryUnit: "tubs", packaging: "Orange tub · dark-blue label", quantityNote: "7 from Group 2 (2026-09-12)", inventoryStatus: "packshot-confirmed", dealGroup: "8-each", comparePrice: null, sourceStatus: "working_value", imageSourceType: "Retail packshot, background removed with Vision segmentation", searchTags: ["tide", "power pods", "oxi boost", "set in stain", "25 xl", "37 oz"], alt: "Tide Power PODS Oxi Boost laundry pods, 25 XL pods" }),
+    product({ id: "tide-power-pods-odor-refresh-free-gentle-25ct", sourcePath: "assets/products-master/tide-power-pods-odor-refresh-free-gentle-25ct.png", brand: "Tide", name: "Power PODS Odor Refresh Free & Gentle", variant: "Unscented", size: "37 oz · 25 XL pods", category: "Laundry pods", inventoryQuantity: 4, inventoryUnit: "tubs", packaging: "White tub · grey lid · teal label", quantityNote: "4 from Group 2 (2026-09-12)", inventoryStatus: "packshot-confirmed", dealGroup: "8-each", comparePrice: null, sourceStatus: "working_value", imageSourceType: "Retail packshot, background removed with Vision segmentation", searchTags: ["tide", "power pods", "odor refresh", "free gentle", "unscented", "25 xl"], alt: "Tide Power PODS Odor Refresh Free and Gentle unscented pods, 25 XL pods" }),
+    product({ id: "gain-happy-hibiscus-32ct", cardGroup: "gain-hibiscus", sourcePath: "assets/products-master/gain-happy-hibiscus-32ct.png", brand: "Gain", name: "Plus Happy Hibiscus", variant: "Super Flings · large tub", size: "39 oz · 32 flings", category: "Laundry pods", inventoryQuantity: 9, inventoryUnit: "tubs", packaging: "Green tub · pink lid · hibiscus artwork", quantityNote: "9 from Group 2 (2026-09-12)", inventoryStatus: "packshot-confirmed", dealGroup: "8-each", comparePrice: null, sourceStatus: "working_value", imageSourceType: "Retail packshot, background removed with Vision segmentation", searchTags: ["gain", "super flings", "happy hibiscus", "hibiscus hula", "32", "39 oz"], alt: "Gain Plus Happy Hibiscus Super Flings laundry pods, 32 flings" }),
+    product({ id: "downy-gentle-ocean-mist-26oz", sourcePath: "assets/inventory-sources/master-2026-09/downy-gentle-ocean-mist-26oz.jpg", brand: "Downy", name: "Gentle Soft + Fresh", variant: "Ocean Mist", size: "26 fl oz · 39 loads", category: "Fabric softener", inventoryQuantity: 1, inventoryUnit: "bottle", packaging: "White/light-blue bottle", inventoryStatus: "photo-confirmed", dealGroup: "paper-2-for-7", comparePrice: 4.97, sourceRetailer: "Walmart", sourceUrl: WALMART_DOWNY_GENTLE, sourceStatus: "verified", sourceUnverifiable: "2026-09-12: walmart.com answers an automated browser with its bot wall, so this citation could not be re-opened. Kept for the same reason as the Kroger one, and flagged for the same reason.", imageSourceUrl: "https://www.walmart.com/ip/16584363088", searchTags: ["downy", "gentle", "soft fresh", "ocean mist", "fabric softener", "39 loads", "26 oz"], alt: "Downy Gentle Soft and Fresh Ocean Mist fabric softener, 26 fluid ounces and 39 loads" }),
+    product({ id: "downy-calm-lavender-vanilla-26oz", sourcePath: "2x7 dolla/6a628b60-cd49-4c31-8c05-538989c72e2f.jpg", brand: "Downy", name: "Calm", variant: "Lavender & Vanilla Bean · 4X Fresh & Soft", size: "26 fl oz · 39 loads", category: "Fabric softener", inventoryQuantity: 2, inventoryUnit: "bottles", packaging: "Purple floral bottle", inventoryStatus: "photo-confirmed", dealGroup: "paper-2-for-7", comparePrice: 4.99, sourceStatus: "working_value", sourceRemovedOn: "2026-09-12", sourceRemovedWhy: "cited Target A-91290877, which now reads Downy Ultra Soft + Calm 93 fl oz at $12.99 — a far bigger, dearer bottle than the 26 fl oz one sold here", searchTags: ["downy", "calm", "lavender", "vanilla bean", "fabric softener", "39 loads", "26 oz"], alt: "Downy Calm Lavender and Vanilla Bean fabric softener, 26 fluid ounces and 39 loads" }),
+    product({ id: "downy-cool-cotton-44oz", sourcePath: "assets/inventory-sources/master-2026-09/downy-cool-cotton-44oz.jpg", brand: "Downy", name: "Cool Cotton", variant: "2-in-1 Soft + Fresh", size: "44 fl oz · 60 loads", category: "Fabric softener", inventoryQuantity: 1, inventoryUnit: "bottle", packaging: "Blue bottle", inventoryStatus: "confirmed from later inventory photo", dealGroup: "paper-2-for-7", comparePrice: 4.97, sourceRetailer: "Walmart", sourceUrl: "https://www.walmart.com/ip/Downy-Liquid-Laundry-Fabric-Softener-and-Conditioner-Cool-Cotton-Scent-44-fl-oz-60-Loads/2038706554", sourceStatus: "verified", sourceTitle: "Downy Liquid Laundry Fabric Softener and Conditioner, Cool Cotton Scent, 44 fl oz, 60 Loads - Walmart.com", sourcePrice: 4.97, sourceCheckedOn: "2026-09-12", sourceNote: "The owner found this one by hand on 2026-09-12 and they were right. It is the only product that carried NO comparison price at all, since session 5 removed a citation that pointed at a 26 fl oz bottle. 11.3 cents/fl oz x 44 = $4.97, and the listing title carries both the 44 and the 60 so the size guard can check it.", imageSourceUrl: "https://www.stockupexpress.com/products/downy-ultra-laundry-liquid-fabric-softener-fabric-conditioner-cool-cotton-44-fl-oz-60-loads-44-fz-6-pack", searchTags: ["downy", "cool cotton", "soft fresh", "fabric softener", "60 loads", "44 oz"], alt: "Downy Cool Cotton fabric softener, 44 fluid ounces and 60 loads" }),
+    product({ id: "gain-odor-defense-44oz", sourcePath: "assets/inventory-sources/master-2026-09/gain-odor-defense-44oz.jpg", brand: "Gain", name: "+ Odor Defense", variant: "Super Fresh Blast", size: "44 fl oz · 60 loads", category: "Fabric softener", inventoryQuantity: 1, inventoryUnit: "bottle", packaging: "Green bottle · bright-green cap", inventoryStatus: "confirmed from later inventory photo", dealGroup: "paper-2-for-7", comparePrice: 7.99, sourceStatus: "working_value", sourceRemovedOn: "2026-09-12", sourceRemovedWhy: "cited Target A-95266953, which is Gain Superfresh Blast 140 fl oz at $12.99 — three times the 44 fl oz bottle sold here", imageSourceUrl: "https://www.kroger.com/p/gain-odor-defense-liquid-fabric-softener-super-fresh-blast-scent-60-loads-he-compatible/0003077205053", searchTags: ["gain", "odor defense", "super fresh blast", "fabric softener", "60 loads", "44 oz"], alt: "Gain Odor Defense Super Fresh Blast fabric softener, 44 fluid ounces and 60 loads" }),
+    product({ id: "unbranded-toilet-paper-12-rolls", sourcePath: "assets/products/everyday-essential-toilet-paper-12-rolls.png", image: "assets/products/everyday-essential-toilet-paper-12-rolls.webp", imagePng: "assets/products/everyday-essential-toilet-paper-12-rolls.png", brand: "Unbranded / unknown", name: "Toilet Paper", variant: "2-ply · brand not provided", size: "12 rolls per package", category: "Paper goods", inventoryQuantity: 45, inventoryUnit: "packages", packaging: "Exact retail SKU and package artwork not provided", quantityNote: "45 packages × 12 rolls = 540 total rolls", inventoryStatus: "quantity-confirmed; brand unresolved", dealGroup: "paper-2-for-7", comparePrice: 7.49, sourceStatus: "working_value", sourceRemovedOn: "2026-09-12", sourceRemovedWhy: "cited Target A-89685857, which is a SIX-roll pack; the pack sold here is twelve. The owner reported this one by hand. $7.49 is that six-roll price and is therefore a deliberately CONSERVATIVE stand-in for a twelve-roll pack — it understates the gap rather than inventing a doubled figure", imageSourceType: "Earlier generated package artwork restored at owner request", searchTags: ["toilet paper", "bath tissue", "paper goods", "2 ply", "12 rolls", "unbranded"], alt: "Purple package of 12 rolls of two-ply toilet paper" }),
+    product({ id: "unbranded-paper-towels-6-rolls", sourcePath: "assets/products/everyday-essential-paper-towels-6-rolls.png", image: "assets/products/everyday-essential-paper-towels-6-rolls.webp", imagePng: "assets/products/everyday-essential-paper-towels-6-rolls.png", brand: "Unbranded / unknown", name: "Paper Towels", variant: "Brand not provided", size: "6 rolls per package", category: "Paper goods", inventoryQuantity: 40, inventoryUnit: "packages", packaging: "Exact retail SKU and package artwork not provided", quantityNote: "40 packages × 6 rolls = 240 total rolls", inventoryStatus: "quantity-confirmed; brand unresolved", dealGroup: "paper-2-for-7", comparePrice: 6.29, sourceStatus: "working_value", sourceRemovedOn: "2026-09-12", sourceRemovedWhy: "cited Target A-79727136, which is six TRIPLE rolls at $14.99 — neither the size nor the price this product was ever compared against", imageSourceType: "Earlier generated package artwork restored at owner request", searchTags: ["paper towels", "paper goods", "6 rolls", "unbranded"], alt: "Orange package of six rolls of paper towels" })
+  ]);
+
+  window.ARCHIVED_PRODUCT_IDS = Object.freeze([
+    "tide-pods-original-14ct", "tide-pods-spring-meadow-16ct", "suavitel-complete-field-flowers-100-loads",
+    "everyday-essential-toilet-paper-12-rolls", "everyday-essential-paper-towels-6-rolls"
+  ]);
+}());

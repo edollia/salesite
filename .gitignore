@@ -1,0 +1,29 @@
+# The workspace lives elsewhere. This repo is the SITE ONLY.
+# Never commit: the briefs, the price worksheet, QA renders, session baselines,
+# the owner's own inventory photographs, or the PNG masters (sources, not assets).
+.DS_Store
+*.log
+node_modules/
+
+# sources that are not site assets — see PUBLISH.md in the workspace
+assets/products-master/*.png
+assets/products/*.png
+assets/beast-lab/*.png
+assets/inventory-sources/
+assets/fonts/caveat-var.woff2
+assets/fonts/anton.woff2
+assets/fonts/nunito-var.woff2
+assets/fonts/ultra.woff2
+
+# internal, never public
+wheel-lab.*
+admin.*
+qa/
+scripts/
+.session*-baseline/
+HANDOFF*.md
+MAINTAINING.md
+PRICING-WORKSHEET.md
+PUBLISH.md
+CODEX-PROMPT-*.md
+products.previous-*.js

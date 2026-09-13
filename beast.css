@@ -1,0 +1,1348 @@
+/* =====================================================================
+   BEAST STOCK-UP — Stock-Up × MrBeast household supplies (v3)
+   Chrome, cyan, hot pink. Dresses the DOM script.js produces.
+   Performance rules: no infinite repaint animations, one drop-shadow per
+   image, no filters inside scroll tweens, native scrolling.
+   ===================================================================== */
+@font-face{font-family:Archivo;src:url('assets/fonts/archivo.woff2') format('woff2');font-display:swap}
+@font-face{font-family:ArchivoBlack;src:url('assets/fonts/archivo-black.woff2') format('woff2');font-display:swap}
+@font-face{font-family:Marker;src:url('assets/fonts/permanent-marker.woff2') format('woff2');font-display:swap}
+/* instanced at the one weight the page uses; see scripts/build-fonts.py */
+@font-face{font-family:Caveat;src:url('assets/fonts/caveat-700.woff2') format('woff2');font-weight:700;font-display:swap}
+
+:root{
+  --ink:#020816;--navy:#03152f;--navy-2:#071f3d;
+  --cyan:#00d5ff;--ice:#8debff;--pink:#ff249d;--yellow:#f5f739;--foam:#f7fbff;
+  --max:1280px;--gutter:max(18px,calc((100vw - var(--max)) / 2 + 30px));--nav-h:72px;
+  --display:ArchivoBlack,"Arial Black",Impact,sans-serif;--body:Archivo,"Helvetica Neue",Arial,sans-serif;--brush:Marker,"Comic Sans MS",cursive;--hand:Caveat,cursive;
+  --chrome-face:linear-gradient(180deg,#ffffff 0%,#e4eef6 16%,#9fb6ca 32%,#ffffff 45%,#456986 51%,#d6e6f1 62%,#ffffff 78%,#7d9ab3 100%);
+  --chrome-band:linear-gradient(145deg,#ffffff 0%,#7f9bb2 14%,#173a58 30%,#dfeef7 48%,#3d6079 66%,#0a2742 82%,#f1f9ff 100%);
+  --ease-out:cubic-bezier(.16,1,.3,1);
+}
+*,*::before,*::after{box-sizing:border-box}
+/* ONE mechanism for both jobs, on the scrollport. It keeps focus out from
+   under the three things that float over the page — the fixed nav, the sticky
+   price-stage bar under it, and the pink pickup bar at the bottom of a phone —
+   and it is also what stops a `#deal-8-each` jump landing under the chrome.
+   `scroll-margin-top` on the sections is GONE: a fragment jump applies both,
+   so the two offsets composed to 352 px at 1440 and 320 px on a phone, and
+   tapping the $8 tile left you looking at the previous shelf's ADD button. */
+html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;
+  scroll-padding-top:calc(var(--nav-h) + 96px);scroll-padding-bottom:88px}
+body{margin:0;overflow-x:clip;background:var(--navy);color:var(--foam);font-family:var(--body);font-weight:600;-webkit-font-smoothing:antialiased}
+body.overlay-open,body.is-booting{overflow:hidden}
+[hidden]{display:none!important}
+img{display:block;max-width:100%}
+button,input,select,textarea{font:inherit}
+button,a{color:inherit}
+a{text-decoration:none}
+p,h1,h2,h3{margin:0}
+button{cursor:pointer}
+::selection{background:var(--pink);color:#fff}
+:focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+/* No grey box on tap. Owner, 2026-09-12: the nav links "display a flickering
+   square border when tapped or clicked". That is the platform tap highlight —
+   a filled rectangle Chrome and Safari paint over the TOUCHED BOX, which on a
+   link whose own shape is an underline looks like a square flashing on and
+   off. It is removed, and nothing accessible goes with it: the keyboard ring
+   above is :focus-visible, which a tap never triggers, and the nav's own
+   underline is the pressed state. */
+a,button,summary,[role=button],input,select,textarea{-webkit-tap-highlight-color:transparent}
+/* ...and a MOUSE press must not leave the ring behind either. :focus-visible
+   already handles that in every current browser; this is the belt for the
+   in-page anchors, which are the ones the owner was pressing. */
+.nav-links a:focus:not(:focus-visible),.stages a:focus:not(:focus-visible),
+.skip-link:focus:not(:focus-visible){outline:none}
+/* Read by a screen reader, invisible to everyone else. The wheel's eight
+   outcomes live in one of these because the wheel itself is an aria-hidden SVG. */
+.visually-hidden{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip-path:inset(50%);white-space:nowrap;border:0}
+.skip-link{position:fixed;left:12px;top:12px;z-index:1000;background:var(--yellow);color:var(--ink);padding:10px 14px;font-weight:900;border-radius:8px;transform:translateY(-180%)}.skip-link:focus{transform:none}
+
+/* ---------- primitives ---------- */
+.kicker{display:flex;align-items:center;gap:9px;font:900 10px/1 var(--body);letter-spacing:.18em;text-transform:uppercase;color:var(--ice)}
+.kicker i{width:8px;height:8px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.display{font:900 clamp(38px,9.2vw,52px)/.86 var(--display);letter-spacing:-.06em;text-transform:uppercase;margin-top:16px}
+.display .accent{color:var(--cyan)}
+.display .w{display:inline-block;vertical-align:bottom;padding:.06em .02em 0 0;margin:-.06em 0 0}
+.display.is-animating .w{overflow:hidden}
+.display .ch{display:inline-block}
+
+.btn{position:relative;display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:54px;padding:0 24px;border-radius:999px;font:900 12px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;transition:transform .35s var(--ease-out),box-shadow .35s}
+.btn i{font-style:normal;font-size:16px;transition:transform .35s var(--ease-out)}
+.btn-cyan{background:linear-gradient(180deg,#8ff0ff,var(--cyan) 55%,#00b4dc);color:var(--ink);box-shadow:inset 0 2px 0 rgba(255,255,255,.7),0 6px 0 #006f8f,0 16px 32px rgba(0,213,255,.28)}
+.btn-pink{background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:#fff;box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 16px 32px rgba(255,36,157,.3)}
+/* Every appearance-changing hover lives here. Outside this query they LATCH
+   after a tap: measured with hover:none emulation, a tapped ADD button stayed
+   lifted and brightened and a tapped price tile kept a false active underline
+   until something else was tapped. .btn-ghost went with them — the second hero
+   button was removed, so nothing carries the class any more. */
+@media(hover:hover){
+  .btn:hover i{transform:translateX(5px)}
+  .btn-cyan:hover{transform:translateY(-3px);box-shadow:inset 0 2px 0 rgba(255,255,255,.7),0 9px 0 #006f8f,0 22px 40px rgba(0,213,255,.4)}
+  .btn-pink:hover{transform:translateY(-3px);box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 9px 0 #7a0b4d,0 22px 40px rgba(255,36,157,.42)}
+}
+
+/* Chrome type: real text transparent; ::before extrusion, ::after metal face. Shine is one-shot. */
+.chrome{position:relative;display:inline-block;color:transparent;font-family:var(--display);font-weight:900;text-transform:uppercase;letter-spacing:-.06em;line-height:.86;white-space:nowrap;-webkit-text-fill-color:transparent}
+/* The element box under-runs its own ink: negative letter-spacing eats the trailing
+   letter-space and line-height < 1 cuts the cap and descender. background-clip:text
+   then paints no face on the escaping ink, so the dark ::before showed through as a
+   hard vertical wall on the LAST glyph of every word (the "5", the "T"). The box is
+   grown by --ink-x/--ink-y and the same amount is given back as padding, so the text
+   lands in exactly the same place while the face has ink to paint on. */
+.chrome{--ink-x:.13em;--ink-y:.09em}
+.chrome::before,.chrome::after{content:attr(data-text) / "";position:absolute;inset:calc(-1 * var(--ink-y)) calc(-1 * var(--ink-x));padding:var(--ink-y) var(--ink-x);pointer-events:none;-webkit-text-fill-color:initial}
+.chrome::before{color:#0e2a45;text-shadow:0 1px 0 #6e8aa4,0 2px 0 #5f7c96,0 3px 0 #516e88,0 4px 0 #44607a,0 5px 0 #38536c,0 6px 0 #2d465e,0 7px 0 #233a50,0 8px 0 #1a2f43,0 9px 0 #122536,0 14px 26px rgba(0,0,0,.55)}
+.chrome::after{color:transparent;background:linear-gradient(110deg,transparent 38%,rgba(255,255,255,.95) 50%,transparent 62%) no-repeat,var(--chrome-face);background-size:260% 100%,100% 100%;background-position:-160% 0,0 0;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.chrome.is-shining::after{animation:shine 1.3s var(--ease-out) 1}
+@keyframes shine{from{background-position:-160% 0,0 0}to{background-position:160% 0,0 0}}
+.chrome-md{font-size:inherit}
+.chrome-xl{font-size:inherit;transform:skewX(-7deg)}
+.chrome-xl::before{text-shadow:0 1px 0 #6e8aa4,0 2px 0 #5f7c96,0 3px 0 #516e88,0 4px 0 #44607a,0 5px 0 #38536c,0 6px 0 #2d465e,0 8px 0 #233a50,0 10px 0 #1a2f43,0 12px 0 #122536,0 14px 0 #0c1c2b,0 26px 40px rgba(0,0,0,.6)}
+/* Display type comes in exactly TWO families and each one is continuous in
+   both axes, because the owner's complaint about resizing was not that the
+   layout was wrong at any width — it was that it LURCHED while the edge was
+   being dragged. Measured before this: the wordmark jumped 99 px to 113 px at
+   width 1024 and again to 153 px at 1200, and the copy column went 464 px to
+   552 px in the same pixel. Three overlapping bands each with its own formula
+   guaranteed a step wherever two of them met.
+   Family A (here) is the CENTRED hero: under 760 px, and every portrait
+   window. Family B is the two-column hero and lives in one aspect-gated block
+   near the bottom of this file. Nothing else may set these sizes.
+   scripts/beast-resize.py sweeps the width and fails on any undeclared step. */
+.chrome-price{font-size:clamp(20px,min(9vw,3.9vh),58px);letter-spacing:-.07em}
+.chrome-huge{font-size:clamp(56px,min(25vw,9.6vh),140px);letter-spacing:-.1em;line-height:.8}
+.chrome-huge::before{text-shadow:0 1px 0 #6e8aa4,0 2px 0 #5f7c96,0 3px 0 #516e88,0 4px 0 #44607a,0 5px 0 #38536c,0 6px 0 #2d465e,0 8px 0 #233a50,0 10px 0 #1a2f43,0 12px 0 #122536,0 14px 0 #0c1c2b,0 24px 36px rgba(0,0,0,.65)}
+.chrome-shelf{font-size:clamp(56px,15vw,84px);letter-spacing:-.08em;line-height:.82}
+
+.brush{position:relative;display:inline-block;font:400 1em/1 var(--brush);color:var(--pink);text-transform:uppercase;transform:rotate(-3deg);text-shadow:0 2px 0 #fff,0 5px 0 #4a0c31,0 12px 22px rgba(0,0,0,.5);white-space:nowrap}
+.brush::after{content:"";position:absolute;left:4%;right:12%;bottom:-.12em;height:.14em;background:var(--pink);clip-path:polygon(0 35%,100% 0,100% 55%,60% 75%,0 100%)}
+.brush-sm{font-size:clamp(30px,7vw,46px)}
+
+/* ---------- boot ---------- */
+.boot{position:fixed;inset:0;z-index:2000;background:radial-gradient(circle at 50% 40%,#0b3058,#020816 62%);display:grid;place-items:center;overflow:hidden}
+.boot-in{text-align:center;display:grid;justify-items:center;gap:18px}
+.boot-panther{width:140px;height:auto}
+.boot-word{display:grid;justify-items:center;gap:6px}
+.boot-beast{position:relative;display:block;font-size:clamp(46px,10vw,72px)}
+.boot-word .brush-sm{margin-top:-6px}
+/* No rainbow. Owner, 2026-09-12: "that rainbow underdash is ugly, remove it."
+   A cyan-to-pink gradient sitting directly under the pink brush wordmark read
+   as a third brand colour arriving for no reason. It is a hairline in one
+   colour now, and a narrower one, so the lockup is the only thing on the boot
+   screen with any weight. */
+.boot-bar{width:132px;height:2px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden;margin-top:4px}
+.boot-bar i{display:block;height:100%;width:0;background:var(--cyan);opacity:.9}
+html.no-js .boot,html.reduced .boot{display:none}
+
+/* ---- the claw rip ----
+   Rebuilt on the owner's verdict: "subtle, fainted, smaller and like real claws
+   — these look like chicken toes." They were three fat lenses splayed out of a
+   single point, which is a bird's foot, not a rake. A real claw mark is FOUR
+   near-parallel hairlines, all travelling the same way, of different lengths,
+   bowed the same way, tapering to nothing at both ends. 46 px, not 62. No burst
+   of shards and no white flash: the thing that says the click landed is the rim
+   flash on whatever was actually struck. */
+/* 75 px, not 50: the owner asked for it 1.5x bigger on 2026-09-12. The
+   stroke widths come with it, which is the point — the note below about not
+   going under ~1.2 CSS px of half-width still holds and there is more room
+   under it now, not less. */
+.claw{position:fixed;z-index:2900;pointer-events:none;width:75px;height:75px;margin:-37.5px 0 0 -37.5px;will-change:transform,opacity}
+.claw svg{width:100%;height:100%;overflow:visible;transform-box:view-box;transform-origin:50% 50%;
+  filter:drop-shadow(0 0 1.2px rgba(196,246,255,.5))}
+/* grows from the entry end of the gash, which is what makes it read as a rake */
+.claw-slash{transform:rotate(var(--cr));transform-box:view-box;transform-origin:50% 8%}
+/* Two copies of the same scratch: a dark one offset half a pixel behind, and
+   a light one on top. A scratch catches light, so the light copy is the one you
+   read on the navy hero; the dark copy is what keeps it visible on a white
+   product card. Do NOT outline these — a stroke around a thin closed shape
+   turns every gash into a hollow leaf, which is exactly how the version before
+   this one failed. And do not shrink them below about 1.2 CSS px: at 50 px in a
+   100-unit viewBox a half-width under 1.2 units is sub-pixel and simply does
+   not paint. Two of the four gashes were invisible for that reason. */
+.claw-tear{fill:#03080f;opacity:.5;transform:translate(.7px,.45px);transform-box:fill-box}
+.claw-edge{fill:#eafdff;opacity:.74}
+/* what the rip lands on: a short rim flash on whatever was actually struck */
+/* The flash lives on a pseudo-element. It used to animate the struck element's
+   own box-shadow, which REPLACED it — every clicked plate lost its cyan rim and
+   its drop shadow, and every Add button lost its 3-D lip, for 400 ms. */
+html.motion .is-clawed{position:relative}
+html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:20;pointer-events:none;
+  border-radius:inherit;box-shadow:0 0 0 2px rgba(234,252,255,.9),0 0 18px 5px rgba(0,213,255,.5);
+  animation:clawHit .4s var(--ease-out) 1}
+@keyframes clawHit{0%{opacity:0;transform:scale(.94)}20%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.03)}}
+
+/* ---------- nav ---------- */
+.nav{position:fixed;z-index:500;left:0;right:0;top:0;height:var(--nav-h);display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:0 14px;background:linear-gradient(180deg,rgba(2,8,22,.94),rgba(2,8,22,.72));border-bottom:1px solid rgba(141,235,255,.16);transition:background .4s}
+.nav.is-solid{background:rgba(2,8,22,.96)}
+.nav-brand{display:flex;align-items:center;gap:10px;width:max-content}
+.nav-panther{width:44px;height:auto}
+.nav-lockup{position:relative;display:grid;line-height:.78;font-family:var(--display);text-transform:uppercase;letter-spacing:-.06em}
+.nav-beast{font-size:21px;padding-top:2px;background:var(--chrome-face);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
+.nav-stock{font-size:18px;color:var(--pink);font-family:var(--brush);letter-spacing:0;transform:rotate(-2deg);margin-top:2px}
+.nav-links{display:none}
+.nav-list{border:1px solid rgba(141,235,255,.4);border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.03));display:flex;align-items:center;gap:9px;padding:6px 7px 6px 14px;font:900 9px/1 var(--display);letter-spacing:.1em;transition:box-shadow .3s,border-color .3s}
+@media(hover:hover){.nav-list:hover{border-color:var(--cyan);box-shadow:0 0 20px rgba(0,213,255,.45)}}
+.nav-list b{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--pink);font-size:12px}
+.nav-progress{position:absolute;left:0;bottom:-1px;height:2px;width:100%;background:linear-gradient(90deg,var(--cyan),var(--pink));transform-origin:left;transform:scaleX(0)}
+
+/* ---------- hero ----------
+   Mobile: portrait plate; podium band sits at 75–88% of the plate, so bottles
+   stand with their bases at ~87% of the hero. Desktop: landscape plate; the
+   portal centre lands at ~71% of the width for any common viewport, so the
+   price block is placed there and the copy column aligns with the page gutter. */
+/* min-height is CAPPED BY THE VIEWPORT. A flat 720px floor is right on a
+   desktop, where it stops the scene collapsing — and it was the whole bug on a
+   phone held sideways. At 844x390 it forced the hero to 720 px, nearly twice
+   the window; the background plate covers the HERO box, so the podium painted
+   into it landed around y=540 — 150 px below the fold — and the solver
+   faithfully stood every bottle on it, off screen. Measured before the fix:
+   bottles 100% clipped and the CTA 126 px below the fold at every landscape
+   phone shape from 640x360 to 932x430. */
+.hero{position:relative;height:100svh;min-height:min(720px,100svh);max-height:960px;overflow:hidden;isolation:isolate;background:var(--navy)}
+.hero-scene{position:absolute;inset:0;z-index:-1}
+.hero-plate,.hero-plate img{position:absolute;inset:0;width:100%;height:100%}
+.hero-plate{transform-origin:50% 60%}
+.hero-plate img{object-fit:cover;object-position:50% 100%}
+.hero-bubbles{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;display:none}
+.hero-shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(2,8,22,.6),transparent 24%,transparent 64%,rgba(2,8,22,.45) 94%,var(--navy))}
+.hero-flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+/* The centred bands stack the copy and the price in one flow column so they
+   cannot collide. The desktop two-column band turns the wrapper into
+   display:contents, leaving the measured, working absolute layout alone. */
+.hero-column{position:absolute;z-index:6;left:16px;right:16px;top:calc(var(--nav-h) + 8px);
+  display:flex;flex-direction:column;align-items:center;gap:clamp(6px,2.2vh,22px);pointer-events:none}
+.hero-column>*{pointer-events:none}
+.hero-column .btn,.hero-column a{pointer-events:auto}
+
+/* LAYOUT box. Owns position and the centring transform. GSAP never touches it. */
+.hero-copy{position:static;width:100%;text-align:center;display:flex;flex-direction:column;align-items:center;pointer-events:none}
+/* MOTION box. The only thing GSAP animates, so it may never carry a layout offset. */
+.hero-copy-in{display:flex;flex-direction:column;align-items:inherit;max-width:100%}
+.hero-copy .btn{pointer-events:auto}
+.hero-title{display:grid;justify-items:center;margin-top:24px;line-height:1}
+.hero-beast{position:relative;display:block;font-size:clamp(40px,min(17vw,12vh),164px);line-height:.86}
+.hero-stockup{display:block;margin-top:-.08em;font-size:clamp(22px,min(8.6vw,6.2vh),88px)}
+.collab-pill{margin-top:14px;display:inline-flex;align-items:center;gap:9px;padding:6px 13px 6px 8px;border:1px solid rgba(255,255,255,.35);background:rgba(1,9,24,.7);border-radius:999px;font:900 9px/1 var(--body);letter-spacing:.18em}
+.collab-pill img{width:28px;height:auto}
+.collab-pill b{color:var(--pink);font-size:13px}
+.hero-sub{display:none;max-width:460px;font-size:15px;line-height:1.5;color:#cfe4f1;margin-top:18px}
+.hero-cta .btn{white-space:nowrap}
+.hero-cta{display:none;flex-wrap:wrap;justify-content:center;gap:9px;margin-top:16px}
+.hero-price{position:static;width:max-content}
+.hero-price-in{display:grid;justify-items:center;text-align:center}
+/* All three stages share one grid cell, so the deck is as wide and as tall as
+   the widest stage and a swap moves no layout. visibility, not display: a
+   display:none card would collapse the track it is sizing. */
+.hero-deck{display:grid;justify-items:center}
+.hero-price-card{grid-area:1/1;display:grid;justify-items:center;text-align:center}
+/* visibility, not opacity: GSAP owns opacity here and an inline value would
+   outrank the stylesheet the moment a card had been animated once. */
+.hero-price-card:not(.is-live){visibility:hidden}
+.hero-price-line{display:block}
+.hero-price-line + .hero-price-line{margin-top:-.04em}
+
+/* The dial. Three segments; the live one fills over the hold. It is the WCAG
+   2.2.2 control for the auto-advance as well as the way to pick a stage — the
+   first press stops the cycle and hands it over. Built by beast.js. */
+/* Smaller and quieter, 2026-09-12. Owner: "it shows this little filling
+   loading bar — it should be more subtle and smaller." It was a 38x24 target
+   with a 4 px glowing bar inside a bordered, blurred pill, which read as a
+   download progress bar sitting under the price. The TARGET stays 38x24,
+   because shrinking a control below that is a different kind of defect; only
+   the ink shrinks — a 2 px hairline, no glow, no border, no blur. */
+/* DOTS, not bars in a pill. Owner, 2026-09-12: "this is too big and ugly."
+   They were right twice over — a pill with a background, a border and three
+   filling bars under a 100 px price read as a download progress bar, and the
+   first attempt only shrank the bars inside the same pill. The pill is gone.
+   Three 6 px dots; the live one fills clockwise as the stage holds, which is
+   the only thing the control has to communicate. The 38x24 HIT TARGET is
+   untouched — shrinking a control below that is a different kind of defect —
+   and it is still the WCAG 2.2.2 pause for the auto-advance. */
+.hero-dial{display:none;gap:0;margin-top:clamp(8px,1.6vh,14px);pointer-events:auto}
+.hero-dial.is-ready{display:flex}
+.hero-dial button{position:relative;width:26px;height:24px;display:grid;place-items:center;background:none;border:0;cursor:pointer;pointer-events:auto}
+.hero-dial button::before{content:"";width:6px;height:6px;border-radius:50%;background:rgba(233,250,255,.28);
+  box-shadow:0 1px 2px rgba(0,0,0,.5);transition:background .25s}
+.hero-dial button i{position:absolute;left:50%;top:50%;margin:-3px 0 0 -3px;width:6px;height:6px;border-radius:50%;
+  background:var(--cyan);box-shadow:0 0 7px rgba(0,213,255,.85);transform:scale(0);transform-origin:50% 50%}
+.hero-dial button[aria-current="true"]::before{background:rgba(233,250,255,.45)}
+.hero-dial button[aria-pressed="true"]::before{background:rgba(233,250,255,.7)}
+@media(hover:hover){.hero-dial button:hover::before{background:rgba(233,250,255,.6)}}
+.hero-dial button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
+
+/* ---------- the podium stage ----------
+   The stage is the whole hero box; beast.js writes the podium ellipse into
+   --pod-cx / --pod-cy / --pod-a / --pod-b (hero pixels) and then writes each
+   bottle's own --x, --y, --w and --h. Nothing here is a guessed percentage,
+   which is what made every previous window shape its own hand-tuned band. */
+.hero-stage{position:absolute;z-index:8;inset:0;pointer-events:none;contain:layout}
+.hero-glow{position:absolute;left:calc(var(--pod-cx,50%) - var(--pod-a,30%) * .82);width:calc(var(--pod-a,30%) * 1.64);
+  top:calc(var(--pod-cy,80%) - var(--pod-b,20px) * .6);height:calc(var(--pod-b,20px) * 3.2 + 26px);
+  border-radius:50%;background:radial-gradient(ellipse,rgba(0,213,255,.5),rgba(255,36,157,.18) 45%,transparent 72%);filter:blur(10px)}
+/* the light that runs the podium when the stage changes */
+.hero-sweep{position:absolute;opacity:0;left:calc(var(--pod-cx,50%) - var(--pod-a,30%));width:calc(var(--pod-a,30%) * 2);
+  top:calc(var(--pod-cy,80%) - var(--pod-b,20px));height:calc(var(--pod-b,20px) * 2 + 10px);border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(214,250,255,.95),rgba(0,213,255,.55) 42%,transparent 74%);
+  filter:blur(6px);mix-blend-mode:screen}
+.hero-set{position:absolute;inset:0}
+.hero-set:not(.is-live){visibility:hidden}
+/* LAYOUT box: absolute placement plus the centring transform. GSAP must never
+   animate this element — it owns transform outright and would erase both. */
+/* The fallbacks are PER BOTTLE, not one shared default. beast.js writes
+   --x/--y/--w/--h from the measured podium; if beast.js never runs at all — a
+   404, a parse error, a visitor who blocks scripts — every bottle fell back to
+   the same left:50% top:80% 120x240 and the four of them stacked on one spot
+   beside the podium. That is the session-5 critical defect on a path the
+   reduced-motion check does not enter, because it blocks GSAP and not beast.js.
+   These four positions are a rough desktop line-up on the disc: not the solved
+   geometry, but four products standing in four places. */
+.hero-bottle{position:absolute;display:block;left:var(--x,50%);top:var(--y,80%);
+  width:var(--w,13vw);height:var(--h,26vw);transform:translate(-50%,-100%);z-index:var(--z,4)}
+.hero-set .hero-bottle:nth-child(1){--x:44%;--y:76%;--z:5}
+.hero-set .hero-bottle:nth-child(2){--x:57%;--y:78%;--z:7}
+.hero-set .hero-bottle:nth-child(3){--x:70%;--y:78%;--z:6}
+.hero-set .hero-bottle:nth-child(4){--x:82%;--y:76%;--z:4}
+/* MOTION box: the only thing GSAP touches. */
+.hero-bottle-in{position:relative;display:block;width:100%;height:100%}
+/* will-change is set by beast.js only while the levitation is running */
+.hero-bottle img[data-hero-product]{position:relative;z-index:2;display:block;width:100%;height:100%;max-width:none;filter:drop-shadow(0 4px 5px rgba(0,0,0,.45))}
+/* Tight and dark. On an open wet floor a wide soft pool read as ground; on
+   polished chrome the only thing that says "standing on it" is a hard core of
+   shadow right where the base meets the disc. */
+.hero-cast{position:absolute;z-index:1;left:50%;bottom:-3px;width:96%;margin-left:-48%;height:max(11px,6.5%);border-radius:50%;
+  background:radial-gradient(ellipse at center,rgba(0,4,12,.92) 0 26%,rgba(0,4,12,.6) 48%,rgba(0,4,12,.22) 68%,transparent 82%)}
+/* The reflection used to be a full-height mirror of the bottle, which was right
+   when the bottles stood on an open wet floor. They stand on the podium now and
+   the disc's surface in front of them is about twenty pixels deep, so a
+   full-length mirror printed whole upside-down bottles out on the water behind
+   the disc. It is foreshortened to --reflect-squash, which is the same ratio
+   beast.js uses to shorten the reflection's half of the levitation. */
+.hero-bottle{--reflect-squash:.26}
+.hero-reflect{position:absolute;z-index:0;left:0;top:100%;width:100%;height:calc(var(--reflect-squash) * 100%);max-width:none;display:block;opacity:.22;transform:scaleY(-1);pointer-events:none;
+  -webkit-mask-image:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.8) 100%);mask-image:linear-gradient(to bottom,transparent 40%,rgba(0,0,0,.8) 100%)}
+
+/* ---------- the spin band ----------
+   Where the marquee was. One statement, one control, no loop: a bar that scrolls
+   the same five facts past a visitor forever is the loudest way a page can
+   repeat itself, and every one of those facts is stated properly further down. */
+/* Hidden until beast.js has built the wheel. Offering "a free item, money off"
+   over a button that cannot do anything is the same hole as an "announced soon"
+   placeholder, and the html.no-js rule does not cover it: with script.js running
+   and beast.js missing, the head's inline script still swaps no-js for js. */
+.spin-band{display:none;position:relative;z-index:20;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,inset 0 -2px 0 #07172a}
+.spin-band.is-ready{display:block}
+.spin-invite{position:relative;display:flex;align-items:center;gap:12px;width:100%;padding:9px 14px;
+  background:linear-gradient(180deg,#0a2d4e,#03142c);border:0;cursor:pointer;text-align:left;color:#effaff;overflow:hidden}
+/* transform, not `left`: this was the only infinite animation on the page
+   outside the hero AND the only one animating a layout property, and it ran
+   with the tab hidden and the band scrolled away. beast.js pauses it. */
+.spin-invite::after{content:"";position:absolute;top:0;bottom:0;left:0;width:26%;pointer-events:none;
+  background:linear-gradient(105deg,transparent,rgba(190,245,255,.16) 46%,transparent);
+  transform:translateX(-160%);animation:spinSheen 5.5s var(--ease-out) infinite}
+.spin-band.is-still .spin-invite::after{animation-play-state:paused}
+@keyframes spinSheen{0%{transform:translateX(-160%)}45%{transform:translateX(420%)}100%{transform:translateX(420%)}}
+.spin-badge{position:relative;flex:0 0 26px;width:26px;height:26px;border-radius:50%;
+  background:conic-gradient(var(--pink) 0 25%,#062744 0 50%,var(--cyan) 0 75%,#062744 0);
+  box-shadow:0 0 0 2px rgba(233,250,255,.85),0 0 12px rgba(0,213,255,.5)}
+.spin-badge i{display:none}
+.spin-copy{display:grid;gap:2px;min-width:0}
+.spin-copy b{font:900 11px/1 var(--display);letter-spacing:.13em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.spin-copy small{font:700 10px/1.25 var(--body);color:#9dc4da;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.spin-go{margin-left:auto;flex:0 0 auto;padding:7px 12px;border-radius:999px;background:var(--pink);color:#fff;
+  font:900 9px/1 var(--display);letter-spacing:.12em;box-shadow:0 3px 0 #8c0d51}
+.spin-band.has-prize .spin-badge{background:conic-gradient(var(--yellow) 0 50%,#062744 0)}
+.spin-band.has-prize .spin-copy b{color:var(--yellow)}
+@media(hover:hover){.spin-invite:hover .spin-go{background:#ff4aa9}}
+.spin-invite:focus-visible{outline:2px solid var(--cyan);outline-offset:-4px}
+
+/* ---------- the wheel ----------
+   Rebuilt 2026-09-12. What was wrong with the old one: every wedge was one of
+   three flat fills, the whole face sat under a yellow cast, the labels were
+   7.6 px, and a 300 px disc carried eight equal slices that had nothing to do
+   with the odds. The face is now a shaded object with per-prize colour, a
+   chrome rim, a needle that ticks against the wedges as they pass, and wedges
+   whose width IS their probability — including two 3.6-degree slivers whose
+   marks ride on flags outside the rim. */
+.wheel-dialog{border:0;padding:0;background:transparent;max-width:min(94vw,470px);max-height:calc(100svh - 20px);overflow:auto;overscroll-behavior:contain;color:#eaf6ff}
+.wheel-dialog::backdrop{background:radial-gradient(circle at 50% 40%,rgba(10,44,84,.72),rgba(1,5,13,.93))}
+.wheel-in{display:grid;gap:13px;padding:20px 20px 18px;border-radius:8px 34px 8px 34px;
+  background:linear-gradient(160deg,#0a3157,#03142c 62%,#08213e);
+  box-shadow:0 0 0 1px rgba(141,235,255,.4),inset 0 1px 0 rgba(141,235,255,.28),0 30px 70px rgba(0,0,0,.6)}
+.wheel-in header{display:flex;align-items:flex-start;gap:12px}
+.wheel-in header p{font:900 8px/1 var(--body);letter-spacing:.2em;color:var(--ice)}
+.wheel-in header h2{margin-top:6px;font:900 27px/1 var(--display);letter-spacing:-.03em}
+.wheel-in header button{margin-left:auto;width:38px;height:38px;border-radius:50%;border:1px solid rgba(141,235,255,.35);background:rgba(2,10,24,.7);color:#eaf6ff;font-size:19px;line-height:1;cursor:pointer}
+.wheel-in header button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+@media(hover:hover){.wheel-in header button:hover{background:var(--pink);border-color:var(--pink);color:#fff}}
+/* svh in the cap as well as vw: on a short window the disc used to hold 300 px
+   and shove the SPIN button off the bottom of the dialog. The flags sit 30 SVG
+   units outside a 118-unit radius, which is why the box is 260 wide for a
+   236-wide wheel — the padding is the flag gutter, not slack. */
+/* The stage box holds the wheel AND the flag gutter around it, so the wheel
+   itself is about 70% of this number. Bigger than it looks. */
+.wheel-stage{position:relative;width:min(92vw,58svh,386px);aspect-ratio:1;margin:0 auto}
+.wheel-floor{position:absolute;left:16%;right:16%;bottom:6%;height:8%;border-radius:50%;
+  background:radial-gradient(ellipse,rgba(0,213,255,.34),rgba(0,0,0,.5) 55%,transparent 74%);filter:blur(2px)}
+.wheel-disc{position:absolute;inset:0;filter:drop-shadow(0 16px 34px rgba(0,0,0,.6))}
+.wheel-disc svg{width:100%;height:100%;display:block;overflow:visible}
+.wheel-slice{stroke:none}
+.wheel-spoke{stroke:rgba(2,10,22,.5);stroke-width:.7;fill:none}
+/* #7f9fb6 measured 4.11:1 against the TRY AGAIN wedges — under the 4.5 floor
+   for 10 px text. A losing segment is meant to be quiet, not unreadable. */
+/* Outlined, the way carnival wheel type has always been: a dark stroke laid
+   UNDER the fill (paint-order) gives every glyph its own edge, so a label stays
+   readable across a gradient rather than only at the end of it that happens to
+   be measured. The wedge colours were narrowed as well — the outline is the
+   belt, not the whole trousers. */
+.wheel-label{font:900 9.4px/1 var(--display);letter-spacing:.02em;fill:#a9c6d8;
+  paint-order:stroke fill;stroke:#04101d;stroke-width:2.4px;stroke-linejoin:round}
+.wheel-label.is-prize{fill:#fff;font-size:10.4px}
+.wheel-label.tone-chrome,.wheel-label.tone-gold{fill:#06192c;stroke:#f3fbff;stroke-width:2px}
+.wheel-art{color:#eafcff;opacity:.92}
+.wheel-art.tone-chrome,.wheel-art.tone-gold{color:#06192c}
+.wheel-chip{fill:#fdffff;opacity:.96}
+.wheel-rim{fill:none;stroke-width:6}
+.wheel-lamp{fill:#eafcff;opacity:.9;filter:drop-shadow(0 0 2px rgba(180,245,255,.9))}
+html.motion .wheel-lamp{animation:lampChase 1.6s linear infinite;animation-delay:calc(var(--lamp) * -.4s)}
+@keyframes lampChase{0%,60%{opacity:.34}18%{opacity:1}}
+.wheel-shade{pointer-events:none}
+/* the jackpot flags, outside the rim */
+.wheel-flag-stem{stroke:#ffdf6b;stroke-width:2;fill:none}
+.wheel-flag-stem.tone-gold{stroke:#ffdf6b}
+.wheel-flag-box{fill:#06192c;stroke:#ffdf6b;stroke-width:1.6}
+.wheel-flag-text{font:900 8px/1 var(--display);letter-spacing:.02em;fill:#ffdf6b}
+.wheel-flag .wheel-art{color:#ffdf6b;opacity:1}
+/* The needle is a chrome pointer that hangs INTO the face, so a wedge passes
+   under its tip. beast.js kicks it on every boundary crossing. */
+.wheel-needle{position:absolute;left:50%;top:11.5%;z-index:3;width:8.4%;aspect-ratio:.58;margin-left:-4.2%;
+  transform-origin:50% 14%;filter:drop-shadow(0 3px 5px rgba(0,0,0,.75))}
+.wheel-needle i{position:absolute;inset:0;display:block;
+  background:linear-gradient(170deg,#ffffff,#b9e6f9 34%,#2f5f7d 62%,#eafaff);
+  clip-path:polygon(50% 100%,0 30%,14% 0,86% 0,100% 30%)}
+.wheel-needle::after{content:"";position:absolute;left:50%;top:9px;width:8px;height:8px;margin-left:-4px;border-radius:50%;
+  background:var(--pink);box-shadow:0 0 8px rgba(255,36,157,.9)}
+.wheel-hub{position:absolute;left:50%;top:50%;z-index:2;width:14%;aspect-ratio:1;translate:-50% -50%;border-radius:50%;
+  display:grid;place-items:center;background:radial-gradient(circle at 40% 32%,#0b3a63,#02101f 76%);
+  box-shadow:0 0 0 3px rgba(233,250,255,.9),0 0 0 6px rgba(2,10,24,.85),0 5px 14px rgba(0,0,0,.6)}
+.wheel-hub img{width:60%;height:auto}
+.wheel-dialog.is-spinning .wheel-hub{box-shadow:0 0 0 3px var(--cyan),0 0 0 6px rgba(2,10,24,.85),0 0 22px rgba(0,213,255,.7)}
+.wheel-result{min-height:34px;font:800 13px/1.4 var(--body);color:#bed6e5;text-align:center}
+.wheel-result.is-win{color:var(--yellow);font-weight:900}
+.wheel-go{justify-self:center;min-width:190px;min-height:52px}
+.wheel-go[aria-disabled=true]{opacity:.55;box-shadow:none}
+/* The odds, in words. A wheel whose jackpot is a 3.6-degree sliver is honest
+   geometry that is hard to judge by eye, so the numbers are printed. */
+.wheel-odds summary{font:900 9px/1 var(--body);letter-spacing:.15em;color:var(--ice);padding:9px 2px;cursor:pointer}
+.wheel-odds ul{display:grid;gap:5px;margin-top:4px}
+.wheel-odds li{display:grid;grid-template-columns:auto 1fr auto;align-items:baseline;gap:8px;
+  padding:7px 10px;border-radius:7px;background:rgba(6,24,45,.7);border-left:3px solid var(--tone,#2d5570)}
+.wheel-odds li[data-tone=cyan]{--tone:#0aa9d8}.wheel-odds li[data-tone=pink]{--tone:#e01585}
+.wheel-odds li[data-tone=chrome]{--tone:#cfe4f1}.wheel-odds li[data-tone=violet]{--tone:#6d5ad8}
+.wheel-odds li[data-tone=gold]{--tone:#ffdf6b}.wheel-odds li[data-tone=miss]{--tone:#2d5570}
+.wheel-odds b{font:900 11px/1 var(--display);letter-spacing:.04em;color:#eaf6ff}
+.wheel-odds span{font:700 9px/1 var(--body);letter-spacing:.08em;color:#8fb0c6}
+/* The tone at full strength is the BORDER colour, and #2d5570 as type on a
+   dark row measured 2.27:1. The figure takes a lightened mix of the same
+   tone so the row still reads as its colour without being unreadable. */
+.wheel-odds i{font:900 12px/1 var(--display);font-style:normal;color:color-mix(in srgb,var(--tone) 55%,white)}
+.wheel-note{font-size:10px;line-height:1.5;color:#7f9cb2;text-align:center}
+
+/* ---------- the golden ticket ----------
+   Shown only on a win. Everything a shopper needs is markup — the prize, the
+   art and the terms sentence out of products.js — so a reduced-motion visit
+   and a screenshot carry the whole thing. The foil, the tilt and the glint are
+   the only parts that need motion and none of them say anything. */
+.ticket-dialog{border:0;padding:0;background:transparent;max-width:min(94vw,440px);max-height:calc(100svh - 16px);overflow:visible;color:#1a1204}
+.ticket-dialog::backdrop{background:radial-gradient(circle at 50% 42%,rgba(94,64,0,.5),rgba(1,4,11,.94))}
+.ticket-stage{position:relative;perspective:1100px;padding:26px 6px 12px;display:grid;place-items:center}
+.ticket-rays{position:absolute;left:50%;top:46%;width:190%;aspect-ratio:1;translate:-50% -50%;pointer-events:none;
+  background:repeating-conic-gradient(from 0deg,rgba(255,214,92,.19) 0 7deg,transparent 7deg 16deg);
+  -webkit-mask-image:radial-gradient(circle,#000 12%,transparent 66%);mask-image:radial-gradient(circle,#000 12%,transparent 66%)}
+html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
+@keyframes rayTurn{to{rotate:360deg}}
+.ticket{position:relative;width:min(86vw,360px);border-radius:16px;overflow:hidden;
+  transform-style:preserve-3d;transform:perspective(1100px) rotateX(var(--rx,0deg)) rotateY(var(--ry,0deg));
+  transition:transform .22s var(--ease-out);
+  background:linear-gradient(148deg,#fff3c4 0,#ffd75e 18%,#c9931a 42%,#ffe98f 58%,#e0a92a 76%,#fff6d2 100%);
+  box-shadow:0 0 0 2px #7a5300,0 0 0 5px rgba(255,231,150,.42),0 34px 64px rgba(0,0,0,.66)}
+/* EVERY tone is a LIGHT foil, and the ink is always dark.
+
+   The first build used each prize's full-strength colour as the mid-band —
+   #b00c63 for pink, #3b2a9c for violet — and then printed the terms sentence
+   in #3a2a05 on top of it. Measured off the rendered pixels: 2.1:1 and 1.6:1,
+   against a 4.5:1 floor for body text. A gradient makes the ground change
+   underneath a paragraph, so the only safe answer is to keep every stop light
+   enough that the darkest one still clears the floor. The prize's real colour
+   lives in the eyebrow chip, the stub and the wheel; here it is a tint. */
+.ticket[data-tone=cyan]{background:linear-gradient(148deg,#eaffff,#a6efff 20%,#41c0e6 46%,#d7f8ff 62%,#6ad3f0 82%,#eaffff)}
+.ticket[data-tone=pink]{background:linear-gradient(148deg,#fff0f8,#ffb8dd 20%,#f57ab9 46%,#ffdcee 62%,#ff97cc 82%,#fff0f8)}
+.ticket[data-tone=chrome]{background:linear-gradient(148deg,#ffffff,#dcecf6 20%,#9db3c2 46%,#f4fbff 62%,#b5c8d6 82%,#ffffff)}
+.ticket[data-tone=violet]{background:linear-gradient(148deg,#f5f1ff,#cabcff 20%,#9a88ef 46%,#e6dfff 62%,#b3a1f8 82%,#f5f1ff)}
+/* the holographic wash, and the glint that crosses it */
+/* .32, not .5, and soft-light rather than overlay: at half strength overlay
+   dragged the gold toward grey-brown down the left third of the card. */
+.ticket-foil{position:absolute;inset:0;pointer-events:none;mix-blend-mode:soft-light;opacity:.34;
+  background:linear-gradient(var(--foil,50%) 0deg,rgba(255,0,128,.4),rgba(0,255,240,.4) 28%,rgba(255,240,0,.4) 54%,rgba(120,0,255,.4) 78%,rgba(255,0,128,.4))}
+.ticket-glint{position:absolute;top:-40%;bottom:-40%;left:0;width:34%;pointer-events:none;
+  background:linear-gradient(100deg,transparent,rgba(255,255,255,.85) 48%,transparent);
+  transform:translateX(-160%) rotate(9deg)}
+/* the notch between body and stub, cut out of both sides */
+.ticket-main{position:relative;z-index:2;padding:24px 22px 20px;text-align:center}
+.ticket-eyebrow{display:inline-flex;align-items:center;gap:6px;padding:5px 11px 5px 7px;border-radius:999px;
+  background:rgba(20,12,0,.84);color:#ffe07a;font:900 8px/1 var(--body);letter-spacing:.16em}
+.ticket-eyebrow img{width:16px;height:auto}
+.ticket-art{display:grid;place-items:center;height:78px;margin:14px auto 4px}
+.ticket-icon{width:66px;height:66px;color:#2a1c00}
+.ticket[data-tone=violet] .ticket-icon,.ticket[data-tone=pink] .ticket-icon,
+.ticket[data-tone=cyan] .ticket-icon,.ticket[data-tone=chrome] .ticket-icon{color:#141024}
+/* a trademark sits on its own white chip and is never recoloured */
+.ticket-brand{max-width:190px;max-height:74px;width:auto;height:auto;padding:9px 13px;border-radius:9px;
+  background:#fff;box-shadow:0 3px 10px rgba(0,0,0,.28)}
+.ticket-main h2{font:900 clamp(30px,9vw,44px)/.92 var(--display);letter-spacing:-.045em;color:#1a1204;
+  text-shadow:0 2px 0 rgba(255,255,255,.5)}
+.ticket-terms{margin-top:11px;font:700 12.5px/1.55 var(--body);color:#241a02}
+.ticket[data-tone=cyan] .ticket-terms,.ticket[data-tone=chrome] .ticket-terms,
+.ticket[data-tone=pink] .ticket-terms,.ticket[data-tone=violet] .ticket-terms{color:#141024}
+.ticket-stub{position:relative;z-index:2;display:grid;gap:3px;padding:13px 20px 15px;text-align:center;
+  border-top:2px dashed rgba(26,18,4,.45);background:rgba(26,18,4,.1)}
+.ticket-stub b{font:900 12px/1 var(--display);letter-spacing:.1em;color:#1a1204}
+.ticket-stub small{font:900 8px/1 var(--body);letter-spacing:.18em;color:#4a3a0c}
+.ticket[data-tone=cyan] .ticket-stub small,.ticket[data-tone=chrome] .ticket-stub small,
+.ticket[data-tone=pink] .ticket-stub small,.ticket[data-tone=violet] .ticket-stub small{color:#2b2340}
+.ticket[data-tone=cyan] .ticket-stub b,.ticket[data-tone=chrome] .ticket-stub b,
+.ticket[data-tone=pink] .ticket-stub b,.ticket[data-tone=violet] .ticket-stub b{color:#141024}
+.ticket[data-tone=cyan] .ticket-main h2,.ticket[data-tone=chrome] .ticket-main h2,
+.ticket[data-tone=pink] .ticket-main h2,.ticket[data-tone=violet] .ticket-main h2{color:#141024}
+.ticket-actions{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;padding:14px 6px 4px}
+.ticket-done{border:1px solid rgba(233,250,255,.4);border-radius:999px;padding:13px 20px;background:rgba(2,10,24,.72);
+  color:#eaf6ff;font:900 10px/1 var(--body);letter-spacing:.14em;cursor:pointer}
+.ticket-done:focus-visible,.ticket-actions .btn:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+@media(prefers-reduced-motion:reduce){
+  .ticket{transform:none;transition:none}
+  .ticket-glint,.ticket-rays{display:none}
+}
+
+/* the prize, on the pickup list */
+.prize-line{display:grid;grid-template-columns:auto 1fr;align-items:center;gap:2px 10px;margin-top:11px;padding:10px 12px;border-radius:10px;
+  background:rgba(245,247,57,.1);border:1px dashed rgba(245,247,57,.5)}
+.prize-line-slot{grid-row:span 2;display:grid;place-items:center;width:34px;height:34px}
+.prize-line-slot[hidden]{display:none}
+.prize-line-art{width:30px;height:30px;color:var(--yellow)}
+.prize-line-art.is-brand{width:auto;max-width:48px;max-height:30px;padding:3px 5px;border-radius:5px;background:#fff}
+.prize-line b{font:900 13px/1 var(--display);letter-spacing:.04em;color:var(--yellow)}
+.prize-line span{font:700 10.5px/1.4 var(--body);color:#d7dcaa}
+/* a prize this list cannot claim yet must not look like one it can */
+.prize-line.is-short{background:rgba(141,235,255,.08);border-color:rgba(141,235,255,.45)}
+.prize-line.is-short b{color:var(--ice)}
+.prize-line.is-short span{color:#a9c8db}
+.prize-line.is-short .prize-line-art{color:var(--ice)}
+.rip-store i{font-style:normal}
+
+/* ---------- shop + price stages ---------- */
+.shop{position:relative;overflow-x:clip;background:radial-gradient(circle at 50% 6%,#0b3866 0,transparent 26%),linear-gradient(180deg,#04162d,#020917 55%,#051a33);padding:0 0 40px}
+/* The rattle. Three causes removed together, none of them reproducible headlessly
+   (integer scroll offsets and deterministic raster hide all of them):
+   1. scroll-snap-type on a position:sticky element is a known Chromium jitter
+      source, and it was dead weight — the tiles only ever overflowed at 320 px
+      with four of them, and there are three now. Measured at 15 widths.
+   2. The bar was not composited, so its full-width gradient, its two inset
+      highlights and its text re-rasterised on every scroll frame. will-change
+      promotes it, so a fractional trackpad offset translates a cached layer
+      instead of repainting one.
+   3. A BLURRED text-shadow inside a repainting sticky bar shimmers worst of all.
+      It is crisp now. */
+.stages{position:sticky;top:var(--nav-h);z-index:400;display:flex;gap:2px;overflow-x:auto;padding:6px 8px 9px;margin-bottom:48px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,inset 0 -2px 0 #07172a,0 12px 28px rgba(0,0,0,.32);scrollbar-width:none;will-change:transform}
+.stages::-webkit-scrollbar{display:none}
+.stages a{position:relative;flex:1 1 0;min-width:84px;height:54px;scroll-margin-left:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;background:linear-gradient(180deg,#0a2d4e,#03142c);box-shadow:inset 0 1px 0 rgba(141,235,255,.3);text-shadow:0 2px 0 rgba(0,0,0,.6);transition:background .28s}
+.stages a:first-child{border-radius:18px 3px 3px 18px}.stages a:last-child{border-radius:3px 18px 18px 3px}
+.stages a::after{content:"";position:absolute;left:14%;right:14%;bottom:4px;height:2px;border-radius:2px;background:var(--cyan);transform:scaleX(0);transition:transform .4s var(--ease-out)}
+.stages a.is-active::after{transform:none}
+@media(hover:hover){.stages a:hover::after{transform:none}}
+.stages a.is-active{background:linear-gradient(180deg,#0f4370,#06203d)}
+.stages a.is-empty{opacity:.3;filter:saturate(.25);pointer-events:none}
+/* The price IS the label. The eyebrow used to name what was on the shelf,
+   which goes stale the day the stock changes, and the sub-line repeated the
+   price back at itself in words. */
+.stages b{font:900 24px/.9 var(--display);color:#fff;letter-spacing:-.015em;white-space:nowrap;text-shadow:none}
+.shop-head{position:relative;z-index:3;padding:0 var(--gutter);margin:auto}
+.console{position:relative;margin-top:30px;padding:18px 20px;border-radius:7px 34px 7px 34px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,0 0 0 3px #061a32,0 0 0 5px rgba(0,213,255,.32);clip-path:polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))}
+.console label{display:inline-block;padding:7px 10px;border-radius:999px;background:rgba(3,18,41,.9);font:900 9px/1 var(--body);letter-spacing:.16em;color:var(--ice);margin:0 0 10px 2px}
+.console-field{height:52px;border-radius:999px;background:var(--foam);display:flex;align-items:center;padding:0 8px 0 16px;color:var(--navy);box-shadow:inset 0 3px 7px rgba(3,21,47,.2),0 0 0 3px rgba(0,213,255,.28);transition:box-shadow .3s}
+.console-field:focus-within{box-shadow:inset 0 3px 7px rgba(3,21,47,.2),0 0 0 3px var(--cyan),0 0 0 6px rgba(3,18,41,.85)}
+.console svg{width:20px;flex:0 0 auto}
+.console input{align-self:stretch;border:0;outline:0;background:transparent;width:100%;min-width:0;padding:0 11px;color:var(--navy);font-weight:800;font-size:16px}
+.console input::placeholder{color:#6f8ea4}
+.console button{border:0;border-radius:99px;background:var(--navy);color:var(--foam);font:900 9px/1 var(--body);letter-spacing:.1em;padding:11px 12px}
+.console>p{font:900 10px/1.4 var(--body);letter-spacing:.12em;margin:12px 5px 0;color:#e1f3fe;text-shadow:0 2px 4px #001126}
+.console>p strong{color:var(--yellow);font-size:13px}
+.shelves{position:relative;z-index:3;margin-top:44px}
+/* Each shelf is lit in its own stage colour, so the shop reads as three bays
+   rather than one long list. The page below the fold had no rhythm at all:
+   three identical dark plates with a giant chrome number on each. */
+.deal-shelf{position:relative;padding:48px 0 24px;overflow:clip;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent)}
+.deal-shelf::before{content:"";position:absolute;z-index:0;left:0;right:0;top:0;height:360px;pointer-events:none;
+  background:radial-gradient(ellipse 58% 100% at 50% 0,color-mix(in srgb,var(--stage) 22%,transparent),transparent 70%)}
+.deal-shelf[data-deal="2-for-5"]{--stage:#00d5ff}.deal-shelf[data-deal="8-each"]{--stage:#f5f739}.deal-shelf[data-deal="paper-2-for-7"]{--stage:#ffcf33}.deal-shelf[data-deal="pricing-pending"]{--stage:#8394a8}
+.shelf-heading{padding:0 18px;max-width:var(--max);margin:0 auto 14px;position:relative;z-index:2}
+/* the headline is an inline-block (.chrome needs a text-sized box), so the
+   eyebrow has to be a block or a short eyebrow lands on the same line as a
+   108px headline. */
+.shelf-price h3{margin-top:10px;color:#fff;font:900 clamp(52px,14vw,84px)/.82 var(--display);letter-spacing:-.08em;text-transform:uppercase}
+.shelf-info{margin-top:10px;max-width:530px}
+.shelf-info b i{font:900 46px/.78 var(--display);font-style:normal;letter-spacing:-.06em;
+  text-shadow:0 0 26px color-mix(in srgb,var(--stage) 45%,transparent)}
+.shelf-note{font-weight:900;font-size:11px;letter-spacing:.16em;text-transform:uppercase;line-height:1.4;color:var(--stage);margin-top:0;max-width:34ch}
+/* NO scroll-snap. Measured with a real mouse: with `scroll-snap-type: x
+   proximity` a 90 px drag of this row settled back to 0 — the drag was thrown
+   away — a 160 px drag also went back to 0, and a 260 px drag lurched 97 px
+   PAST where the hand let go. Chromium's proximity threshold on a 340 px card
+   covers most of a card, so almost every grab ended somewhere the hand never
+   put it. That is the "grabbing side to side glitches badly" report. The row
+   is 1:1 with the pointer now and stays exactly where it is released. Do not
+   put snap back on a row that is also scrolled programmatically. */
+.product-grid{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:14px 16px 40px;scroll-padding-left:16px;scrollbar-width:none;background:linear-gradient(180deg,transparent calc(100% - 26px),rgba(0,213,255,.32) calc(100% - 25px),#dff8ff calc(100% - 22px),#274b66 calc(100% - 15px),#041328 calc(100% - 4px))}
+.product-grid::-webkit-scrollbar{display:none}
+.product-grid.is-scrollable{cursor:grab;-webkit-user-select:none;user-select:none}
+/* Nothing on this page is draggable; see the note in script.js. This is the
+   CSS half of it — non-standard, Chromium/WebKit only, which is exactly why it
+   was not enough on its own. */
+img{-webkit-user-drag:none}
+.product-grid.is-scrollable.is-dragging{cursor:grabbing}
+.product-grid::after{content:"";flex:0 0 1px}
+/* --visual-h is the height of the product bay and the ONLY place it is set.
+   The floor shadow and the backdrop disc are both derived from it, so the
+   shadow cannot drift away from the product's feet again: it was 21 px above
+   them on desktop and 17 px above them on a phone, at every card, which is the
+   "bottom shadows aren't at the right height" report. Measured, not guessed —
+   the ink bottom sits 1 px inside the bay (.product-image-wrap's bottom inset)
+   and the ellipse is 52 px tall, so its centre belongs at --visual-h - 1. */
+.product-card{--visual-h:346px;flex:0 0 min(82vw,340px);min-height:552px;position:relative;display:flex;flex-direction:column;transform-style:preserve-3d}
+.product-card::before{content:"";position:absolute;left:50%;top:17px;width:290px;height:290px;transform:translateX(-50%);border-radius:50%;background:radial-gradient(circle,color-mix(in srgb,var(--stage) 18%,#062344) 0 59%,#03142b 60% 64%,transparent 65%),var(--chrome-band);box-shadow:0 0 0 2px color-mix(in srgb,var(--stage) 82%,white),0 0 30px color-mix(in srgb,var(--stage) 30%,transparent),0 22px 36px rgba(0,0,0,.45)}
+.product-card::after{content:"";position:absolute;z-index:1;left:18px;right:18px;top:calc(var(--visual-h) - 27px);height:52px;border-radius:50%;background:radial-gradient(ellipse,color-mix(in srgb,var(--stage) 46%,transparent) 0 26%,rgba(0,0,0,.42) 48%,transparent 72%);pointer-events:none}
+.product-visual{flex:0 0 auto;height:var(--visual-h);position:relative;z-index:3;display:grid;place-items:end center;padding:10px 4px 0}
+.product-visual::before{content:"";position:absolute;z-index:0;width:250px;height:250px;border-radius:50%;left:50%;top:37px;transform:translateX(-50%);border:2px solid color-mix(in srgb,var(--stage) 45%,transparent);box-shadow:inset 0 0 40px color-mix(in srgb,var(--stage) 20%,transparent);pointer-events:none}
+/* The change between two products on one card. It used to throw the incoming
+   image 18 px in from the same side whichever way the visitor pressed, and
+   flash the copy block to 25% opacity underneath — the "jumpy" in the owner's
+   report. 6 px, and it follows the direction of travel, so the movement itself
+   says there is another one that way. */
+.product-image-wrap{position:absolute;inset:5px -4px 1px;display:grid;place-items:end center;opacity:0;transform:translateX(6px);transition:opacity .5s var(--ease-out),transform .5s var(--ease-out);pointer-events:none}
+.product-brand-card.is-rewind .product-image-wrap{transform:translateX(-6px)}
+.product-image-wrap.is-current{opacity:1;transform:none;pointer-events:auto}
+/* --fit comes from product-fit.css, generated by scripts/build-product-fit.py:
+   it caps a wide package so it cannot outgrow the podium disc. Scaling about
+   the bottom edge keeps every base on the same line. */
+/* object-position bottom, not the default centre. object-fit:contain letterboxes
+   a package that is WIDER than it is tall equally top and bottom, so the two
+   paper-goods packs floated 6 px and 10 px above the line every other product
+   stood on. Measured at 1440: with this they all land on the same pixel. */
+.product-image-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:50% 100%;filter:drop-shadow(0 16px 14px rgba(0,0,0,.5));transform-origin:center bottom;transform:translateY(var(--lift,0px)) scale(var(--fit,1));transition:transform .5s var(--ease-out)}
+@media(hover:hover){.product-card:hover .product-image-wrap.is-current img{--lift:-6px}
+  .product-card:hover::after{transform:scale(.94);opacity:.75}}
+.product-card::after{transition:transform .5s var(--ease-out),opacity .5s}
+.image-fallback{max-width:200px;padding:20px;text-align:center;font-weight:900;color:var(--ice)}
+.product-card-copy{position:relative;z-index:4;flex:1 1 auto;display:flex;flex-direction:column;min-height:200px;margin:0 5px;padding:18px 20px 21px;text-align:center;background:linear-gradient(180deg,rgba(10,43,73,.96),rgba(2,12,29,.98));border:1px solid rgba(210,240,255,.6);border-top:3px solid color-mix(in srgb,var(--stage) 70%,white);clip-path:polygon(8% 0,92% 0,100% 16px,100% 100%,0 100%,0 16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 0 #061326,0 12px 0 color-mix(in srgb,var(--stage) 58%,#061326)}
+/* Only the lines that actually CHANGED move, and they move 3 px. The whole
+   copy block used to drop to 25% opacity on every rotation, which is what made
+   a card look like it was blinking rather than turning over. No translate on
+   the block itself: that nudged every rotating card and read as the whole page
+   shifting up and down. */
+.product-card-copy.variant-pop h4,
+.product-card-copy.variant-pop .product-price strong{animation:variantIn .42s var(--ease-out)}
+@keyframes variantIn{from{opacity:0;transform:translateY(3px)}}
+.product-brand{font:900 10px/1 var(--body);color:var(--stage);letter-spacing:.16em;text-transform:uppercase}
+.product-card-copy h4{font:900 22px/.98 var(--display);margin-top:8px;letter-spacing:-.035em}
+.stock-note{font:900 9px/1 var(--body);color:var(--yellow);margin-top:7px;letter-spacing:.1em}
+/* The arrows live on the edges of the product visual, over the podium disc, and
+   the dots ride the brand line. They used to own a 34 px row inside the copy
+   block on every multi-variant card, which is the space the owner wanted back.
+   Both stay full-size hit targets; only the paint is quiet. */
+/* THE ARROWS, rebuilt 2026-09-12. Owner: "redesign, they should look cooler
+   and sick, and we can keep them always on — show only if they interact with
+   the product... they stay on until 7 sec of no interaction."
+
+   So they are no longer tied to :hover. script.js puts .is-touched on a card
+   for 7 s after any interaction — pointer, press, drag or keyboard — and takes
+   it off when that hold expires. The same class holds the rotation still, so
+   the arrows are visible for exactly as long as the card is standing still:
+   the affordance and the pause are one state and cannot disagree.
+
+   The shape is a chrome blade clipped to point outward, not a floating circle.
+   It slides in from the card edge, so appearing reads as arriving. */
+.variant-arrow{position:absolute;z-index:6;top:calc(50% - 38px);width:44px;height:76px;padding:0;
+  border:0;color:#04121f;font-size:0;line-height:0;display:grid;place-items:center;
+  background:linear-gradient(180deg,#f4fdff,color-mix(in srgb,var(--stage) 88%,white) 34%,var(--stage) 74%,color-mix(in srgb,var(--stage) 60%,#02101f));
+  box-shadow:0 10px 24px rgba(0,0,0,.5),0 0 24px color-mix(in srgb,var(--stage) 42%,transparent);
+  opacity:0;pointer-events:none;
+  transition:opacity .26s var(--ease-out),translate .34s var(--ease-out),filter .2s}
+/* a dark inner face, so the blade reads as chrome with a lit edge rather than
+   a flat coloured lozenge */
+.variant-arrow::after{content:"";position:absolute;inset:3px;background:linear-gradient(180deg,#0b2743,#04121f);
+  clip-path:inherit}
+/* the chevron is drawn, not typed: an arrow glyph is a different weight and a
+   different optical centre in every font that might have to stand in */
+.variant-arrow::before{content:"";position:relative;z-index:2;width:14px;height:14px;
+  border-left:3.5px solid color-mix(in srgb,var(--stage) 80%,white);border-bottom:3.5px solid color-mix(in srgb,var(--stage) 80%,white);
+  border-radius:2px;transition:translate .2s var(--ease-out)}
+.variant-arrow-prev{left:0;clip-path:polygon(100% 0,100% 100%,26% 100%,0 50%,26% 0);translate:-16px 0}
+.variant-arrow-prev::before{rotate:45deg;translate:3px 0}
+.variant-arrow-next{right:0;clip-path:polygon(0 0,74% 0,100% 50%,74% 100%,0 100%);translate:16px 0}
+.variant-arrow-next::before{rotate:-135deg;translate:-3px 0}
+/* .is-touched is the 7-second hold, set by a real PRESS. Hover shows the arrows
+   as well — an affordance costs nothing — but hover no longer HOLDS the card,
+   which is the owner's call of 2026-09-12 and the right one: a cursor resting
+   anywhere over a shelf used to freeze it, and the whole point of the loop is
+   that a visitor sees there is more behind the card. :focus-within is belt and
+   braces for the keyboard, whose focus is inside the card while it is in use. */
+.product-card.is-touched .variant-arrow,
+.product-card:focus-within .variant-arrow{opacity:1;pointer-events:auto;translate:0 0}
+@media(hover:hover){
+  .product-card:hover .variant-arrow{opacity:1;pointer-events:auto;translate:0 0}
+}
+@media(hover:hover){
+  .variant-arrow:hover{filter:brightness(1.15)}
+  .variant-arrow:hover::after{background:linear-gradient(180deg,#123a5e,#06203a)}
+  .variant-arrow-prev:hover::before{translate:1px 0}
+  .variant-arrow-next:hover::before{translate:-1px 0}
+}
+.variant-arrow:focus-visible{opacity:1;pointer-events:auto;translate:0 0;outline:3px solid #fff;outline-offset:-3px}
+.variant-arrow:active{filter:brightness(1.3)}
+/* A touch screen has no pointerover to hold on, so the first tap anywhere on
+   the card is what reveals them — which script.js already does through
+   pointerdown. Nothing here needs to differ. */
+@media(prefers-reduced-motion:reduce){.variant-arrow{transition:opacity .01s}}
+
+/* stride must equal the hit region, or a later sibling paints over its
+   neighbour's centre and the dot selects the wrong product */
+.product-brand.has-dots{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:24px}
+.product-brand-text{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.variant-dots{display:flex;gap:17px;flex:0 0 auto;margin-right:2px}
+.variant-dots button{position:relative;width:7px;height:7px;border:0;padding:0;border-radius:50%;background:#536e82;transition:transform .2s,background .2s}
+.variant-dots button::after{content:"";position:absolute;inset:-8.5px}
+/* Grown with a ring, NOT transform:scale — scaling the button scaled its
+   ::after hit pad too, so the current dot's target ran 28 px wide and its two
+   neighbours 22 px, on a 24 px stride. The ink grows; the target does not. */
+.variant-dots button.is-current{background:var(--stage);box-shadow:0 0 0 2px var(--stage)}
+/* The price stays on the card, because a search result has to carry one and a
+   card can be seen a long way from its shelf headline — but it is a LABEL, not
+   a headline. At 36 px it printed the same three characters four times under a
+   108 px chrome heading saying exactly the same thing, fifteen times down the
+   page. The product name is what a card is for. */
+.product-price{margin-top:auto;padding-top:10px;display:flex;flex-direction:column}
+.product-price strong{font:900 17px/1 var(--display);color:var(--ice);letter-spacing:.02em;text-transform:uppercase}
+/* THE ADD BUTTON, rebuilt 2026-09-12. Owner: "I hate the ADD TO MY LIST, it's
+   too long and too little — make it more appealing with nice pressing
+   animations, especially if they press multiple times."
+
+   The word is one word and it is 20 px, not 11. The + is a drawn chip on the
+   right rather than four more characters of label. --press climbs with the
+   number already on the list and drives the punch, the glow and the chip kick,
+   so the tenth press feels harder than the first; data-press cycles 1/2/3 so
+   the keyframe restarts on a press that lands while it is still running. */
+.add-button{position:relative;width:100%;min-height:56px;margin-top:14px;padding:0 56px 0 20px;border:0;border-radius:999px;
+  background:linear-gradient(180deg,color-mix(in srgb,var(--stage) 86%,white),var(--stage));
+  color:var(--navy);font:900 20px/1 var(--display);text-transform:uppercase;letter-spacing:.01em;text-align:left;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 6px 0 color-mix(in srgb,var(--stage) 45%,black);
+  transition:transform .18s var(--ease-out),filter .18s,box-shadow .18s;overflow:hidden}
+.add-button::after{content:"+";position:absolute;right:7px;top:50%;translate:0 -50%;width:42px;height:42px;border-radius:50%;
+  display:grid;place-items:center;background:rgba(4,18,32,.88);color:#eafcff;font:900 24px/1 var(--display);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28);transition:rotate .3s var(--ease-out),scale .18s var(--ease-out)}
+/* the wash that crosses the button on a press */
+.add-button::before{content:"";position:absolute;inset:0;pointer-events:none;opacity:0;
+  background:linear-gradient(100deg,transparent 20%,rgba(255,255,255,.9) 50%,transparent 80%);translate:-100% 0}
+@media(hover:hover){
+  .add-button:hover{filter:brightness(1.08);transform:translateY(-2px);box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 8px 0 color-mix(in srgb,var(--stage) 45%,black)}
+  .add-button:hover::after{rotate:90deg}
+}
+.add-button:active{transform:translateY(4px);box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 2px 0 color-mix(in srgb,var(--stage) 45%,black)}
+.add-button:active::after{scale:.84}
+.add-button.is-added{background:var(--yellow);color:var(--ink);box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 6px 0 #8f9000}
+.add-button.is-added::after{content:"✓";background:#1d2000;color:var(--yellow);rotate:0deg}
+html.motion .add-button.is-added[data-press]{animation:addPunch .46s var(--ease-out)}
+html.motion .add-button.is-added[data-press]::before{animation:addWash .5s var(--ease-out)}
+@keyframes addPunch{
+  0%{transform:translateY(4px) scale(1)}
+  32%{transform:translateY(-3px) scale(calc(1 + var(--press,1) * .012))}
+  100%{transform:translateY(0) scale(1)}}
+@keyframes addWash{0%{opacity:.9;translate:-100% 0}100%{opacity:0;translate:100% 0}}
+.add-button:disabled{filter:grayscale(1);opacity:.6;cursor:not-allowed}
+.add-button:disabled::after{display:none}
+/* the +1 that leaves the button. Pure decoration: nothing is measured from it
+   and it is absolutely positioned, so it can never move a pixel of layout. */
+.add-plus{position:absolute;left:50%;bottom:62px;z-index:9;pointer-events:none;
+  translate:calc(-50% + var(--spread,0) * 44px) 0;
+  font:900 17px/1 var(--display);font-style:normal;color:var(--yellow);
+  text-shadow:0 2px 0 rgba(3,12,26,.9),0 0 14px color-mix(in srgb,var(--yellow) 60%,transparent);
+  animation:addFly .95s var(--ease-out) forwards}
+@keyframes addFly{
+  0%{opacity:0;transform:translateY(10px) scale(.6)}
+  22%{opacity:1;transform:translateY(-6px) scale(1.18)}
+  100%{opacity:0;transform:translateY(-56px) scale(.96)}}
+@media(prefers-reduced-motion:reduce){.add-plus{display:none}
+  html.motion .add-button.is-added[data-press]{animation:none}
+  html.motion .add-button.is-added[data-press]::before{animation:none}}
+.empty-results{position:relative;z-index:3;margin:30px 18px;padding:44px 20px;text-align:center;border:1px solid rgba(141,235,255,.3);border-radius:30px;background:rgba(255,255,255,.06)}
+.empty-results>span{display:grid;place-items:center;width:60px;height:60px;border-radius:50%;margin:auto;background:var(--pink);font:900 30px/1 var(--display)}
+.empty-results h2{font:900 29px/1 var(--display);margin-top:18px}
+.empty-results p{font-size:13px;color:#bdd3e2;margin-top:8px}
+.empty-results button{margin-top:18px;border:0;border-radius:99px;padding:13px 18px;background:var(--cyan);color:var(--navy);font-weight:900}
+/* Without JavaScript there is no cart, so the controls that open one are dead.
+   A button that cannot do anything is worse than no button. The gauge counter
+   also ships the real threshold in the markup now — beast.js animates from 0
+   to it regardless, so no-JS shows 20 instead of a bare 0. */
+html.no-js .console>p,html.no-js .stages{display:none}
+/* Nothing that needs JavaScript may be offered when there is none. The spin
+   band read "SPIN THE WHEEL / A free item, money off, or nothing" over a pink
+   SPIN chip that could not do anything — a dead offer of a free item, which is
+   a louder version of the "announced soon" hole the brief forbids. */
+html.no-js .nav-list,html.no-js .cart-fab,html.no-js .mobile-pickup-bar,
+html.no-js [data-spin-band],html.no-js .console{display:none!important}
+.noscript{margin:20px;padding:25px;border:1px solid var(--cyan);border-radius:20px}.noscript p{margin-top:10px;line-height:1.5}
+.hide-comparisons [data-comparison-row],.hide-comparisons [data-comparison-section]{display:none!important}
+
+/* ---------- the rules: three plates ---------- */
+.rules{position:relative;overflow:clip;padding:64px 18px 72px;background:radial-gradient(circle at 85% 0,rgba(0,213,255,.16),transparent 30%),radial-gradient(circle at 0 100%,rgba(255,36,157,.14),transparent 30%),linear-gradient(180deg,#061d3b,#020916)}
+.rules-head,.plates{max-width:var(--max);margin-left:auto;margin-right:auto}
+.rules .display .accent{color:var(--pink)}
+.plates{margin-top:34px;display:grid;gap:14px;align-items:stretch}
+/* the towns row spans whatever column count the plates are in */
+.plates-towns{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
+  padding:15px 20px;border-radius:7px 30px 7px 30px;
+  background:linear-gradient(135deg,rgba(9,47,82,.72),rgba(3,21,47,.72));
+  box-shadow:0 0 0 1px rgba(141,235,255,.28),inset 0 1px 0 rgba(141,235,255,.2)}
+.towns-label{flex:0 0 auto;font:900 9px/1 var(--body);letter-spacing:.2em;color:var(--ice)}
+.plates-towns .chips{margin:0;flex:1 1 auto}
+/* One height, one rhythm: a fixed medallion slot at the top, the heading, then
+   whatever body copy there is, then the chips or the button pushed to the floor
+   of the plate by .plate-foot's margin-top:auto. Before this the three plates
+   were three different heights carrying three different amounts of furniture. */
+.plate{position:relative;padding:20px 20px 22px;border-radius:7px 30px 7px 30px;background:linear-gradient(135deg,#092f52,#03152f 67%,#071e3b);box-shadow:0 0 0 1px rgba(141,235,255,.35),inset 0 1px 0 rgba(141,235,255,.25),0 22px 40px rgba(0,0,0,.4);clip-path:polygon(0 0,calc(100% - 26px) 0,100% 26px,100% 100%,26px 100%,0 calc(100% - 26px));display:flex;flex-direction:column;gap:11px}
+.plate h3{font:900 22px/1 var(--display);letter-spacing:-.03em;text-transform:uppercase}
+.plate .chips,.plate .btn,.plate .channel-line{margin-top:auto}
+.plate p{font-size:14px;font-weight:700;line-height:1.5;color:#bed6e5}
+.chips{list-style:none;padding:0;margin:4px 0 0;display:flex;flex-wrap:wrap;gap:7px}
+.chips li{padding:9px 11px;border:1px solid rgba(141,235,255,.35);border-radius:99px;background:rgba(255,255,255,.06);font:900 8px/1 var(--body);color:var(--ice);letter-spacing:.12em}
+.chips li::before{content:"";display:inline-block;width:5px;height:5px;margin:0 6px 1px 0;border-radius:50%;background:var(--cyan)}
+.chips-pink li{border-color:rgba(255,36,157,.45);color:#ffb3dd}
+.chips-pink li::before{background:var(--pink)}
+/* The 20-item gauge that used to open this plate is GONE, along with the rule
+   it counted toward. It was also the "random spinning stuff, awful" from the
+   session-1 critique, so nothing is mourned. Its 96 px slot survives as
+   .plate-medal, because that slot is what puts the three plate headings on one
+   line across the row. */
+.plate-medal{position:relative;min-height:96px;display:grid;grid-auto-flow:column;align-items:center;justify-content:start;gap:12px}
+.plate-medal-art{width:52px;height:52px;flex:0 0 auto;color:var(--cyan);
+  filter:drop-shadow(0 0 12px rgba(0,213,255,.45))}
+.plate-medal b{display:grid;font:900 15px/.94 var(--display);letter-spacing:.02em;color:#eafcff}
+.plate-medal b i{font-style:normal;font-size:19px;color:var(--cyan);letter-spacing:-.01em}
+html.no-js .plate-medal{display:none}
+/* This was a second 118 px disc. The gauge next to it is a disc too, and those
+   two circles were the only visual ideas in the whole section. It is a stamp
+   now — the same stamp language as FREE DELIVERY in the pickup list, so the two
+   places the site makes a promise look like they came from the same press. */
+.stamp-slot{min-height:96px;display:grid;align-content:center;justify-items:start}
+.cash-stamp{position:relative;display:grid;justify-items:center;gap:2px;width:max-content;
+  padding:12px 20px 10px;rotate:-6deg;color:var(--pink);text-align:center;
+  border:2px solid var(--pink);border-radius:8px;background:rgba(255,36,157,.08);
+  box-shadow:0 0 0 1px rgba(255,36,157,.3) inset,0 8px 22px rgba(0,0,0,.45)}
+.cash-stamp .stamp-ring{position:absolute;inset:4px;border:1px dashed rgba(255,36,157,.55);border-radius:5px}
+.cash-stamp b{display:grid;font:900 22px/.86 var(--display);letter-spacing:.02em;text-shadow:0 2px 0 rgba(58,0,32,.6)}
+.cash-stamp b i{font-style:normal;font-size:27px;letter-spacing:-.01em}
+.cash-stamp small{font:900 7px/1 var(--body);letter-spacing:.16em;color:#ffb3dd}
+/* the steps stand in for the other two plates' 118px discs, so every plate
+   heading sits on the same line across the row */
+/* gap:6px, so 3 x 28 + 2 x 6 = exactly the 96 px the gauge and the stamp use.
+   At 7 px the column was 98 px and HOW TO ORDER sat two pixels below the other
+   two headings at every width. */
+.mini-steps{list-style:none;padding:0;margin:0;display:grid;gap:6px;min-height:96px;align-content:center}
+.mini-steps li{display:flex;align-items:center;gap:10px;font:800 13px/1.2 var(--body);color:#dbeaf4}
+.mini-steps b{flex:0 0 28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--chrome-face);color:#0e2a45;font:900 12px/1 var(--display)}
+/* Hidden by beast.js until SITE_CONFIG actually carries a contact channel. */
+.channel-line{display:grid;gap:3px;font-size:14px;font-weight:700;line-height:1.5;color:#bed6e5}
+.plate .btn{align-self:start;min-height:48px;white-space:nowrap}
+
+/* ---------- sources ---------- */
+/* ---------- sources ----------
+   The page was four screens of the same dark navy with the same small cyan
+   eyebrow over the same big headline. This is the one section that changes
+   temperature, and it is the right one to change: its whole job is credibility,
+   and a document reads as a document on paper. It also matches the flyer's
+   price board, which is the same idea on the same stock. The chrome band at the
+   top edge is the same band as the ticker and the price bar, so the change of
+   ground is a deliberate edge rather than a hard cut. */
+.sources{position:relative;overflow:clip;padding:66px 24px 78px;color:#062038;
+  background:radial-gradient(circle at 88% 0,rgba(0,213,255,.3),transparent 34%),
+             radial-gradient(circle at 4% 96%,rgba(255,36,157,.14),transparent 32%),
+             linear-gradient(180deg,#f4fbff,#d9ebf6)}
+.sources::before{content:"";position:absolute;left:0;right:0;top:0;height:9px;background:var(--chrome-band);
+  box-shadow:inset 0 2px 0 #fff,inset 0 -2px 0 #07172a,0 8px 20px rgba(0,0,0,.25)}
+.sources .kicker{color:#0d6d8c}
+.sources .kicker i{background:#0d6d8c}
+.sources .display{color:#04203c}
+/* #sources-title is "PRICE<br>NOTES." with no .accent span, so only the
+   br + span half of this ever painted. Darkened for the light ground:
+   the brand pink measured 3.14:1 there, 0.14 above the large-text floor. */
+.sources h2 br + span{color:#e0007f}
+.sources>div:first-child,.receipt{max-width:var(--max);margin-left:auto;margin-right:auto}
+.sources>div:first-child>p:last-child{max-width:560px;font-size:15px;font-weight:700;line-height:1.55;color:#3d5a70;margin-top:16px}
+.receipt{position:relative;color:var(--navy);margin-top:44px;background:#fff;padding:34px 22px 24px;box-shadow:0 0 0 1px #b9d0de,6px 6px 0 var(--cyan),12px 12px 0 var(--pink),0 26px 44px rgba(6,32,56,.22);transform:rotate(-.6deg)}
+.receipt::before{content:"";position:absolute;left:50%;top:-24px;width:118px;height:34px;transform:translateX(-50%);border-radius:6px;background:linear-gradient(180deg,#f7fcff,#7895aa 19%,#173a57 39%,#d6e7f0 61%,#395d76 79%,#0b2943);box-shadow:0 4px 9px rgba(0,0,0,.4),inset 0 2px 0 #fff}
+.receipt h3{font:900 20px/1 var(--display)}
+/* the ledger: how every store price on the site is sourced, three tiers, counted */
+.source-ledger{list-style:none;margin:18px 0 4px;padding:0;display:grid;gap:1px;background:#dce8ef;border:1px solid #dce8ef}
+.source-ledger li{display:grid;grid-template-columns:56px 1fr;align-items:center;gap:14px;padding:13px 14px;background:#fff}
+.source-ledger b{font:900 30px/.86 var(--display);letter-spacing:-.05em;text-align:right;color:#04203c}
+.source-ledger strong{display:block;font:900 10px/1 var(--body);letter-spacing:.14em;color:#0d6d8c}
+.source-ledger span{display:block;font-size:11.5px;line-height:1.4;color:#4c6376;margin-top:5px}
+.source-ledger li[data-tier="verified"] b{color:#0f7a52}
+.source-ledger li[data-tier="verified"] strong{color:#0f7a52}
+.source-ledger li[data-tier="working_value"] b{color:#8a6a12}
+.source-ledger li[data-tier="working_value"] strong{color:#8a6a12}
+.receipt details{border-top:1px solid #c8d8e2;margin-top:15px;padding-top:15px}
+/* the +/- is drawn, not written into the label: it used to be announced as part
+   of the name and never flipped to "-" when the panel opened */
+.receipt summary{position:relative;cursor:pointer;font:900 11px/1.3 var(--body);letter-spacing:.06em;
+  list-style:none;padding:7px 26px 7px 0;min-height:24px;display:flex;align-items:center}
+.receipt summary::-webkit-details-marker{display:none}
+.receipt summary::after{content:"+";position:absolute;right:2px;top:50%;margin-top:-.55em;font:900 15px/1 var(--display);color:#0d6d8c}
+.receipt details[open] summary::after{content:"–"}
+.source-links>div,.source-list p{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #e2ebf0;font-size:11px}
+.source-links a{display:inline-flex;align-items:center;min-height:34px;padding:0 8px;margin-right:-8px;border-radius:8px;font-weight:900;color:#137a9d}
+@media(hover:hover){.source-links a:hover{background:rgba(19,122,157,.1)}}
+.source-list b{text-align:right}
+
+/* Owner, 2026-09-12: "it should add on the bottom 'our price vs their price' so
+   they know even before opening the link." Both numbers already exist in
+   products.js. The tier word travels with the store price, so an estimate
+   still reads as an estimate — this is two labelled figures side by side, not
+   a savings claim, and check-integrity.mjs still fails any "save exactly $X". */
+.source-links>div{flex-wrap:wrap}
+.source-compare{flex:1 0 100%;order:3;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:2px}
+.source-compare i{font-style:normal;font:900 8px/1 var(--body);letter-spacing:.14em;opacity:.72;margin-right:6px}
+.source-compare b{display:inline-flex;align-items:baseline;padding:5px 9px;border-radius:99px;
+  background:#04203c;color:#8df0ff;font:900 11px/1 var(--display);letter-spacing:.02em}
+.source-compare s{display:inline-flex;align-items:baseline;padding:5px 9px;border-radius:99px;
+  background:#eef5f9;color:#4c6376;font:800 11px/1 var(--body);text-decoration-thickness:1.5px}
+
+/* THE PRICE SWAP. Owner: "the 'about blabla' should be animated and transition
+   sideways into a glittery shiny price tag style showing my price afterwards."
+
+   Both figures are in the markup from the start and BOTH are readable with no
+   JavaScript, with reduced motion, and in a screenshot — the row is a store
+   price beside a shelf price either way. beast.js adds `.is-swapped` when the
+   row scrolls in, which is the only thing that moves. Fixed column widths, so
+   nothing here can change the height of the receipt as it plays. */
+.source-list p{align-items:center}
+.price-swap{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end;gap:9px;text-align:right}
+.price-was{font-weight:700;color:#4c6376;transition:opacity .45s var(--ease-out),translate .45s var(--ease-out)}
+.price-tag{position:relative;display:inline-flex;align-items:center;gap:6px;padding:6px 11px 6px 15px;
+  border-radius:4px 99px 99px 4px;overflow:hidden;
+  background:linear-gradient(135deg,#fff6d2,#ffd75e 30%,#c9931a 56%,#ffe98f 78%,#e0a92a);
+  color:#241a02;font:900 12px/1 var(--display);letter-spacing:.01em;white-space:nowrap;
+  box-shadow:0 0 0 1px #a97f12,0 4px 10px rgba(36,26,2,.28)}
+/* the hole the string goes through, so it reads as a tag and not as a pill */
+.price-tag::before{content:"";position:absolute;left:6px;top:50%;width:5px;height:5px;translate:0 -50%;border-radius:50%;
+  background:#fffdf4;box-shadow:inset 0 1px 2px rgba(90,66,5,.55)}
+.price-tag i{font-style:normal;font:900 7px/1 var(--body);letter-spacing:.15em;color:#6b5008}
+@media(prefers-reduced-motion:no-preference){
+  html.motion [data-price-swap] .price-tag{opacity:0;translate:16px 0;transition:opacity .5s var(--ease-out),translate .5s var(--ease-out)}
+  html.motion [data-price-swap].is-swapped .price-tag{opacity:1;translate:0 0}
+  html.motion [data-price-swap].is-swapped .price-was{opacity:.55;translate:-4px 0}
+  /* the glint that crosses the tag as it lands */
+  html.motion [data-price-swap] .price-tag::after{content:"";position:absolute;top:-60%;bottom:-60%;left:0;width:40%;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.9),transparent);translate:-220% 0;rotate:12deg}
+  html.motion [data-price-swap].is-swapped .price-tag::after{animation:tagGlint .85s var(--ease-out) .22s}
+}
+@keyframes tagGlint{from{translate:-220% 0}to{translate:320% 0}}
+
+/* the text channel: the primary action when SITE_CONFIG carries a number */
+.ready-sms{border:0;border-radius:999px;padding:15px 20px;background:var(--cyan);color:var(--navy);
+  font:900 12px/1 var(--display);letter-spacing:.06em;cursor:pointer;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 5px 0 #0a6f8e}
+.ready-sms:active{translate:0 3px;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 2px 0 #0a6f8e}
+.ready-sms[hidden]{display:none}
+/* with a text channel the clipboard is the fallback, so it stops shouting */
+.request-ready.has-sms [data-copy-order]{background:transparent;color:#bed6e5;box-shadow:inset 0 0 0 1px rgba(141,235,255,.4)}
+.receipt>small{display:block;font-size:10px;line-height:1.5;color:#4c5c68;margin-top:15px}
+
+/* ---------- footer ---------- */
+.footer{position:relative;overflow:clip;padding:60px 18px 120px;text-align:center;background:radial-gradient(circle at 50% 120%,rgba(0,213,255,.22),transparent 40%),#020815;border-top:1px solid rgba(141,235,255,.22)}
+.footer-giant{position:absolute;left:50%;top:10px;transform:translateX(-50%);font:900 clamp(120px,26vw,360px)/.8 var(--display);letter-spacing:-.08em;color:rgba(141,235,255,.06);pointer-events:none;white-space:nowrap}
+.footer-in{position:relative;z-index:2;display:grid;justify-items:center;gap:14px;max-width:600px;margin:auto;padding-top:40px}
+/* The panther and the marker STOCK-UP only. BEAST is already 360 px tall in
+   the watermark directly behind this; the chrome wordmark was competing with
+   its own shadow. */
+.footer-mark{display:grid;justify-items:center;gap:10px;font-size:34px}
+.footer-mark i{font:400 1em/1 var(--brush);color:var(--pink);font-style:normal;letter-spacing:0;transform:rotate(-2deg)}
+.footer-mark img{width:76px;height:auto}
+.footer p{font-weight:800;font-size:13px;line-height:1.45}
+.footer small{display:block;font-size:10px;line-height:1.5;color:#6f8ba1}
+
+/* ---------- drawer + request ---------- */
+.drawer-scrim{position:fixed;inset:0;z-index:900;border:0;background:rgba(0,4,13,.72)}
+.drawer{position:fixed;z-index:1000;right:0;top:0;bottom:0;width:min(440px,100%);background:linear-gradient(180deg,#071e3b,#020916);color:#fff;transform:translateX(105%);transition:transform .5s var(--ease-out);box-shadow:-20px 0 55px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden}
+.drawer.is-open{transform:none}
+/* The drawer used to read like a different website from the hero: no chrome, no
+   panther, no cyan/pink. It now opens with the same chrome band the ticker and
+   the price bar use, and carries the mark. */
+.drawer>header{position:relative;flex:0 0 auto;padding:18px 20px;display:flex;gap:12px;justify-content:space-between;align-items:center;border-bottom:1px solid rgba(141,235,255,.24);background:linear-gradient(180deg,rgba(10,43,73,.9),rgba(255,255,255,.03))}
+.drawer>header::before{content:"";position:absolute;left:0;right:0;top:0;height:7px;background:var(--chrome-band);box-shadow:inset 0 1px 0 #fff,inset 0 -1px 0 #07172a}
+.drawer>header>div{flex:1 1 auto;min-width:0}
+.drawer-mark{flex:0 0 auto;width:42px;height:auto;filter:drop-shadow(0 2px 6px rgba(0,0,0,.6))}
+.drawer>header p{font:900 8px/1 var(--body);letter-spacing:.14em;color:var(--cyan)}
+/* "PICKUP LIST" wrapped to two lines at or below 370 px, splitting the words
+   and pushing the count badge onto the second line — and the extra 25 px of
+   header ate the already-tiny list area. */
+.drawer>header h2{display:flex;align-items:center;gap:10px;font:900 29px/.9 var(--display);margin-top:5px;letter-spacing:-.04em;white-space:nowrap}
+@media(max-width:379px){
+  .drawer>header{padding:16px 14px}
+  .drawer>header h2{font-size:23px;gap:8px}
+  .drawer-mark{width:34px}
+}
+.drawer>header h2 b{min-width:26px;height:26px;padding:0 7px;border-radius:99px;background:var(--pink);color:#fff;font:900 12px/26px var(--body);text-align:center}
+.drawer>header button{width:40px;height:40px;border-radius:50%;border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.08);color:#fff;font-size:25px;transition:background .2s}
+@media(hover:hover){.drawer>header button:hover{background:var(--pink)}}
+.pair-status{padding:13px 18px;background:#4b1236;color:#fff;font-size:11px;font-weight:800;border-left:4px solid var(--pink)}.pair-status p+p{margin-top:6px}
+/* flex-basis:0 with a 96px floor. At 400% browser zoom the summary is taller
+   than the whole drawer, and `flex:1` on this let the list keep 24px while the
+   summary pushed MAKE MY REQUEST 183px past the bottom of a box that was
+   overflow:hidden — the one button in the panel, unreachable by any gesture. */
+.cart-lines{overflow-y:auto;padding:12px 16px;flex:1 1 0;min-height:96px}
+/* an empty list must not eat the column, or the empty state is shoved to the
+   bottom of a 900 px drawer instead of sitting in the middle of it */
+.cart-lines:empty{flex:0 0 auto;padding:0}
+.cart-line{position:relative;display:grid;grid-template-columns:72px 1fr auto;gap:12px;align-items:center;padding:12px 10px;border-radius:14px;background:linear-gradient(180deg,rgba(11,41,71,.55),rgba(3,15,32,.55));border:1px solid rgba(141,235,255,.14);animation:lineIn .4s var(--ease-out) both}
+.cart-line + .cart-line{margin-top:8px}
+@keyframes lineIn{from{opacity:0;transform:translateX(24px)}}
+.cart-line>.product-image-wrap{position:relative;inset:auto;width:68px;height:78px;opacity:1;transform:none;display:grid;place-items:end center}
+.cart-line>.product-image-wrap::before{content:"";position:absolute;left:50%;bottom:2px;width:60px;height:60px;margin-left:-30px;border-radius:50%;background:radial-gradient(circle,rgba(0,213,255,.22) 0 56%,rgba(3,20,43,.9) 58% 64%,transparent 66%);box-shadow:0 0 0 1px rgba(141,235,255,.28)}
+.cart-line>.product-image-wrap img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:none}
+.cart-line.is-unavailable{opacity:.6}
+.cart-line-copy h3{font:900 13px/1.22 var(--display);letter-spacing:-.02em}
+.cart-line-copy>small{display:block;font-size:9px;line-height:1.35;color:var(--cyan);margin-top:4px;letter-spacing:.04em}
+/* one stepper pill instead of three loose circles and a word */
+.cart-line-controls{display:flex;align-items:center;gap:8px;margin-top:9px}
+.cart-line-controls .stepper{display:inline-flex;align-items:center;border-radius:99px;border:1px solid rgba(141,235,255,.3);background:rgba(2,12,28,.75);overflow:hidden}
+.cart-line-controls .stepper button{width:30px;height:30px;border:0;background:none;color:#dff6ff;font-size:15px;line-height:1;transition:background .2s,color .2s}
+.cart-line-controls .stepper b{min-width:26px;text-align:center;font:900 13px/1 var(--display)}
+.cart-line-controls .remove-line{width:30px;height:30px;padding:0;border:1px solid rgba(255,255,255,.16);border-radius:50%;color:#8fa9bb;background:none;font-size:15px;line-height:1;display:grid;place-items:center}
+@media(hover:hover){
+  .cart-line-controls .stepper button:hover{background:var(--cyan);color:var(--ink)}
+  .cart-line-controls .remove-line:hover{color:var(--pink);border-color:var(--pink)}
+}
+.cart-line-total{font:900 15px/1 var(--display);color:var(--yellow);letter-spacing:-.02em}
+.cart-line-total.is-deal{font:900 8px/1.3 var(--body);letter-spacing:.1em;color:#8fa9bb;text-align:right;max-width:52px}
+.cart-empty{text-align:center;margin:auto;padding:36px 30px}
+.cart-empty-mark{width:96px;height:auto;margin:0 auto 18px;opacity:.32;filter:grayscale(.4)}
+.cart-empty h3{font:900 21px/1 var(--display);letter-spacing:-.02em}
+.cart-empty p{font-size:12px;line-height:1.5;color:#94afc1;margin:10px auto 0;max-width:26ch}
+.cart-empty button{margin-top:18px;border:0;border-radius:99px;padding:13px 18px;background:var(--cyan);color:var(--navy);font-weight:900}
+.cart-summary{padding:16px 19px 22px;border-top:1px solid rgba(141,235,255,.23);background:#06172d;flex:0 1 auto;overflow-y:auto;overscroll-behavior:contain}
+/* ---- the claw-rip savings line ----
+   One yellow band carrying both facts. The claw is the transition, never the
+   information: with no JS, no motion, or in a screenshot the band already reads
+   "You save $X" over "Same items in a store $Y + tax". */
+.savings-rip{position:relative;overflow:hidden;margin-top:12px;padding:10px 14px;border-radius:12px;
+  background:rgba(245,247,57,.09);border:1px solid rgba(245,247,57,.32)}
+.savings-rip .rip-headline{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+.savings-rip .rip-headline span{font:900 11px/1 var(--body);letter-spacing:.06em;color:#f7f9c9;text-transform:uppercase}
+.savings-rip .rip-headline b{font:900 27px/1 var(--display);color:var(--yellow);letter-spacing:-.03em}
+.savings-rip .rip-store{margin-top:6px;font-size:10.5px;color:#c9d3a8}
+.savings-rip .rip-store s{color:#e9eec0;text-decoration-thickness:1.5px}
+.rip-claw{position:absolute;inset:0;display:none;pointer-events:none}
+html.motion .rip-claw{display:block}
+/* left/top + negative MARGINS, never a transform: GSAP animates this element's
+   xPercent and scale, and a CSS transform on it would be erased (see the hero
+   lockup). Percentage margins resolve against the band WIDTH, so they are in px. */
+.rip-claw svg{position:absolute;left:50%;top:50%;width:118px;height:118px;margin:-59px 0 0 -59px;overflow:visible;
+  filter:drop-shadow(0 0 4px rgba(245,247,57,.75))}
+.rip-claw .claw-tear{fill:#191a04;opacity:.78}
+.rip-claw .claw-edge{fill:#fdffe4;opacity:.9}
+
+/* ---- the delivery stamp ----
+   With no free-delivery threshold left, this is one quiet line for almost every
+   list. The METER only appears when a FREE DELIVERY prize is in hand and the
+   list is still short of what that prize needs, and the STAMP lands when it is
+   not. A bar that counts toward a promise the page cannot keep would be worse
+   than no bar at all, which is what the old one counting to twenty became the
+   moment the twenty went away. */
+.delivery-row{margin-top:11px}
+.delivery-meter{margin-bottom:8px}
+.delivery-meter p{font:900 9px/1 var(--body);letter-spacing:.1em;text-transform:uppercase;color:#9fc3d6}
+.delivery-meter p b{color:var(--cyan)}
+.delivery-meter i{display:block;height:5px;margin-top:6px;border-radius:99px;background:rgba(141,235,255,.16);overflow:hidden}
+/* scaleX, not width: width is a layout property and this is visitor-facing */
+.delivery-meter i span{display:block;height:100%;width:100%;transform:scaleX(0);transform-origin:left;border-radius:99px;background:linear-gradient(90deg,var(--cyan),#7df3ff);transition:transform .45s var(--ease-out)}
+.delivery-meter[hidden]{display:none}
+.delivery-below{display:block;margin-top:7px;font-size:10.5px;color:#8fa9bb}
+.delivery-below b{color:#c7dbe8;font-weight:800}
+.delivery-stamp{position:relative;display:grid;justify-items:center;gap:2px;width:max-content;margin:2px auto 0;
+  padding:11px 20px 9px;rotate:-7deg;color:var(--cyan);text-align:center;
+  border:2px solid var(--cyan);border-radius:8px;background:rgba(0,213,255,.07);
+  box-shadow:0 0 0 1px rgba(0,213,255,.28) inset,0 6px 18px rgba(0,0,0,.45)}
+.delivery-stamp .stamp-ring{position:absolute;inset:4px;border:1px dashed rgba(0,213,255,.55);border-radius:5px}
+.delivery-stamp b{display:grid;font:900 20px/.86 var(--display);letter-spacing:.02em;text-shadow:0 2px 0 rgba(0,32,45,.7)}
+.delivery-stamp b i{font-style:normal;font-size:25px;letter-spacing:-.01em}
+.delivery-stamp small{font:900 7px/1 var(--body);letter-spacing:.16em;color:#9fe9ff}
+.delivery-below[hidden]{display:none}
+html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,1.5,.4,1) 1}
+@keyframes stampLand{
+  0%{transform:scale(1.9);opacity:0;rotate:-19deg}
+  60%{opacity:1}
+  100%{transform:scale(1);opacity:1;rotate:-7deg}
+}
+.cart-total{display:flex;justify-content:space-between;align-items:end;gap:12px}
+.cart-total span{font-size:11px;font-weight:800}
+.cart-total span small{font-size:7px;color:var(--cyan);letter-spacing:.1em}
+/* 44px was "way too big"; the ordering the owner asked for is kept — the
+   cash total stays larger than the yellow saving (34 vs 27). */
+.cart-total strong{font:900 34px/.86 var(--display);color:#fff;letter-spacing:-.05em;text-shadow:0 3px 0 rgba(0,0,0,.35)}
+.cart-summary>button{width:100%;border:0;border-radius:99px;background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:#fff;min-height:52px;margin-top:15px;font:900 11px/1 var(--display);letter-spacing:.06em;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 5px 0 #7a0b4d}
+.cart-summary>button:disabled{filter:grayscale(.7);opacity:.6;cursor:not-allowed}
+.cart-summary>small{display:block;text-align:center;font-size:8px;line-height:1.4;color:#7f98aa;margin-top:11px}
+.request{width:min(560px,calc(100% - 22px));max-height:calc(100svh - 22px);padding:0;border:1px solid rgba(141,235,255,.5);border-radius:24px;background:linear-gradient(180deg,#071e3b,#020916);color:#fff;box-shadow:0 30px 100px rgba(0,0,0,.7);overflow:auto}
+.request[open]{animation:dialogIn .45s var(--ease-out)}
+@keyframes dialogIn{from{opacity:0;transform:translateY(24px)}}
+.request::backdrop{background:rgba(0,4,13,.78)}
+.request form,.request-ready{padding:22px}
+.request header{display:flex;justify-content:space-between;align-items:start}
+.request header p,.request-ready>p:first-of-type{font:900 8px/1 var(--body);color:var(--cyan);letter-spacing:.14em}
+.request h2{font:900 27px/.9 var(--display);margin-top:5px;letter-spacing:-.04em}
+.request header button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:22px}
+.request form>p{font-size:11px;line-height:1.45;color:#9eb5c5;margin:17px 0}
+.request label{display:block;font-size:10px;font-weight:900;margin-top:13px;color:#c7dbe8;letter-spacing:.06em}
+.request input,.request select,.request textarea{display:block;width:100%;margin-top:7px;padding:12px;border-radius:12px;border:1px solid rgba(141,235,255,.3);background:rgba(255,255,255,.08);color:#fff;outline:none;transition:border-color .2s}
+.request input:focus,.request select:focus,.request textarea:focus{border-color:var(--cyan)}
+.request select option{color:#000}
+.request-total{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding:14px;border:1px solid rgba(141,235,255,.25);border-radius:14px}
+.request-total span{font-size:10px}
+.request-total b{font:900 25px/1 var(--display);color:var(--yellow)}
+.request-submit,.ready-actions button{width:100%;min-height:50px;border:0;border-radius:99px;background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:#fff;margin-top:16px;font:900 11px/1 var(--display);letter-spacing:.06em;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 5px 0 #7a0b4d}
+.request form>small{display:block;text-align:center;font-size:8px;color:var(--cyan);margin-top:11px;letter-spacing:.14em}
+.ready-stamp{display:grid;place-items:center;width:76px;height:76px;border:4px solid var(--yellow);border-radius:50%;font:900 15px/1 var(--display);color:var(--yellow);transform:rotate(-8deg)}
+.request-ready>p{font-size:11px;line-height:1.45;color:#9fb7c7;margin-top:13px}
+.request-ready h2{margin-top:6px}
+.request-ready textarea{width:100%;min-height:190px;margin-top:16px;padding:12px;background:#fff;color:#07152a;border-radius:12px;border:0;font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.ready-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ready-actions button:last-child{background:#24445e;box-shadow:inset 0 2px 0 rgba(255,255,255,.2),0 5px 0 #0f2236}
+.toast{position:fixed;z-index:1600;left:50%;bottom:92px;transform:translate(-50%,25px);opacity:0;pointer-events:none;padding:13px 18px;border-radius:99px;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:.3s var(--ease-out)}
+.toast.is-visible{opacity:1;transform:translate(-50%,0)}
+.cart-fab{position:fixed;right:20px;bottom:22px;z-index:700;border:1px solid rgba(255,255,255,.42);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#e90b83);color:#fff;padding:11px 11px 11px 17px;display:none;align-items:center;gap:10px;font:900 9px/1 var(--display);text-transform:uppercase;letter-spacing:.08em;box-shadow:0 7px 0 #69063f,0 16px 35px rgba(0,0,0,.4)}
+.cart-fab b{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:var(--ink)}
+/* Below 760 the pink bar owns the pickup list; the nav chip said the same
+   words at the top of the same screen. */
+@media(max-width:759px){.nav-list{display:none}}
+.mobile-pickup-bar{position:fixed;z-index:800;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));min-height:58px;border:1px solid rgba(255,255,255,.6);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#e90b83);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 18px;box-shadow:0 6px 0 #69063f,0 14px 35px rgba(0,0,0,.5);font:900 10px/1 var(--display);letter-spacing:.06em}
+.mobile-pickup-bar span{display:flex;align-items:center;gap:8px}
+.mobile-pickup-bar span b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:var(--ink)}
+.mobile-pickup-bar>strong{font-size:16px;color:var(--yellow)}
+.fly{position:fixed;z-index:1500;pointer-events:none;object-fit:contain}
+
+/* ---------- motion initial states (only when the engine is live) ---------- */
+html.motion [data-reveal]{opacity:0}
+html.motion [data-split]:not(.is-split){opacity:0}
+html.motion .stages a,html.motion .plates .plate{opacity:0}
+/* the motion boxes carry the hidden state, never the layout boxes — the intro
+   tween targets [data-hero-copy]/[data-hero-price], which are the inner ones */
+html.motion .hero-copy-in,html.motion .hero-price-in,html.motion .hero-bottle-in,html.motion .hero-glow{opacity:0}
+html.motion .deal-shelf .product-card{opacity:0}
+
+/* ---------- desktop ---------- */
+@media(min-width:760px){
+  :root{--nav-h:80px}
+  .display{font-size:clamp(48px,5.6vw,76px)}
+  .nav{grid-template-columns:auto 1fr auto;padding:0 var(--gutter)}
+  .nav-panther{width:50px}.nav-beast{font-size:25px}.nav-stock{font-size:21px}
+  .nav-links{display:flex;justify-content:center;gap:28px;font:900 10px/1 var(--display);letter-spacing:.14em;color:#b7d6e8}
+  .nav-links a{position:relative;padding:8px 0;transition:color .2s}
+  .nav-links a::after{content:"";position:absolute;left:0;right:0;bottom:2px;height:2px;background:var(--cyan);transform:scaleX(0);transform-origin:left;transition:transform .4s var(--ease-out)}
+  .nav-links a.is-active{color:#fff}
+  .nav-links a.is-active::after{transform:none}
+  @media(hover:hover){.nav-links a:hover{color:#fff}.nav-links a:hover::after{transform:none}}
+  .nav-list{font-size:10px;padding:7px 8px 7px 16px}.nav-list b{width:30px;height:30px}
+  /* Capped by the viewport here too. This line is why the first fix did
+     nothing: the base rule was corrected and this one, 950 lines further down
+     and inside the desktop band, quietly put the 760 px floor straight back —
+     and a landscape phone at 844x390 matches `min-width:760px` perfectly well.
+     100vh rather than 100svh is deliberate on a desktop, where there is no
+     collapsing URL bar; min() keeps it honest on a short window. */
+  .hero{height:100vh;min-height:min(760px,100vh);max-height:1000px}
+  .hero-plate img{object-position:50% 50%}
+  .hero-bubbles{display:block}
+  .collab-pill{margin-top:20px;font-size:11px}
+  .hero-glow{height:56px}
+  .spin-invite{padding:11px var(--gutter)}.spin-copy b{font-size:12.5px}.spin-copy small{font-size:11px}.spin-badge{flex-basis:30px;width:30px;height:30px}
+  .stages{padding:7px var(--gutter) 11px;margin-bottom:80px}
+  .stages a{min-width:150px;height:62px}.stages b{font-size:30px}
+  .shop{padding:0 0 60px}
+  .shop-head{display:grid;grid-template-columns:1.05fr .95fr;gap:80px;align-items:end;padding:0 var(--gutter);max-width:none}
+  .console{margin:0}
+  .shelves{margin-top:64px}
+  .deal-shelf{padding:64px 0 30px}
+  /* max-width:none is load-bearing. .shelf-heading carries max-width:var(--max)
+     with margin:auto AND this padding, so above 1280 it paid the gutter twice
+     and walked off the page's left edge at one pixel per pixel of window width
+     while the shop head, the rules head and the cards beneath it moved at half
+     that: 80 px adrift at 1440, 610 px at 2560. It also squeezed the note
+     column until "MIX OR MATCH." wrapped above 1883 px. The resize sweep could
+     not see it — it is a smooth drift, never a jump — so beast-resize.py now
+     watches for anchors that DRIFT APART as well as ones that jump. */
+  .shelf-heading{display:grid;grid-template-columns:auto 1fr;gap:26px;align-items:baseline;padding:0 var(--gutter);margin-bottom:16px;max-width:none}
+  /* The middle shelf used to mirror so the three heads scanned as a sequence.
+     That mirror needed a note in the other column to swap with, and the $8
+     shelf has no pairing rule to state — so it put "$8 EACH" in column two
+     while column one resolved to 0 px and left 606 px of empty row beside it.
+     All three heads sit on the gutter now. */
+  .shelf-price h3{font-size:clamp(78px,7.6vw,108px)}
+  .shelf-info{margin:0 0 18px}.shelf-info b i{font-size:64px}.shelf-info b span{font-size:11px}.shelf-note{font-size:12px}
+  .product-grid{gap:3px;padding:14px var(--gutter) 46px;scroll-padding-left:var(--gutter)}
+  .product-card{--visual-h:384px;flex-basis:390px;min-height:596px}
+  @media(hover:hover){.product-card:hover .product-image-wrap.is-current img{--lift:-8px}}
+  .product-card::before{width:330px;height:330px}.product-card::after{left:22px;right:22px}
+  .product-visual::before{width:288px;height:288px}
+  .product-card-copy{min-height:182px;padding:19px 25px 24px}.product-card-copy h4{font-size:26px}.product-price strong{font-size:18px}
+  .rules{padding:110px var(--gutter) 120px}
+  .plates{grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+  .plate{padding:24px 24px 26px;gap:12px}
+  /* Below 900 the six town chips wrap to four rows and set the height of the
+     whole row; pinning the other two plates' bottom rows to that floor left
+     160 px of empty plate. They align on their content down here instead. */
+  @media(max-width:900px){.plate .chips,.plate .btn,.plate .channel-line{margin-top:14px}}
+  .plate h3{font-size:24px}.plate p{font-size:15px}
+  /* The intro STICKS. HANDOFF §7.4: "PRICE NOTES has a large empty left
+     column below the intro — editorial airiness at 1440, a hole at 1728." The
+     receipt is 30-odd rows tall and the column beside it was blank for all of
+     them. Sticking the headline to the top of the viewport fills the column
+     with the thing the column is for, and it keeps the words "these are the
+     store prices the savings are measured against" in front of a reader while
+     they are actually reading the prices. align-items:start is what makes
+     sticky work inside a grid — with the default `stretch` the item is as tall
+     as the row and has nothing to slide within. */
+  .sources{padding:100px var(--gutter) 120px;display:grid;grid-template-columns:.8fr 1.2fr;gap:70px;align-items:start}
+  .sources>div:first-child{position:sticky;top:calc(var(--nav-h) + 34px)}
+  .receipt{margin-top:16px;transform:rotate(-.8deg);box-shadow:0 0 0 1px #b9d0de,9px 9px 0 var(--cyan),18px 18px 0 var(--pink),0 26px 44px rgba(6,32,56,.22)}
+  .footer{padding:80px 20px 110px}
+  .footer-in{padding-top:110px}
+  .footer-mark{font-size:48px}.footer p{font-size:15px}
+  .mobile-pickup-bar{display:none!important}
+  .cart-fab{display:flex}
+  .cart-fab[hidden]{display:none!important}
+}
+/* FAMILY B: the two-column hero. Gated on the SAME aspect-ratio test the
+   <picture> uses to choose the plate, so a portrait window simply never enters
+   this block and falls through to the centred family A above — which is what
+   the old "portrait tablets" override was hand-reversing, one property at a
+   time, only above 900 px tall. Every value here is one continuous expression
+   from 760 px to 2560 px: no 1024 step, no 1200 step, no 1600 step. */
+@media(min-width:760px) and (min-aspect-ratio:1/1){
+  .hero-shade{background:linear-gradient(90deg,rgba(1,8,21,.9) 0,rgba(1,8,21,.6) 32%,transparent 56%),linear-gradient(180deg,rgba(2,8,22,.32),transparent 24%,transparent 62%,rgba(2,8,22,.5) 92%,var(--navy))}
+  .hero-column{display:contents}
+  .hero-copy{position:absolute;z-index:6;left:var(--gutter);right:auto;top:50%;bottom:auto;transform:translateY(-56%);width:min(44vw,620px);text-align:left;align-items:flex-start}
+  .hero-price{position:absolute;z-index:5;left:71%;top:32%;transform:translate(-50%,-50%);width:max-content}
+  .hero-title{justify-items:start;margin-top:30px}
+  .hero-sub{display:block;max-width:440px;margin-top:16px;font-size:14.5px}
+  .hero-cta{display:flex;margin-top:19px;justify-content:flex-start;gap:10px}
+  .hero-cta .btn{min-height:50px}
+  .hero-beast{font-size:clamp(46px,min(12vw,16vh),168px)}
+  .hero-stockup{font-size:clamp(26px,min(7.6vw,11.5vh),106px);margin-left:.06em;margin-top:-.06em}
+  .chrome-price{font-size:clamp(24px,min(4.2vw,6.4vh),58px)}
+  .chrome-huge{font-size:clamp(60px,min(10.5vw,16vh),140px)}
+  .hero-glow{height:64px}
+  .hero-cast{height:30px}
+}
+
+/* The CENTRED hero (family A) gets a little more room to breathe on a portrait
+   tablet, and a lot less on a short window. Sizes are not touched here — they
+   are one continuous expression at the top of this file. */
+@media(min-width:760px) and (max-aspect-ratio:1/1){
+  .hero-shade{background:linear-gradient(180deg,rgba(2,8,22,.6),transparent 24%,transparent 64%,rgba(2,8,22,.45) 94%,var(--navy))}
+  .hero-column{left:24px;right:24px;gap:clamp(10px,3vh,34px)}
+}
+@media(max-height:820px){
+  .collab-pill{margin-top:10px;padding:5px 11px 5px 7px;font-size:8px}
+  .hero-column{gap:clamp(4px,1.4vh,14px)}
+}
+
+/* At 400% browser zoom the fixed nav, the sticky price-stage bar and the pink
+   pickup bar together left SEVENTEEN PIXELS of scrollable content on a 225 px
+   viewport — measured. Under 480 px of height the chrome stops floating and
+   scrolls away with the page, which is what WCAG 1.4.10 reflow is asking for. */
+/* An audit asked for the hero to stop insisting on its 760 px minimum below
+   700 px of height, because on a 600 px window the podium sits under the fold.
+   It was tried and REVERTED: letting the hero shrink moves the podium UP into
+   the copy — the plate is bottom-anchored at these widths — and the viewport
+   guard immediately came back with the bottles printing through the price
+   block at 700x568 and 700x700, and the line-up flattening off the disc's arc
+   at six shapes. Scrolling a little to see the bottom of a tall scene is the
+   better of the two. Do not reinstate it without re-running
+   scripts/beast-viewports.py. */
+@media(max-height:520px){
+  /* One scroller, not three. Two nested scrollers inside a 225 px drawer means
+     a wheel gesture lands on whichever one happens to be under the pointer and
+     the other never moves — measured: ten real wheel ticks over the pickup list
+     left the summary at scrollTop 0 with MAKE MY REQUEST 215 px below the floor.
+     Down here the whole panel scrolls as one. */
+  .drawer{overflow-y:auto}
+  .cart-lines{overflow:visible;flex:0 0 auto;min-height:0}
+  .cart-summary{overflow:visible;flex:0 0 auto}
+}
+@media(max-height:480px){
+  :root{--nav-h:56px}
+  .nav{position:absolute}
+  .stages{position:static;margin-bottom:24px}
+  .stages a{height:44px}.stages b{font-size:20px}
+  .mobile-pickup-bar{position:sticky;left:auto;right:auto;bottom:0;margin:10px}
+}
+
+/* ---------- short and wide: a phone held sideways ----------
+   Its own band, not a squeezed desktop. Everything here is about height: the
+   lockup, the sub-line and the price all scale off vh so the whole first screen
+   fits inside a short window, and the copy column narrows so the line-up still
+   has podium to stand on. Below 1/1 the centred band already handles it.
+
+   640, not 560: with the hero no longer allowed to grow past the viewport, a
+   700x568 window was cramped but fell OUTSIDE this band, and every line-up sat
+   over the price block. The threshold is the height at which the full-size
+   lockup stops leaving the podium enough room, not a device size. */
+@media(min-aspect-ratio:1/1) and (max-height:640px){
+  .hero-beast{font-size:clamp(30px,min(9vw,17vh),96px)}
+  .hero-stockup{font-size:clamp(20px,min(6vw,11vh),64px)}
+  .hero-title{margin-top:10px}
+  .kicker{font-size:8px}
+  .collab-pill{margin-top:8px;padding:6px 11px;font-size:8px}
+  .collab-pill img{width:20px;height:auto}
+  .hero-sub{margin-top:8px;font-size:12px;max-width:340px}
+  .hero-cta{margin-top:10px}
+  .hero-cta .btn{min-height:42px;padding:0 18px;font-size:11px}
+  .hero-dial{margin-top:6px}
+  .chrome-price{font-size:clamp(20px,7vh,44px)}
+  .chrome-huge{font-size:clamp(34px,15vh,92px)}
+}
+/* THE LANDSCAPE LAYOUT, at any width. This is the owner's own suggestion of
+   2026-09-12 — "maybe before that happens trigger landscape view" — and it is
+   the right call. Below 760 px the page uses the CENTRED band, which stacks the
+   copy above the price in one column; that needs vertical room, and a window
+   568 px tall has none, so every line-up ended up over the price block. A short
+   wide window is a landscape window whatever its width, so it gets the
+   two-column arrangement: copy left, price right, podium across the bottom. */
+@media(min-aspect-ratio:1/1) and (max-height:640px){
+  .hero-column{display:contents}
+  .hero-copy{position:absolute;z-index:6;left:var(--gutter);right:auto;top:50%;bottom:auto;
+    transform:translateY(-52%);width:min(42vw,420px);text-align:left;align-items:flex-start}
+  .hero-title{justify-items:start}
+  .hero-sub{display:block}
+  /* clear of the nav. At 26% of a 390 px window the price card's own height put
+     "2 FOR" behind the fixed header; the offset is measured from the nav now
+     rather than guessed as a percentage of a viewport that keeps changing. */
+  .hero-price{position:absolute;z-index:5;left:74%;top:calc(var(--nav-h) + 18px);
+    transform:translateX(-50%);width:max-content}
+  .hero-shade{background:linear-gradient(90deg,rgba(1,8,21,.9) 0,rgba(1,8,21,.6) 34%,transparent 58%),
+    linear-gradient(180deg,rgba(2,8,22,.32),transparent 24%,transparent 62%,rgba(2,8,22,.5) 92%,var(--navy))}
+}
+
+/* ---------- reduced motion ---------- */
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation-duration:.001s!important;animation-iteration-count:1!important;transition-duration:.001s!important}
+}

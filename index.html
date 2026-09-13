@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#020816">
+  <meta name="color-scheme" content="dark">
+  <meta name="description" content="Beast Stock-Up: household supplies in stock now. Any two medium bottles $5, big sizes $8, paper goods and softener any two $7. Pickup or local delivery in six towns. Cash in person, never a deposit.">
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Beast Stock-Up — Stock-Up × MrBeast">
+  <meta property="og:description" content="Household supplies, in stock now. Two medium bottles $5. Big sizes $8. Paper goods and softener, any two $7. Six towns, pickup or delivery, cash in person.">
+  <meta property="og:image" content="assets/social-thumbnail.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>Beast Stock-Up — Stock-Up × MrBeast household supplies</title>
+  <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/favicon.png" type="image/png" sizes="512x512">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="preload" href="assets/fonts/archivo-black.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/fonts/permanent-marker.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="assets/beast-lab/portal-mobile.webp" as="image" type="image/webp" media="(max-width: 759px), (max-aspect-ratio: 1/1)" fetchpriority="high">
+  <link rel="preload" href="assets/beast-lab/portal-desktop.webp" as="image" type="image/webp" media="(min-width: 760px) and (min-aspect-ratio: 1/1)" fetchpriority="high">
+  <link rel="stylesheet" href="beast.css">
+  <link rel="stylesheet" href="product-fit.css">
+  <script>document.documentElement.classList.replace("no-js","js");</script>
+  <script src="site-settings.js" defer></script>
+  <script src="products.js" defer></script>
+  <script src="prize-art.js" defer></script>
+  <script src="script.js" defer></script>
+  <script src="assets/vendor/gsap.min.js" defer></script>
+  <script src="assets/vendor/ScrollTrigger.min.js" defer></script>
+  <script src="beast.js" defer></script>
+</head>
+<body class="beast" id="top">
+  <!-- Every <img> on this page carries draggable="false" in the MARKUP. An
+       <img> is draggable by default, and a press-and-move on one starts the
+       browser's own image-transfer gesture instead of scrolling the
+       product row: a translucent ghost follows the pointer and the row stops
+       tracking. That is the "grabbing side to side glitches badly" the owner
+       reported twice. script.js also refuses every dragstart and beast.js
+       disarms anything built later, but the attribute is the only one of the
+       three that still holds when no script runs at all. -->
+  <a class="skip-link" href="#shop">Skip to the products</a>
+
+  <div class="boot" data-boot aria-hidden="true">
+    <div class="boot-in">
+      <img draggable="false" class="boot-panther" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="150" height="107">
+      <p class="boot-word"><span class="boot-beast"><span class="chrome chrome-md" data-text="BEAST">BEAST</span></span><span class="brush brush-sm">STOCK-UP</span></p>
+      <div class="boot-bar"><i data-boot-bar></i></div>
+    </div>
+  </div>
+
+  <header class="nav" data-nav>
+    <a class="nav-brand" href="#top" aria-label="Beast Stock-Up home">
+      <img draggable="false" class="nav-panther" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="52" height="37">
+      <span class="nav-lockup"><span class="nav-beast">BEAST</span><span class="nav-stock">STOCK-UP</span></span>
+    </a>
+    <nav class="nav-links" aria-label="Sections">
+      <a href="#shop" data-nav-link>IN STOCK</a>
+      <a href="#how" data-nav-link>THE RULES</a>
+      <a href="#sources" data-nav-link>PRICE NOTES</a>
+    </nav>
+    <button class="nav-list" type="button" data-open-cart aria-haspopup="dialog" aria-controls="pickup-list">
+      <span>PICKUP LIST</span><b data-cart-count>0</b>
+    </button>
+    <i class="nav-progress" data-progress aria-hidden="true"></i>
+  </header>
+
+  <main>
+    <!-- ============================== HERO ============================== -->
+    <section class="hero" data-hero>
+      <div class="hero-scene" aria-hidden="true">
+        <picture class="hero-plate">
+          <source media="(min-width:760px) and (min-aspect-ratio:1/1)" type="image/webp" srcset="assets/beast-lab/portal-desktop.webp">
+          <source media="(min-width:760px) and (min-aspect-ratio:1/1)" srcset="assets/beast-lab/portal-desktop.jpg">
+          <source type="image/webp" srcset="assets/beast-lab/portal-mobile.webp">
+          <img draggable="false" src="assets/beast-lab/portal-mobile.jpg" alt="" fetchpriority="high" width="941" height="1672">
+        </picture>
+        <canvas class="hero-bubbles" data-bubbles></canvas>
+        <div class="hero-shade"></div>
+        <div class="hero-flash" data-flash></div>
+      </div>
+
+      <!-- In the CENTRED bands (narrow, and any portrait tablet) the copy and the
+           price stack in one flow column, because they cannot both be anchored
+           absolutely: the copy's height scales with the VIEWPORT WIDTH (the
+           wordmark is 17vw) while the price was pinned to 45% of the viewport
+           HEIGHT, so a wide-but-short window printed the pink STOCK-UP straight
+           through "2 FOR". Measured at 12 of 15 shapes, including 720x450 — which
+           is 1440x900 at 200% browser zoom. In the two-column desktop band the
+           wrapper is display:contents, so that layout is untouched. -->
+      <div class="hero-column">
+      <!-- .hero-copy is the LAYOUT box and carries the centring transform.
+           .hero-copy-in is the MOTION box and is the only thing GSAP touches.
+           They must stay separate: GSAP owns `transform` outright and erases any
+           CSS transform on an element it animates, which is what moved this
+           lockup 253 px down the page on first scroll and never put it back. -->
+      <div class="hero-copy">
+       <div class="hero-copy-in" data-hero-copy>
+        <p class="kicker" data-hero-line><i></i>IN STOCK NOW</p>
+        <h1 id="hero-title" class="hero-title" aria-label="Beast of a deal — Beast Stock-Up">
+          <span class="hero-beast" data-hero-beast><span class="chrome chrome-xl" data-text="BEAST">BEAST</span></span>
+          <!-- THE SLOGAN, not the business name. Owner, 2026-09-12: "we will do
+               the 'beast of a deal' slogan in the main view, instead of
+               Stock-Up." So the HERO carries the pitch and everything else
+               carries the identity — the nav lockup, the boot screen, the
+               footer mark, the collab pill and the copied request all still say
+               STOCK-UP, because that is the business and it survives whether or
+               not the collab does. This is the one surface that is an
+               advertisement rather than a name. -->
+          <span class="hero-stockup" data-hero-stock><span class="brush">OF A DEAL</span></span>
+        </h1>
+        <p class="collab-pill" data-hero-line><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="34" height="24">STOCK-UP <b>×</b> MRBEAST</p>
+        <p class="hero-sub" data-hero-line>Household supplies. Cash in person. Pickup or local delivery.</p>
+        <!-- One button. "SEE WHAT'S IN STOCK" sat next to a nav link reading
+             IN STOCK and a kicker reading IN STOCK NOW, and the second button
+             said THE RULES beside a nav link saying THE RULES. -->
+        <div class="hero-cta" data-hero-line>
+          <a class="btn btn-cyan" href="#shop"><span>SEE THE SHELF</span><i>→</i></a>
+        </div>
+       </div>
+      </div>
+
+      <!-- The price block is a DECK. All three price stages occupy the same
+           grid cell, so the box is the size of the widest one and a stage change
+           can never move a pixel of layout. Only stage one is in the markup: the
+           other two, and the dial that drives them, are built by beast.js once
+           the hero has settled, so a no-JS, no-GSAP or reduced-motion visit gets
+           a complete, honest, static first screen and the cold load carries four
+           bottle images rather than twelve. -->
+      <div class="hero-price">
+       <span class="hero-price-in" data-hero-price>
+        <span class="hero-deck" data-price-deck>
+         <span class="hero-price-card is-live" data-price-card="2-for-5" role="img" aria-label="Any two medium bottles for five dollars, mix or match">
+          <span class="hero-price-line"><span class="chrome chrome-price" data-text="2 FOR" aria-hidden="true">2 FOR</span></span>
+          <span class="hero-price-line"><span class="chrome chrome-price chrome-huge" data-text="$5" aria-hidden="true">$5</span></span>
+         </span>
+        </span>
+       </span>
+      </div>
+
+      </div>
+
+      <!-- The stage is the whole hero box, because the bottles are placed on
+           the chrome podium that is painted into the background plate, and where
+           that podium lands depends on how object-fit:cover crops the plate at
+           this exact viewport. beast.js measures it and writes --pod-cx/cy/a/b;
+           every bottle's x, width, height, stand height and paint order are
+           derived from that ellipse, so the line-up stands ON the podium and
+           follows its curve at any window shape, including mid-drag.
+           .hero-bottle is the LAYOUT box and carries the centring transform.
+           .hero-bottle-in is the MOTION box and the only thing GSAP touches —
+           GSAP owns transform outright and would erase the centring. -->
+      <div class="hero-stage" data-stage role="group" aria-label="What is on the podium">
+        <span class="hero-glow" data-hero-glow aria-hidden="true"></span>
+        <span class="hero-sweep" data-hero-sweep aria-hidden="true"></span>
+        <div class="hero-set is-live" data-hero-set="2-for-5">
+          <span class="hero-bottle" data-bottle-id="tide-simply-all-in-one-24-loads">
+            <span class="hero-bottle-in" data-hero-bottle>
+              <i class="hero-cast" aria-hidden="true"></i>
+              <img draggable="false" class="hero-reflect" src="assets/products-master/tide-simply-all-in-one-24-loads.webp" alt="" aria-hidden="true">
+              <img draggable="false" data-hero-product src="assets/products-master/tide-simply-all-in-one-24-loads.webp" alt="Tide Simply All in One detergent, 24 loads" width="308" height="464" fetchpriority="high">
+            </span>
+          </span>
+          <span class="hero-bottle" data-bottle-id="arm-hammer-odor-blasters-21-loads">
+            <span class="hero-bottle-in" data-hero-bottle>
+              <i class="hero-cast" aria-hidden="true"></i>
+              <img draggable="false" class="hero-reflect" src="assets/products-master/arm-hammer-odor-blasters-21-loads.webp" alt="" aria-hidden="true">
+              <img draggable="false" data-hero-product src="assets/products-master/arm-hammer-odor-blasters-21-loads.webp" alt="Arm and Hammer Plus OxiClean Odor Blasters detergent, 21 loads" width="465" height="680" fetchpriority="high">
+            </span>
+          </span>
+          <span class="hero-bottle" data-bottle-id="all-free-clear-original-30oz">
+            <span class="hero-bottle-in" data-hero-bottle>
+              <i class="hero-cast" aria-hidden="true"></i>
+              <img draggable="false" class="hero-reflect" src="assets/products-master/all-free-clear-original-30oz.webp" alt="" aria-hidden="true">
+              <img draggable="false" data-hero-product src="assets/products-master/all-free-clear-original-30oz.webp" alt="all Free Clear The Original detergent, 24 loads" width="350" height="594" fetchpriority="high">
+            </span>
+          </span>
+          <span class="hero-bottle" data-bottle-id="snuggle-blue-sparkle-40-loads">
+            <span class="hero-bottle-in" data-hero-bottle>
+              <i class="hero-cast" aria-hidden="true"></i>
+              <img draggable="false" class="hero-reflect" src="assets/products-master/snuggle-blue-sparkle-40-loads.webp" alt="" aria-hidden="true">
+              <img draggable="false" data-hero-product src="assets/products-master/snuggle-blue-sparkle-40-loads.webp" alt="Snuggle Blue Sparkle fabric softener, 40 loads" width="332" height="582" fetchpriority="high">
+            </span>
+          </span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== THE WHEEL ==============================
+         This band used to be a marquee looping five facts that the page already
+         states in full further down — the deposit rule is in THE RULES, the
+         product count is the shop head, pickup and delivery are a whole plate.
+         It was the single worst repetition on the site, and it stuttered on
+         every loop because the track carried a 20 px left padding that the
+         -33.333% translation did not account for. It is a prize wheel now. -->
+    <div class="spin-band" data-spin-band>
+      <button class="spin-invite" type="button" data-open-wheel aria-haspopup="dialog" aria-controls="wheel-dialog">
+        <span class="spin-badge" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span class="spin-copy"><b data-spin-title>SPIN THE WHEEL</b><small data-spin-sub>Money off, a drink, free delivery — and a car.</small></span>
+        <span class="spin-go" data-spin-go aria-hidden="true">SPIN →</span>
+      </button>
+    </div>
+
+    <!-- ============================== SHOP ============================== -->
+    <section class="shop" id="shop" aria-labelledby="shop-title">
+      <nav class="stages" data-stages aria-label="Jump to a price stage">
+        <a href="#deal-2-for-5" data-stage-link="2-for-5" aria-label="2 / $5 — jump to the two for five dollars shelf"><b>2 / $5</b></a>
+        <a href="#deal-8-each" data-stage-link="8-each" aria-label="$8 — jump to the eight dollars each shelf"><b>$8</b></a>
+        <a href="#deal-paper-2-for-7" data-stage-link="paper-2-for-7" aria-label="2 / $7 — jump to the two for seven dollars shelf"><b>2 / $7</b></a>
+      </nav>
+      <header class="shop-head">
+        <div>
+          <p class="kicker" data-reveal><i></i>THREE PRICES</p>
+          <h2 id="shop-title" class="display" data-split>THE WHOLE<br><span class="accent">SHELF.</span></h2>
+        </div>
+        <div class="console" data-reveal>
+          <label for="product-search">FIND YOUR BRAND</label>
+          <div class="console-field">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M10.5 2a8.5 8.5 0 1 1-5.3 15.1l-3 3a1.6 1.6 0 0 1-2.3-2.3l3-3A8.5 8.5 0 0 1 10.5 2Zm0 3a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11Z"/></svg>
+            <input id="product-search" type="search" data-search autocomplete="off" placeholder="Tide, sensitive, pods, paper…">
+            <button type="button" data-clear-search hidden>CLEAR</button>
+          </div>
+          <p role="status"><strong data-results-count>31</strong> SHOWING<span data-stage-count></span></p>
+        </div>
+      </header>
+
+      <div class="shelves" data-product-sections>
+        <noscript><section class="noscript"><h2>The three price stages</h2><p>Medium bottles 2 for $5, or $3 for one · big sizes $8 each · paper goods and softener, any 2 for $7.</p><p>JavaScript is required to browse individual products and build a pickup list.</p></section></noscript>
+      </div>
+
+      <section class="empty-results" data-empty-results hidden>
+        <span>?</span><h2>NO MATCHES</h2>
+        <p>Nothing here by that name.</p>
+        <button type="button" data-clear-search>SHOW EVERYTHING</button>
+      </section>
+    </section>
+
+    <!-- ============================== THE RULES ============================== -->
+    <section class="rules" id="how" aria-labelledby="rules-title">
+      <header class="rules-head">
+        <p class="kicker" data-reveal><i></i>THE RULES</p>
+        <h2 id="rules-title" class="display" data-split>CASH. PICKUP.<br><span class="accent">DELIVERY.</span></h2>
+      </header>
+      <div class="plates" data-plates>
+        <!-- "WHERE I GO" is gone at the owner's instruction, 2026-09-12, and so
+             is the dial that counted to twenty: there is no twenty any more. The
+             only free delivery is the wheel prize, so the plate says that and
+             the six towns become the body of it rather than a footnote under a
+             gauge. -->
+        <article class="plate plate-delivery">
+          <!-- The medallion slot the gauge used to fill. Every plate has one and
+               they are what put the three headings on one line; leaving this one
+               empty would be the blank space the brief forbids. It carries the
+               delivery mark from the prize set, because the wheel is now the
+               only way this fee is waived — the plate and the wheel are the same
+               fact. Hidden with no JavaScript, where the sprite never mounts,
+               and the slot collapses rather than standing empty. -->
+          <div class="plate-medal" aria-hidden="true">
+            <svg class="plate-medal-art" focusable="false"><use href="#prize-free-delivery"></use></svg>
+            <b>ON THE<i>WHEEL</i></b>
+          </div>
+          <h3>PICKUP IS FREE.</h3>
+          <p>Delivery is a small fee inside the six towns below — free only if you win it on the wheel.</p>
+        </article>
+        <article class="plate plate-cash">
+          <div class="stamp-slot"><div class="cash-stamp" aria-hidden="true">
+            <span class="stamp-ring"></span><b>CASH<i>ONLY</i></b><small>NEVER A DEPOSIT</small>
+          </div></div>
+          <h3>SEE IT. THEN PAY.</h3>
+          <ul class="chips chips-pink"><li>NO PAYMENT APPS</li><li>NO SHIPPING</li></ul>
+        </article>
+        <article class="plate plate-order">
+          <ol class="mini-steps"><li><b>1</b>Pick what you want</li><li><b>2</b>Send the request</li><li><b>3</b>Collect it</li></ol>
+          <h3>HOW TO ORDER</h3>
+          <p class="channel-line" data-contact-slot><span data-contact-value></span><span data-pickup-value></span></p>
+          <a class="btn btn-pink" href="#shop"><span>START MY LIST</span><i>→</i></a>
+        </article>
+        <!-- The six towns used to be six chips at the bottom of the delivery
+             plate, and they were 110 px of it. Measured: with them there the
+             three plates' natural heights spread 92 px at 1440 and 150 px at
+             1024, and because the owner asked for one height that spread became
+             a 104 px hole in the middle of the CASH plate and a 142 px hole in
+             HOW TO ORDER — the "blank leftovers" they reported. Without them the
+             spread is 20 px, which reads as padding. They are a full-width row
+             of their own now, which is also more room than a footnote in one
+             plate: where delivery goes is a headline fact, not a detail. -->
+        <div class="plates-towns">
+          <p class="towns-label">SIX TOWNS</p>
+          <ul class="chips" data-towns><li>TEMECULA</li><li>HEMET</li><li>WINCHESTER</li><li>MENIFEE</li><li>MURRIETA</li><li>FRENCH VALLEY</li></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================== SOURCES ============================== -->
+    <section class="sources" id="sources" aria-labelledby="sources-title" data-comparison-section>
+      <div>
+        <p class="kicker" data-reveal><i></i>HOW THE PRICES COMPARE</p>
+        <h2 id="sources-title" class="display" data-split>PRICE<br>NOTES.</h2>
+        <p data-reveal>These are the store prices the savings on your list are measured against, and where each one came from.</p>
+      </div>
+      <div class="receipt" data-reveal data-price-sources><p>Price notes load with the catalog.</p></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-giant" aria-hidden="true" data-giant>BEAST</div>
+    <div class="footer-in">
+      <!-- BEAST is already 360 px tall behind this mark. Printing it a second
+           time 40 px lower was the wordmark competing with its own watermark. -->
+      <a class="footer-mark" href="#top" aria-label="Beast Stock-Up — back to top"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="76" height="55"><i>STOCK-UP</i></a>
+      <p data-inventory-line>While supplies last.</p>
+      <small>First come, first served. Packaging may vary.</small>
+    </div>
+  </footer>
+
+  <!-- ============================== PICKUP LIST ============================== -->
+  <button class="drawer-scrim" type="button" data-scrim hidden aria-label="Close pickup list"></button>
+  <aside class="drawer" id="pickup-list" data-cart-drawer role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true">
+    <header>
+      <img draggable="false" class="drawer-mark" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="42" height="30">
+      <div><h2 id="drawer-title">PICKUP LIST<b data-cart-count>0</b></h2></div>
+      <button type="button" data-close-cart aria-label="Close pickup list">×</button>
+    </header>
+    <div class="pair-status" data-pair-status hidden></div>
+    <div class="cart-lines" data-cart-items></div>
+    <div class="cart-empty" data-cart-empty>
+      <img draggable="false" class="cart-empty-mark" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="96" height="69">
+      <h3>NOTHING ON THE LIST</h3>
+      <button type="button" data-close-cart>BACK TO THE SHELF</button>
+    </div>
+    <div class="cart-summary" data-cart-footer hidden>
+      <div class="cart-total"><span>Estimated cash total<br><small>CONFIRM WHEN YOU COLLECT</small></span><strong data-cart-total>$0.00</strong></div>
+
+      <!-- One line, two facts. The claw rip is the transition from the store
+           price to the saving; both stay readable afterwards, so a screenshot,
+           a reduced-motion visit and a JavaScript-free visit all tell the whole
+           truth without any animation having run. -->
+      <div class="savings-rip" data-comparison-row data-savings-rip>
+        <i class="rip-claw" data-rip-claw aria-hidden="true"></i>
+        <p class="rip-headline"><span>You save</span><b data-cart-savings>$0.00</b></p>
+        <p class="rip-store">Same items in a store <s data-cart-retail>$0.00</s> + tax<i data-store-estimated hidden> · estimated prices</i></p>
+      </div>
+
+      <!-- Written by the wheel, read by the request text. It is never part of
+           the arithmetic: the seller applies it in person, so a prize can never
+           silently change a number the shopper is quoted. -->
+      <p class="prize-line" data-prize-line hidden><span class="prize-line-slot" data-prize-art hidden aria-hidden="true"></span><b data-prize-label></b><span data-prize-sub></span></p>
+
+      <!-- The meter used to count every list toward twenty. There is no
+           twenty: it appears only when a FREE DELIVERY prize is in hand and
+           this list is still short of what that prize needs. With no prize it
+           is one quiet line saying delivery costs a small fee. -->
+      <div class="delivery-row" data-delivery-row>
+        <div class="delivery-meter" data-delivery-meter hidden>
+          <p><b data-delivery-left>0</b> more items to use FREE DELIVERY</p>
+          <i aria-hidden="true"><span data-delivery-fill></span></i>
+        </div>
+        <!-- ONE sentence, written whole by script.js. It used to be a template
+             with a <b> slot in it, and with the meter above and the prize line
+             above that, a shopper short of the FREE DELIVERY prize was told the
+             same thing three times in 60 px: "Needs 15 items · 11 more", then
+             "11 MORE ITEMS TO USE FREE DELIVERY", then "free at 15 items · 11
+             more". The brief is explicit that every repeated phrase is a
+             defect. The delivery row owns this story now and the prize line
+             steps out of the way whenever the prize is the delivery one. -->
+        <small class="delivery-below" data-delivery-below data-delivery-status>Delivery is a small fee, not in this total. Pickup is always free.</small>
+        <div class="delivery-stamp" data-delivery-stamp hidden role="img" aria-label="Free delivery — you won it and this list is long enough">
+          <span class="stamp-ring" aria-hidden="true"></span>
+          <b>FREE<i>DELIVERY</i></b>
+          <small data-delivery-stamp-min>WON ON THE WHEEL</small>
+        </div>
+      </div>
+
+      <button type="button" data-checkout>MAKE MY REQUEST →</button>
+      <small data-checkout-note>Cash after you see the items.</small>
+    </div>
+  </aside>
+
+  <!-- ============================== THE WHEEL ==============================
+       A native <dialog>, like the request dialog. The wheel itself is SVG so
+       the labels stay crisp at any size and any DPR. The winning segment is
+       drawn FIRST, from the weight table in products.js, and the rotation is
+       then computed to land on it — never the other way round, which is what
+       makes the result testable. Segment geometry is built by beast.js and is
+       exactly proportional to the odds: a 1% prize is a 3.6-degree sliver and
+       is drawn as one, with its mark on a flag outside the rim so it can still
+       be read. Widening a jackpot wedge to make it legible would show a shopper
+       better odds than the wheel is actually running. -->
+  <dialog class="wheel-dialog" id="wheel-dialog" data-wheel-dialog aria-labelledby="wheel-title">
+    <div class="wheel-in">
+      <header>
+        <div><p data-wheel-eyebrow>ONE SPIN A VISIT · HONOURED IN PERSON</p><h2 id="wheel-title">SPIN THE WHEEL</h2></div>
+        <button type="button" data-close-wheel aria-label="Close the wheel">×</button>
+      </header>
+      <div class="wheel-stage" data-wheel-stage>
+        <span class="wheel-floor" aria-hidden="true"></span>
+        <div class="wheel-disc" data-wheel-disc><svg viewBox="0 0 260 260" aria-hidden="true" focusable="false" data-wheel-svg></svg></div>
+        <span class="wheel-hub" aria-hidden="true"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="34" height="25"></span>
+        <span class="wheel-needle" aria-hidden="true" data-wheel-needle><i></i></span>
+        <ul class="visually-hidden" data-wheel-list></ul>
+      </div>
+      <p class="wheel-result" data-wheel-result role="status"></p>
+      <button class="btn btn-pink wheel-go" type="button" data-spin><span>SPIN</span><i>→</i></button>
+      <!-- THE ODDS ARE NOT PUBLISHED. Owner, 2026-09-12: "for me only to know,
+           shouldn't be known to public." The wheel is still drawn from the real
+           weights — a 1% prize is a 3.6-degree sliver and is drawn as one — so
+           nobody is shown better odds than they are getting; the numbers are
+           simply not printed. They live on the internal bench, wheel-lab.html,
+           which is noindex. Do not put them back here without asking. -->
+      <small class="wheel-note">Nothing is charged or reserved here. Tell me what you won when you collect.</small>
+    </div>
+  </dialog>
+
+  <!-- ============================== THE TICKET ==============================
+       Shown only on a win. It is a separate dialog from the wheel so the debug
+       page at wheel-lab.html can open it on its own for any prize, and so the
+       wheel does not have to be on screen for a prize to be re-shown later.
+       Everything a shopper needs is markup, not animation: the prize, the art,
+       and the terms sentence from products.js. The foil, the tilt and the
+       glint are added by beast.js and removing them costs no information. -->
+  <dialog class="ticket-dialog" data-ticket-dialog aria-labelledby="ticket-title">
+    <div class="ticket-stage" data-ticket-stage>
+      <span class="ticket-rays" aria-hidden="true"></span>
+      <div class="ticket" data-ticket data-tone="gold">
+        <span class="ticket-foil" aria-hidden="true"></span>
+        <span class="ticket-glint" aria-hidden="true"></span>
+        <div class="ticket-main">
+          <p class="ticket-eyebrow"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="22" height="16">BEAST STOCK-UP · YOU WON</p>
+          <span class="ticket-art" data-ticket-art aria-hidden="true"></span>
+          <h2 id="ticket-title" data-ticket-label>PRIZE</h2>
+          <p class="ticket-terms" data-ticket-terms></p>
+        </div>
+        <div class="ticket-stub">
+          <b data-ticket-note></b>
+          <small>SHOW THIS WHEN YOU COLLECT</small>
+        </div>
+      </div>
+    </div>
+    <div class="ticket-actions">
+      <button class="btn btn-cyan" type="button" data-ticket-list><span>PUT IT ON MY LIST</span><i>→</i></button>
+      <button class="ticket-done" type="button" data-close-ticket>DONE</button>
+    </div>
+  </dialog>
+
+  <dialog class="request" data-checkout-dialog aria-labelledby="request-title">
+    <form data-order-form>
+      <header><div><p>NO PAYMENT TAKEN HERE</p><h2 id="request-title">YOUR REQUEST</h2></div><button type="button" data-close-dialog aria-label="Close the request">×</button></header>
+      <label>Your name<input name="name" required autocomplete="name" maxlength="80"></label>
+      <label>Pickup or delivery<select name="fulfillment"><option>Pickup</option><option>Local delivery</option></select></label>
+      <label>Optional note<textarea name="note" rows="3" maxlength="500" placeholder="Preferred day, your town, or swaps you would accept"></textarea></label>
+      <div class="request-total"><span>Estimated cash total</span><b data-dialog-total>$0.00</b></div>
+      <button class="request-submit" type="submit">CREATE THE REQUEST →</button>
+    </form>
+    <!-- Two channels, one document. When SITE_CONFIG.contactChannel carries a
+         number the primary action opens the messages app with this exact text
+         and the seller's number already filled in; until it does, the panel is
+         the copy-and-paste flow it has always been and claims no address. -->
+    <div class="request-ready" data-order-success hidden>
+      <div class="ready-stamp">READY</div>
+      <h2 data-ready-title>COPY THIS</h2>
+      <p data-ready-intro>Nothing was sent. Copy it and send it to the seller.</p>
+      <textarea readonly data-order-summary aria-label="Copyable pickup request"></textarea>
+      <div class="ready-actions">
+        <button class="ready-sms" type="button" data-send-sms hidden>SEND THE TEXT →</button>
+        <button type="button" data-copy-order>COPY REQUEST</button>
+        <button type="button" data-close-dialog>DONE</button>
+      </div>
+    </div>
+  </dialog>
+
+  <div class="toast" data-toast role="status" aria-live="polite"></div>
+  <button class="cart-fab" type="button" data-open-cart aria-haspopup="dialog" aria-controls="pickup-list" hidden><span>Pickup list</span><b data-cart-count>0</b></button>
+  <button class="mobile-pickup-bar" type="button" data-open-cart hidden><span><b data-mobile-count>0</b> PICKUP LIST</span><strong data-mobile-total>$0.00</strong></button>
+</body>
+</html>
