@@ -1083,8 +1083,25 @@
        now" -- it was true of the two selectors that write there and this third
        one was never added to them. The pair warning in the drawer says why. */
     document.querySelectorAll("[data-mobile-total]").forEach((node) => { node.textContent = summary.valid ? money.format(summary.cashTotal) : "—"; });
+    /* HIDING THE ELEMENT THAT HAS FOCUS SENDS THE VIRTUAL CURSOR TO <body>, at
+       the top of a ~5,000px document. `closeDrawer`, `closeRequest` and the
+       ticket path all got `restoreFocus()` for exactly this; the direct
+       renderCart path did not — and it is reachable from the cross-tab `storage`
+       listener, which is the one case the shopper cannot predict. Repro at
+       375x553: focus the pink bar, empty the cart in a second tab.
+       `[hidden]` is `display:none!important` here, so the check has to happen
+       BEFORE the attribute is set.
+       SAID PLAINLY: with an empty cart on a phone there is no cart control left
+       to return to, so restoreFocus's chain lands on the skip link. That is a
+       modest win, not a big one — but it is a focusable element that ANNOUNCES,
+       against a silent fall to <body>, and the next Tab from either is the same
+       place. The guard only fires when the node being hidden actually contains
+       the focus, so nothing else on the page can have focus taken from it. */
+    const hidingFocus = summary.itemCount === 0
+      && [dom.mobileBar, dom.cartFab].some((n) => n && !n.hidden && n.contains(document.activeElement));
     if (dom.mobileBar) dom.mobileBar.hidden = summary.itemCount === 0;
     if (dom.cartFab) dom.cartFab.hidden = summary.itemCount === 0;
+    if (hidingFocus) restoreFocus(null);
     if (!dom.cartItems) return;
     dom.cartItems.replaceChildren();
 
@@ -1211,7 +1228,16 @@
       }
     }
     if (dom.checkout) {
-      dom.checkout.disabled = !summary.valid;
+      /* NOT `disabled`. This file states the rule at the ADD button — "IT IS NOT
+         `disabled`. A disabled button loses focus and stops being announced" —
+         and beast.js applies it to SPIN. The checkout never got it. Repro at
+         375x553 with two items on the 2-for-$5 shelf: press "−", focus returns
+         to the stepper, the quantity is announced, and silently the pair bar
+         appears, all three totals flip to "—" and MAKE MY REQUEST leaves the tab
+         order entirely (`focusableWithin` filters `button:not([disabled])`). The
+         shopper tabs to the end of the drawer and the checkout is not there.
+         WCAG 4.1.3, and 2.4.3 for the focus that vanishes with it. */
+      dom.checkout.setAttribute("aria-disabled", String(!summary.valid));
       dom.checkout.title = summary.valid ? "Write the request and send it as a text" : summary.warnings.join(" ");
     }
     refreshAllAddButtons();
@@ -1483,6 +1509,9 @@
     dom.orderForm.hidden = false;
     dom.orderSuccess.hidden = true;
     dom.dialog.showModal();
+    /* The scroll lock the stylesheet's comment already promised this dialog.
+       See the `close` listener below for why it was never actually applied. */
+    document.documentElement.classList.add("dialog-open");
     /* NOT ON A TOUCH SCREEN. `.request` is centred in the LAYOUT viewport while
        iOS raises the keyboard in the VISUAL one, and `interactive-widget` is not
        set — so nothing moves. Focusing the name field springs a ~260px keyboard
@@ -1497,15 +1526,18 @@
   }
 
   function closeRequest() {
-    /* RESET THE PANEL, or DONE leaves `orderSuccess.hidden === false` and
-       `dataset.builtFor` set for the life of the page — so every later ADD
-       passes invalidateStaleRequest()'s two guards, fires "that request is out
-       of date" and pulls focus off the button the shopper just pressed. Only
-       openRequest() ever cleared these, and DONE does not go through it. */
-    if (dom.orderSuccess) {
-      dom.orderSuccess.hidden = true;
-      delete dom.orderSuccess.dataset.builtFor;
-    }
+    /* The reset that used to live here now lives on the dialog's own `close`
+       listener, because ESCAPE DOES NOT COME THROUGH THIS FUNCTION. A native
+       <dialog> closes itself on Escape and fires only `close`; the four routes
+       that DO reach closeRequest() are the ×, DONE, the backdrop click and
+       invalidateStaleRequest(). So a shopper who built a request and pressed
+       Esc kept `orderSuccess.hidden === false` and `dataset.builtFor` set for
+       the life of the page — and every later ADD then passed
+       invalidateStaleRequest()'s two guards, fired "that request is out of
+       date" about a dialog that was not on screen, and pulled focus off the
+       button they had just pressed. Once per add, for the rest of the visit.
+       `close` fires on every route including this one, so it is the only
+       correct home for it. */
     if (dom.dialog?.open) dom.dialog.close();
     restoreFocus(state.lastDialogFocus);
   }
@@ -1853,7 +1885,28 @@
         announceQuantity(product, current, state.cart.get(action.dataset.id) || 0);
       }
     }
-    if (event.target.closest("[data-checkout]")) openRequest();
+    if (event.target.closest("[data-checkout]")) {
+      /* An aria-disabled control stays focusable and clickable, so the refusal
+         has to be spoken here. openRequest() already returns early on an invalid
+         list; doing only that would make the press do nothing at all, which is
+         the silence this change exists to remove. */
+      /* `cartMath()` ALREADY WROTE THE RIGHT SENTENCE, so use it. `valid` is
+         `itemCount > 0 && warnings.length === 0`, and `warnings` also carries
+         "…is awaiting a price and cannot be requested yet" and "A saved item is
+         now marked out of stock". Keying only on itemCount told a shopper whose
+         saved cart holds a since-discontinued item that "one shelf still needs a
+         pair" — about a cart whose pairs are complete — every time they pressed
+         the button, with the real reason never spoken. */
+      const ready = cartMath();
+      if (!ready.valid) {
+        showToast(ready.warnings[0]
+          || (ready.itemCount
+              ? "One shelf still needs a pair — the list is not ready to send yet."
+              : "Your pickup list is empty."));
+      } else {
+        openRequest();
+      }
+    }
     if (event.target.closest("[data-close-dialog]")) closeRequest();
     if (event.target.closest("[data-copy-order]")) copyRequest();
     if (event.target.closest("[data-send-sms]")) sendBySms();
@@ -1915,9 +1968,23 @@
        it, over the line "Total pending — a pair on one shelf is still
        incomplete." — a sentence untrue of a cart that has no shelf and no pair —
        with SEND THE TEXT live above it. Found by an audit 2026-09-12. */
-    if (cartMath().itemCount === 0) {
+    /* ...AND NOT MERELY EMPTY. `openRequest()` refuses `!summary.valid`, but
+       nothing re-applied that once the dialog was open, and the cart syncs
+       across tabs while the open form does not. Take two pairs off the
+       2-for-$7 shelf, press MAKE MY REQUEST, then remove one item in a second
+       tab: renderCart sets the dialog total to "—" and disables the drawer's
+       own checkout, but the form is untouched, and CREATE THE REQUEST then
+       produces a message with a real item list, "Total pending — a pair on one
+       shelf is still incomplete", and SEND THE TEXT live above it. The seller
+       gets an order with no price and no per-line price and has to invent one
+       at the door. Same shape as the empty-cart hole below, one guard along. */
+    const live = cartMath();
+    if (!live.valid) {
       closeRequest();
-      showToast("That list is empty now — it was changed somewhere else.");
+      showToast(live.warnings[0]
+        || (live.itemCount
+            ? "That list changed — a pair is incomplete now. Check it and make the request again."
+            : "That list is empty now — it was changed somewhere else."));
       return;
     }
     const formData = new FormData(dom.orderForm);
@@ -1943,6 +2010,27 @@
   });
 
   dom.dialog?.addEventListener("close", () => {
+    if (dom.orderSuccess) {
+      dom.orderSuccess.hidden = true;
+      delete dom.orderSuccess.dataset.builtFor;
+    }
+    /* AND THE REQUEST DIALOG GETS THE SCROLL LOCK IT WAS PROMISED. The comment
+       above `html.dialog-open` in beast.css says the class now locks "the
+       wheel, the ticket and the request" — but all four writers of that class
+       are in beast.js and cover the wheel and the ticket only. The request
+       dialog is never reached through openWheel, so the page still panned
+       behind it on iOS: the last screen before a sale, and the same complaint
+       the owner raised about the pickup list. */
+    /* ONLY IF NOTHING ELSE IS STILL OPEN. `html.dialog-open` now has TWO owners:
+       beast.js writes it at four sites for the wheel and the golden ticket, and
+       this file writes it for the request. An unconditional remove here would
+       unlock the page behind a wheel dialog that is still on screen — the exact
+       class of defect this project keeps finding, where one surface's cleanup
+       reaches through and undoes another's. A <dialog> in the top layer reports
+       `open`, so asking the DOM is both cheap and authoritative. */
+    if (!document.querySelector("dialog[open]")) {
+      document.documentElement.classList.remove("dialog-open");
+    }
     restoreFocus(state.lastDialogFocus);
   });
 

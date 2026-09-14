@@ -861,7 +861,21 @@
     const day = String(now.getDate()).padStart(2, "0");
     return `beast-wheel-spun-${now.getFullYear()}-${month}-${day}`;
   };
-  const WHEEL_SPUN_KEY = wheelKeyForToday();
+  /* NOT A CONSTANT. It was `const WHEEL_SPUN_KEY = wheelKeyForToday()`, evaluated
+     ONCE when the module loaded — so a tab left open across midnight kept
+     yesterday's key for the life of that tab, and the sweep below, which deletes
+     every `beast-wheel-spun-*` that is not "the" key, then deleted TODAY'S lock.
+     Walked through: tab A opens on the 14th and spins. On the 15th tab B opens,
+     sweeps A's stale key, spins, writes the 15th. Tab A — still open, still
+     holding the 14th — sweeps and DELETES the 15th, finds nothing under its own
+     key, and spins a second time. Tab B reloads: also unlocked. Repeat.
+     Unlimited spins with no devtools, on a wheel where 30% of outcomes are a
+     prize the owner honours in cash or goods and the flyer says "One spin a day,
+     on the site." in ink. This is the next instance of the defect the comment
+     above describes fixing when the lock moved from sessionStorage to a dated
+     localStorage key. A date has to be read when it is used, not when the page
+     was opened. */
+  const wheelSpunKey = () => wheelKeyForToday();
 
   /* Each wedge is a gradient, so its ink has to clear the WCAG floor at BOTH
      ends of it. White type on the old #0aa9d8 cyan measured 4.17:1 against the
@@ -1167,13 +1181,14 @@
     /* Yesterday's keys are swept on the way past: the lock is one row, but a
        browser left open for a year should not accumulate 365 of them. */
     const spunThisSession = () => { try {
+      const today = wheelSpunKey();
       for (let i = localStorage.length - 1; i >= 0; i -= 1) {
         const key = localStorage.key(i);
-        if (key && key.startsWith("beast-wheel-spun-") && key !== WHEEL_SPUN_KEY) localStorage.removeItem(key);
+        if (key && key.startsWith("beast-wheel-spun-") && key !== today) localStorage.removeItem(key);
       }
-      return localStorage.getItem(WHEEL_SPUN_KEY) === "1";
+      return localStorage.getItem(today) === "1";
     } catch { return false; } };
-    const markSpun = () => { try { localStorage.setItem(WHEEL_SPUN_KEY, "1"); } catch { /* private mode */ } };
+    const markSpun = () => { try { localStorage.setItem(wheelSpunKey(), "1"); } catch { /* private mode */ } };
     const heldPrize = () => window.StockUp?.getPrize?.() || null;
     // a spin is refused by EITHER rule: one a session, and never over a prize
     const canSpin = () => !spunThisSession() && !heldPrize();
@@ -1442,7 +1457,17 @@
     spinButton.addEventListener("click", () => {
       if (!spinButton.classList.contains("is-done")) { spin(); return; }
       closeWheel();
-      if (heldPrize()) document.querySelector("[data-open-cart]")?.click();
+      /* THE SAME FIX AS :1400, WHICH THIS CALL SITE DID NOT GET. Both open the
+         drawer after a win; only the ticket path was corrected. `querySelector`
+         takes the first match in tree order, which is `.nav-list` -- and that is
+         `display:none` below 760px (:1682). `click()` still dispatches, so the
+         drawer opens, but `openDrawer` then records an unrendered node as the
+         focus to return to and closing the list walks the fallback chain down to
+         the skip link at the top of a ~5,000px page. Pick one that is painted. */
+      if (heldPrize()) {
+        [...document.querySelectorAll("[data-open-cart]")]
+          .find((n) => n.getClientRects().length)?.click();
+      }
     });
     showBandPrize();
     band.classList.add("is-ready");
@@ -1463,13 +1488,13 @@
          seller honours it in person, so this was never a way to take money — but
          a page that sells things should not carry a "win anything" button.
          Gated 2026-09-12 on the same flag the odds table uses. */
-      force: (id) => { if (!window.__beastLab) return; try { localStorage.removeItem(WHEEL_SPUN_KEY); } catch { /* private mode */ }
+      force: (id) => { if (!window.__beastLab) return; try { localStorage.removeItem(wheelSpunKey()); } catch { /* private mode */ }
         window.StockUp?.setPrize?.(null);
         spinButton.classList.remove("is-done");
         spinButton.querySelector("span").textContent = "SPIN";
         spin(id); },
       reset: () => { if (!window.__beastLab) return;
-        try { localStorage.removeItem(WHEEL_SPUN_KEY); } catch { /* private mode */ }
+        try { localStorage.removeItem(wheelSpunKey()); } catch { /* private mode */ }
         window.StockUp?.setPrize?.(null);
         spinning = false;
         spinButton.classList.remove("is-done");

@@ -2,7 +2,22 @@
 <html lang="en" class="no-js">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <!-- `interactive-widget=resizes-content` is a CHROMIUM-ON-ANDROID viewport key.
+       WebKit does not implement it, so it does NOT fix iOS — an earlier version
+       of this comment said it did, which was wrong and is corrected here rather
+       than quietly deleted. What it does buy: on Android Chrome the layout
+       viewport now resizes when the keyboard opens, so `.request`
+       (`max-height:calc(100svh - 22px)`, `overflow:auto`) can actually scroll
+       CREATE THE REQUEST into view instead of leaving it behind the keyboard.
+       **iOS IS STILL OPEN** and needs `100dvh` plus a `visualViewport` resize
+       handler, or the submit row pinned outside the scrolling area. script.js
+       already stopped auto-focusing the name field on a coarse pointer, which is
+       what keeps the keyboard down until the shopper asks for it.
+       COST, stated: on Android this fires a `window.resize` on every keyboard
+       show/hide — including for the main-page search field — which re-solves the
+       podium and re-measures the grids. Worth it for a checkout that works; if it
+       proves noisy, the alternative is to remove the key and fix the dialog. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#020816">
   <meta name="color-scheme" content="dark">
   <meta name="description" content="Beast Stock-Up: household supplies in stock now. Any two medium bottles $5, big sizes $8, paper goods and softener any two $7. Pickup or local delivery in six towns. Cash in person, never a deposit.">
@@ -33,7 +48,7 @@
        <picture> below and the CSS landscape band. `not all and (min-aspect-ratio:1/1)`
        is used rather than `(max-aspect-ratio:1/1)` so a perfectly square window
        preloads ONE plate and not both. -->
-  <link rel="preload" href="assets/beast-lab/portal-mobile.webp" as="image" type="image/webp" media="(max-width:759px) and (max-aspect-ratio:0.9999/1)" fetchpriority="high">
+  <link rel="preload" href="assets/beast-lab/portal-mobile.webp" as="image" type="image/webp" media="(max-width:759.98px) and (max-aspect-ratio:0.9999/1)" fetchpriority="high">
   <link rel="preload" href="assets/beast-lab/portal-desktop.webp" as="image" type="image/webp" media="(min-aspect-ratio:1/1), (min-width:760px)" fetchpriority="high">
   <link rel="stylesheet" href="beast.css">
   <link rel="stylesheet" href="product-fit.css">
@@ -467,7 +482,11 @@
     <div class="footer-in">
       <!-- BEAST is already 360 px tall behind this mark. Printing it a second
            time 40 px lower was the wordmark competing with its own watermark. -->
-      <a class="footer-mark" href="#top" aria-label="Beast Stock-Up — back to top"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="76" height="55"><i>OF A DEAL</i></a>
+      <!-- The accessible name must CONTAIN the visible label (WCAG 2.5.3, level A),
+           or a Voice Control user saying "click of a deal" — the only words on it —
+           reaches nothing. It read "Beast Stock-Up — back to top", which shares not
+           one word with "OF A DEAL". `.nav-brand` above already gets this right. -->
+      <a class="footer-mark" href="#top" aria-label="OF A DEAL — Beast Stock-Up, back to top"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="76" height="55"><i>OF A DEAL</i></a>
       <!-- "While supplies last." is gone. It is half of the line the owner threw
            out by name — "'real bottles · while supplies last' — nah, wtf is that.
            Come on, judge your own work." — and it said the same thing as the line
@@ -478,14 +497,24 @@
   </footer>
 
   <!-- ============================== PICKUP LIST ============================== -->
-  <button class="drawer-scrim" type="button" data-scrim hidden aria-label="Close pickup list"></button>
+  <!-- `aria-hidden` + `tabindex="-1"`: while the drawer is open this is the only
+       non-inert focusable outside it, but the Tab interceptor in script.js wraps
+       focus WITHIN `.drawer`, so no keyboard user can ever land on it. A screen
+       reader still met an `inset:0` button named "Close pickup list", duplicating
+       the × two swipes away. It is a click target for a pointer, nothing more.
+       This is NOT the aria-hidden-on-a-focusable failure: it is not reachable. -->
+  <button class="drawer-scrim" type="button" data-scrim hidden tabindex="-1" aria-hidden="true"></button>
   <aside class="drawer" id="pickup-list" data-cart-drawer role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true">
     <header>
       <img draggable="false" class="drawer-mark" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="42" height="30">
       <div><h2 id="drawer-title">PICKUP LIST<b data-cart-count>0</b></h2></div>
       <button type="button" data-close-cart aria-label="Close pickup list">×</button>
     </header>
-    <div class="pair-status" data-pair-status hidden></div>
+    <!-- `role="status"`: this bar is the ONLY explanation for MAKE MY REQUEST
+         going unavailable, and it appeared silently. A shopper pressing "−" on a
+         2-for-$5 line got the total flipped to "—" and the checkout taken away
+         with no sound at all. WCAG 4.1.3 Status Messages. -->
+    <div class="pair-status" role="status" data-pair-status hidden></div>
     <div class="cart-lines" data-cart-items></div>
     <div class="cart-empty" data-cart-empty>
       <img draggable="false" class="cart-empty-mark" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="96" height="69">

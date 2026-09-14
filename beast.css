@@ -53,7 +53,7 @@
    button out from under the pink pickup bar at 375x553, 320x568, 414x568 and
    430x568. The desktop band sets it back to 0. If you add a second one, you are
    back in the composing trap this paragraph is about. */
-html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;
+html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;scrollbar-gutter:stable;
   /* WHY 12 AND NOT 78. The chrome used to be two bars — the fixed nav plus a
      sticky price bar under it — so this had to clear 141px on a phone and 160px
      on a desktop, and `--nav-h + 78` was the one expression covering both. It
@@ -77,6 +77,34 @@ body{margin:0;overflow-x:clip;background:var(--navy);color:var(--foam);font-fami
    its whole life. That is the owner's "you can still scroll underneath",
    live on every device, at the first moment of every visit.
    The classes stay on <body> too, because other rules select them. */
+/* THE LOCK IS `overflow:hidden`, AND THIS RULE IS BACK TO WHAT IT ALWAYS WAS.
+   The real fix on this line is `scrollbar-gutter:stable` on the root, above.
+   Hiding the vertical scrollbar widens the content area by the scrollbar's width
+   on every platform with classic scrollbars (Windows, Linux), so the page jumped
+   ~15px wider when beast.js added `is-booting` and ~15px narrower 1.3s later --
+   with the splash already gone, mid-animation, firing a resize and a full stage
+   re-solve. macOS and iOS use overlay scrollbars, which is why nobody working on
+   this project has ever seen it. The page is always taller than the viewport, so
+   the gutter is already there and reserving it costs nothing.
+
+   THE ROUTE HERE IS WORTH KEEPING, BECAUSE I GOT IT WRONG TWICE, 2026-09-14:
+   (1) I first changed the shorthand to `overflow-y:hidden`, reasoning that it was
+       clobbering the root's `overflow-x:clip`. CSS Overflow 3 §3.2 says clip
+       computes to hidden when the other axis is neither clip nor visible -- so
+       that changed nothing. A new beast-prove.py row caught it within the hour.
+   (2) I then went to `overflow:hidden;overflow:clip`, both axes clipped. An audit
+       argued that breaks `lockPage()`, which reads `window.scrollY` immediately
+       after the class goes on. MEASURED, and REFUTED: scrollY reads 1500 under
+       clip, and the real drawer journey at 375x553 goes 1800 -> body pinned at
+       -1800px -> 1800 again. Nobody is thrown anywhere.
+   (3) But the SAME audit was right about the thing that matters: `scrollbar-gutter`
+       applies to SCROLL CONTAINERS, and `overflow:clip` makes the root stop being
+       one -- so `clip` would have silently defeated the only part of this change
+       that fixes anything. That cannot be measured on macOS, where overlay
+       scrollbars make the gutter a no-op either way, so it is a reading of the
+       spec and not a number. `hidden` is correct under BOTH readings; `clip` is
+       correct under only one. When you cannot measure, take the option that is
+       safe whichever way you are wrong. */
 html.overlay-open,html.is-booting{overflow:hidden}
 /* `dialog-open` HAD NO CSS AT ALL. beast.js writes it on <html> at four sites
    and a comment in that file states, as fact, that "the drawer and the wheel
@@ -491,13 +519,24 @@ html.motion .hero-price-in:has(.hero-dial.is-ready){padding-bottom:0}
 .hero-dial{display:none;gap:0;margin-top:clamp(8px,1.6vh,14px);pointer-events:auto}
 .hero-dial.is-ready{display:flex}
 .hero-dial button{position:relative;width:26px;height:24px;display:grid;place-items:center;background:none;border:0;cursor:pointer;pointer-events:auto}
-.hero-dial button::before{content:"";width:6px;height:6px;border-radius:50%;background:rgba(233,250,255,.28);
-  box-shadow:0 1px 2px rgba(0,0,0,.5);transition:background .25s}
+/* THE ONLY BOUNDARY THIS CONTROL HAS IS THIS 6px DOT, AND IT WAS 28% WHITE
+   OVER A PHOTOGRAPH. Measured against the shade's own navy at the price block,
+   that is 2.42:1 against SC 1.4.11's 3:1 floor — and it is lower still over the
+   lighter regions of the plate, which is a photograph, so no single value can be
+   guaranteed for it. The selected dot at .45 reached ~4.2:1, so the ONE state a
+   visitor could see was the one they already knew: the inverse of what a stage
+   picker is for. This is the WCAG 2.2.2 pause control for an auto-advancing
+   hero; it has to be findable before it can be pressed.
+   A 1px dark ring gives it a guaranteed edge whatever it is standing on, and the
+   base fill goes to .62. The three states stay distinct, and the cyan `i` below
+   still carries "this is the live stage" on top of it. */
+.hero-dial button::before{content:"";width:6px;height:6px;border-radius:50%;background:rgba(233,250,255,.62);
+  box-shadow:0 0 0 1px rgba(4,18,31,.92),0 1px 2px rgba(0,0,0,.5);transition:background .25s}
 .hero-dial button i{position:absolute;left:50%;top:50%;margin:-3px 0 0 -3px;width:6px;height:6px;border-radius:50%;
   background:var(--cyan);box-shadow:0 0 7px rgba(0,213,255,.85);transform:scale(0);transform-origin:50% 50%}
-.hero-dial button[aria-current="true"]::before{background:rgba(233,250,255,.45)}
-.hero-dial button[aria-pressed="true"]::before{background:rgba(233,250,255,.7)}
-@media(hover:hover){.hero-dial button:hover::before{background:rgba(233,250,255,.6)}}
+.hero-dial button[aria-current="true"]::before{background:rgba(233,250,255,.85)}
+.hero-dial button[aria-pressed="true"]::before{background:#fff}
+@media(hover:hover){.hero-dial button:hover::before{background:rgba(233,250,255,.92)}}
 .hero-dial button:focus-visible{outline:2px solid var(--cyan);outline-offset:3px;border-radius:4px}
 
 /* ---------- the podium stage ----------
@@ -1407,6 +1446,37 @@ html.no-js .plate-medal{display:none}
    still reads as an estimate — this is two labelled figures side by side, not
    a savings claim, and check-integrity.mjs still fails any "save exactly $X". */
 .source-links>div{flex-wrap:wrap}
+/* AND `.source-list p` MUST WRAP FOR THE SAME REASON, which it did not.
+   Both selectors share the `display:flex` rule above; only the first was given
+   `flex-wrap:wrap` when the comparison row was added, so the receipt's own
+   price rows stayed `nowrap` with a `.price-swap` at `flex:0 0 auto`.
+   Measured: available content width is `W - 92` (24px .sources padding + 22px
+   .receipt padding, both sides). The unshrinkable swap is 258.4px typical and
+   267.1px worst ("Similar size $12.98 each + tax" 153.8 + 9px gap + 104.3px
+   tag), and the name column floors at its longest word (~47.7px, "OxiClean"),
+   so a row cannot go below ~320px. At 320 the available width is 228 and the
+   row needs 366 -- `.sources{overflow:clip}` then AMPUTATES 46px with no
+   scrollbar, and what is cut off is the gold shelf price this whole section
+   exists to print. Every width below ~427px was affected; 430x932 was the only
+   shape in the suite that fitted, which is why no gate ever saw it. */
+.source-list p{flex-wrap:wrap}
+/* AND THE SWAP HAS TO BE ABLE TO GIVE WAY, which `flex-wrap` alone does not buy.
+   `.price-swap` is `flex:0 0 auto` — basis max-content, shrink 0 — so wrapping
+   moved it onto its own line and it STILL could not fit. Measured after the
+   first fix, with the receipt open: at 320 the worst row put the swap **44.3px
+   past the card's right edge and 31.5px past the VIEWPORT**, and it was still
+   4.8px past the card at 430. The swap measures 237.2px against 228px of row.
+   Letting it shrink and wrap INTERNALLY stacks the store price above the gold
+   tag, each of which fits on its own. `.price-tag` keeps `white-space:nowrap`
+   (~104px) so the price itself never breaks. */
+.source-list p .price-swap{margin-left:auto;flex:0 1 auto;min-width:0;flex-wrap:wrap;justify-content:flex-end}
+/* AND THE NAME COLUMN HAS TO BE BREAKABLE. After the swap was allowed to wrap,
+   320 still measured 16px of row overflow: a flex item's automatic minimum size
+   is its min-content, and for a product title that is its longest unbroken word
+   ("OxiClean", "Christmas"). `min-width:0` lets the item go below that and
+   `overflow-wrap:anywhere` gives the text somewhere to break, so the row finally
+   fits the box that clips it. Measured at 320: 59px of overflow -> 16px -> 0. */
+.source-list p>span:first-child{min-width:0;overflow-wrap:anywhere}
 .source-compare{flex:1 0 100%;order:3;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:2px}
 .source-compare i{font-style:normal;font:900 8px/1 var(--body);letter-spacing:.14em;opacity:.72;margin-right:6px}
 .source-compare b{display:inline-flex;align-items:baseline;padding:5px 9px;border-radius:99px;
@@ -1611,7 +1681,13 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
    cash total stays larger than the yellow saving (34 vs 27). */
 .cart-total strong{font:900 34px/.86 var(--display);color:#fff;letter-spacing:-.05em;text-shadow:0 3px 0 rgba(0,0,0,.35)}
 .cart-summary>button{width:100%;border:0;border-radius:99px;background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:var(--on-pink);min-height:52px;margin-top:15px;font:900 11px/1 var(--display);letter-spacing:.06em;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 5px 0 #7a0b4d}
-.cart-summary>button:disabled{filter:grayscale(.7);opacity:.6;cursor:not-allowed}
+/* `[aria-disabled]` AS WELL AS `:disabled`, because the button stopped using the
+   real attribute. See script.js's renderCart: a `disabled` button loses focus
+   and leaves the tab order, so a keyboard or screen-reader shopper who had just
+   pressed "−" found the checkout simply gone with nothing said. This file's own
+   rule for that — "IT IS NOT `disabled`" — was already applied to the ADD button
+   and to SPIN and had not reached this one. */
+.cart-summary>button:disabled,.cart-summary>button[aria-disabled="true"]{filter:grayscale(.7);opacity:.6;cursor:not-allowed}
 .cart-summary>small{display:block;text-align:center;font-size:8px;line-height:1.4;color:#7f98aa;margin-top:11px}
 .request{width:min(560px,calc(100% - 22px));max-height:calc(100svh - 22px);padding:0;border:1px solid rgba(141,235,255,.5);border-radius:24px;background:linear-gradient(180deg,#071e3b,#020916);color:#fff;box-shadow:0 30px 100px rgba(0,0,0,.7);overflow:auto}
 .request[open]{animation:dialogIn .45s var(--ease-out)}
@@ -1670,7 +1746,13 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
    1.4.11's 3:1 — and on a text input the border IS the affordance. .52 gives
    3.12:1. */
 .request input,.request select,.request textarea{border-color:rgba(141,235,255,.52)}
-.toast{position:fixed;z-index:1600;left:50%;bottom:92px;transform:translate(-50%,25px);opacity:0;pointer-events:none;padding:13px 18px;border-radius:99px;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:.3s var(--ease-out)}
+/* WIDTH, OR THE TOAST GETS HALF A PHONE. A fixed box with `left:50%`,
+   `right:auto` and no width is shrink-to-fit against `containing block - left`,
+   i.e. exactly 100vw/2: 187.5px at 375 and 160px at 320, of which 36px is its
+   own padding. "Added Arm & Hammer Plus OxiClean Stain Fighters." then wrapped
+   to 2 lines at 375 and 3 at 320 with ~94px of empty screen either side. A
+   specified width defeats the shrink-to-fit; translate(-50%) still centres it. */
+.toast{width:max-content;max-width:calc(100vw - 32px);position:fixed;z-index:1600;left:50%;bottom:92px;transform:translate(-50%,25px);opacity:0;pointer-events:none;padding:13px 18px;border-radius:99px;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:.3s var(--ease-out)}
 .toast.is-visible{opacity:1;transform:translate(-50%,0)}
 .cart-fab{position:fixed;right:20px;bottom:22px;z-index:700;border:1px solid rgba(255,255,255,.42);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#ef1a8d);color:var(--on-pink);padding:11px 11px 11px 17px;display:none;align-items:center;gap:10px;font:900 9px/1 var(--display);text-transform:uppercase;letter-spacing:.08em;box-shadow:0 7px 0 #69063f,0 16px 35px rgba(0,0,0,.4)}
 .cart-fab b{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:var(--ink)}
@@ -1982,13 +2064,69 @@ html.motion .deal-shelf .product-card{opacity:0}
      z-index:2 — so zeroing the clearance put the panther over the left 44px
      of the first price tile. A centre-only tap probe cannot see that; a thumb
      aiming at the rounded left cap of the first tile goes back to the top. */
-  .stages{opacity:1;visibility:visible;transform:none;transition:none;padding-left:52px}
+  .stages{opacity:1;visibility:visible;transform:none;transition:none}
+  /* ...BUT ONLY BELOW 760, AND THAT HALF WAS MISSING. The clearance above is
+     for the panther, and the panther is only ever beside the rail in the ONE-
+     column phone nav (:298 + :840). At >=760 the desktop band puts the brand in
+     grid column 1 and this rail in column 2 (:1754), which is exactly why that
+     band sets `padding-left:0` -- and this rule, being later in source at equal
+     specificity, was overriding it. A landscape iPhone is >=760 WIDE: 844x390
+     and 932x430 both land here, so the rail's 470px box lost 52px of content
+     width and pushed the three price tiles 26px right of the bar's centre line,
+     buying clearance from a panther that is not there. */
+  @media(max-width:759.98px){.stages{padding-left:52px}}
   .stages a{pointer-events:auto}
   .nav-lockup{display:none}
   /* and nothing is pinned here, so a fragment needs no chrome cleared */
   html{scroll-padding-top:12px}
   .stages a{height:40px}.stages b{font-size:20px}
   .mobile-pickup-bar{position:sticky;left:auto;right:auto;bottom:0;margin:10px}
+
+  /* ==========================================================================
+     A PHONE HELD SIDEWAYS TAKES THE DESKTOP CARD, AND THE DESKTOP CARD IS
+     TALLER THAN THE WINDOW.
+     844x390 and 932x430 -- an iPhone and a Pro Max in landscape, both named by
+     name in the comments of this very file -- are >=760px WIDE, so the whole
+     `@media(min-width:760px)` band at :1714 overrides the entire phone size
+     pass at :1038: `--visual-h` back to 384px and `.product-card{min-height:
+     596px}` inside a 390px viewport. The product bay ALONE is 98.5% of the
+     screen height, and the natural card measures 616-642px once the 26px title
+     wraps to two lines. That is, word for word, the defect the phone pass was
+     written to kill -- "You could not see a product and the button that buys it
+     at the same time" -- still live, because that gate is a WIDTH and this is a
+     SHAPE. Trap 62's lesson, one band further along.
+     KEYED ON THE HEIGHT, DELIBERATELY NOT RE-GATED ON WIDTH: a 1280x420 desktop
+     window has the same problem and wants the same answer. A short viewport
+     needs a short card whoever is holding it.
+     These are the base values from :1038-1210, restated -- not new numbers. */
+  /* THE SHELF CHROME AS WELL AS THE CARD, because the desktop band sets both and
+     restating only the card left ~370px of desktop whitespace in a 390px-tall
+     window -- roughly one extra screen of scrolling to reach the same products,
+     and 168px (43% of the window) above the first card before any product shows.
+     Base values, restated: .shop 28/40 (desktop 64/60), .shelves 44 (64),
+     .deal-shelf 12/12 (64/30), .shelf-heading 6 (16), .product-grid bottom 28
+     (46). HORIZONTAL padding is deliberately NOT restated: `var(--gutter)` is
+     18px at 844 wide, which is already the base value.
+     `.shelf-price h3` is deliberately NOT restated either -- at 844 the desktop
+     `clamp(78px,7.6vw,108px)` resolves to 78px, which is SMALLER than the base
+     `clamp(40px,11.5vw,84px)` at 84px, so the desktop rule is the better one here. */
+  .shop{padding:28px 0 40px}
+  .shelves{margin-top:44px}
+  .shelf-heading{margin-bottom:6px}
+  .product-grid{padding-bottom:28px}
+  /* `scroll-margin-top:0` is the DESKTOP value, not a base one — the base is
+     -19px. It is right here because this band unpins the nav (`position:absolute`)
+     and sets `scroll-padding-top:12px`, so there is no fixed chrome to compensate
+     for; but it is a choice, not a restatement, and saying so is the point. */
+  .deal-shelf{--visual-h:192px;scroll-margin-top:0;padding:12px 0 12px}
+  .product-card{flex-basis:min(82vw,340px);min-height:370px}
+  .product-card::before{width:192px;height:192px;top:14px}
+  .product-card::after{left:18px;right:18px}
+  .product-card-copy{min-height:0;padding:9px 16px 9px}
+  .product-card-copy h4{font-size:18px;margin:8px 0 6px}
+  .product-size{margin-top:5px;font-size:12px;line-height:1.2}
+  .product-brand.has-dots{min-height:20px}
+  .add-button{margin-top:10px}
 }
 
 /* ---------- short and wide: a phone held sideways ----------
@@ -2133,19 +2271,85 @@ html.motion.late-boot .hero-price-in{opacity:1!important}
   .ready-done,.console button,.cart-empty button,.empty-results button,
   .hero-dial button{
     border:1px solid ButtonText!important;background-color:ButtonFace!important;color:ButtonText!important}
+  /* THE PINK BAR WAS STILL MISSING, AND BELOW 760px IT IS THE ONLY PICKUP-LIST
+     TRIGGER THERE IS — `.nav-list` is display:none and `.cart-fab` does not
+     appear until 760. Its whole surface is a gradient plus a box-shadow and
+     forced-colors discards both, so it rendered as a transparent pill floating
+     over the product row. The comment above this block says "THE PHONE'S OWN
+     CHROME WAS IN NEITHER LIST" and then added `.stages a`, `.toast` and
+     `.hero-dial button` — and missed the one control a phone cannot shop
+     without. `.cart-fab` is the same thing on a desktop. */
+  .mobile-pickup-bar,.cart-fab{
+    border:1px solid ButtonText!important;background-color:ButtonFace!important;
+    background-image:none!important;color:ButtonText!important}
+  /* `b` ONLY. `.mobile-pickup-bar strong` is the cash total — plain text inside
+     the button — and giving it a face and a border rendered the one drawer
+     trigger a phone has as two nested buttons. The `b` is the count disc, which
+     genuinely is a chip. */
+  .mobile-pickup-bar b,.cart-fab b{
+    background-color:ButtonFace!important;color:ButtonText!important;border:1px solid ButtonText!important}
+  /* The free-delivery meter's only ink is a gradient over a translucent track,
+     so in this mode the bar reads as permanently empty however full it is. */
+  .delivery-meter i{border:1px solid CanvasText!important}
+  .delivery-meter i span{background-color:Highlight!important;background-image:none!important}
+  /* AND THE BOOT SPLASH, which is the worst of them: `.boot`'s ground is a
+     radial-gradient with no background-colour, so forced-colors leaves it
+     TRANSPARENT — while `touch-action:none` still swallows every tap and
+     `html.is-booting{overflow-y:hidden}` still stops the page scrolling. A
+     high-contrast visitor saw a storefront that looked fine and was completely
+     dead for up to nine seconds. */
+  .boot{background-color:Canvas!important;background-image:none!important}
   .stages a,.toast,.request-ready textarea{
     background-color:Canvas!important;background-image:none!important;
     border:1px solid CanvasText!important;color:CanvasText!important}
   /* Same precedent as `.variant-dots button[aria-current]` above: the selected
      state has to survive, or a high-contrast visitor cannot tell which shelf
      they are on. */
-  .stages a.is-active{background-color:Highlight!important;color:HighlightText!important}
-  .add-button:disabled,.cart-summary>button:disabled{color:GrayText!important;border-color:GrayText!important}
+  /* AND THE `b` INSIDE IT, or the active tile is the ONE unreadable tile.
+     The price lives in a child -- `<a ...><b>2 / $5</b></a>` -- and `.stages b`
+     carries its own `color:#fff` at (0,1,1), so it never inherits
+     `HighlightText` from the anchor. forced-colors then forces that author
+     colour to `CanvasText`, leaving CanvasText on Highlight: ~1.3:1 in the
+     Aquatic theme, ~2.4:1 in the default. The two INACTIVE tiles are correct,
+     so the shelf the shopper is actually standing in was the only one they
+     could not read -- the exact inverse of what this rule was added to do. */
+  /* AN OUTLINE, NOT A FILL, AND THIS IS THE THIRD ATTEMPT AT THIS ONE RULE.
+     Measured in Chromium with forced-colors emulated: on `.stages a`, EVERY
+     system colour resolves to white — `Canvas`, `ButtonFace`, `LinkText` and
+     `Highlight` alike — while the identical declaration on a fresh <a> appended
+     to <body> resolves `Highlight` to rgba(55,0,110,.8) correctly. So the
+     background of this element is being forced by the engine whatever is
+     declared, and a fill-based selected state is unreachable here. The first
+     version of this rule left CanvasText on Highlight; the second left
+     white-on-white; both were written from the spec rather than from the page.
+     Outline and border colours ARE honoured — that is how these tiles get their
+     shape at all, one rule above — so the selected state is a 3px inset outline
+     and the ink stays CanvasText, which is black on the forced white. Readable
+     by construction rather than by whichever palette the visitor has chosen. */
+  .stages a.is-active{outline:3px solid CanvasText!important;outline-offset:-4px!important}
+  .stages a.is-active,.stages a.is-active b{color:CanvasText!important}
+  .add-button:disabled,.cart-summary>button:disabled,
+  .cart-summary>button[aria-disabled="true"]{color:GrayText!important;border-color:GrayText!important}
   /* Which product the card is showing is carried by the dot's FILL, and
      ButtonFace flattens all four to the same white. Highlight is the system's
      own "this one is selected". */
   .variant-dots button[aria-current="true"],.variant-dots button.is-current{
     background-color:Highlight!important;border-color:Highlight!important}
+  /* The hero dial needed the same treatment and did not get it in the same
+     edit. Its state lives entirely in `::before` backgrounds and an `<i>`
+     (:494-499), all of which forced-colors flattens, and the rule above that
+     made these three buttons visible gave them all the same ButtonFace -- so a
+     high-contrast visitor got three identical WCAG 2.2.2 pause/advance controls
+     with no way to tell which hero stage is showing or whether it is paused. */
+  /* TWO DIFFERENT PAIRS, because beast.js sets `aria-pressed` ONLY on the button
+     that already carries `aria-current` — so a single shared declaration made
+     "running" and "paused" render identically and the pause state stayed
+     invisible, which is the whole of WCAG 2.2.2. Inverting the pair for the
+     paused state is the only way to show it with system colours alone. */
+  .hero-dial button[aria-current="true"]{
+    background-color:Highlight!important;color:HighlightText!important;border-color:Highlight!important}
+  .hero-dial button[aria-pressed="true"]{
+    background-color:HighlightText!important;color:Highlight!important;border-color:Highlight!important}
   /* The scrim behind a dialog inverts to near-white and stops reading as
      "everything behind this is inert", so it is replaced by the panel border
      above doing that job instead. */
@@ -2238,7 +2442,24 @@ html.motion.late-boot .hero-price-in{opacity:1!important}
      It was on the hide-list instead until 2026-09-13, and taking it off the
      hide-list without putting it on this one traded a missing line for an
      unreadable one. */
-  .product-brand,.product-size,.shelf-note,.stock-note{color:#333!important}
+  /* TRAP 58, ONE SURFACE FURTHER ALONG. The colour list below covers
+     `.rules *`, `.sources *`, `.plate *` and six more -- but not `.shop *`.
+     `.shop` itself is given `#111` above, and that inherits; a child setting
+     its OWN colour does not take it. `.display .accent{color:var(--cyan)}`
+     (:144) is exactly that child, so the page's main heading printed as
+     "THE WHOLE" followed by a ghost: `--cyan` is `#00d5ff`, relative luminance
+     0.548109, which is (1.05)/(0.598109) = 1.76:1 on paper.
+     IT MUST SIT ABOVE THE `#333` RULE, NOT BELOW IT. `.shop *` is (0,1,0) and
+     so is `.product-brand`; equal specificity is decided by source order, so
+     appending it to the list at the foot of this block would silently flatten
+     the sheet's one deliberate grey tier to black. */
+  .shop *,.footer *{color:#111!important}
+  /* `.print-variants` is at (0,1,0) too and sits ABOVE `.shop *`, so it lost —
+     the per-card "every product on this shelf" list printed #111 and the sheet's
+     one deliberate grey tier collapsed anyway. I guarded against exactly this
+     for the rule below and missed the identical rule above it. */
+  .product-brand,.product-size,.shelf-note,.stock-note,
+  .print-variants,.print-variants li{color:#333!important}
   /* THE PART THAT TELLS A PERSON HOW TO ASK. Measured off the rasterised PDF
      before this: "Text your list to (323) 301-9200." at 3.68:1, the three order
      steps at 2.88:1, the six towns and every kicker at 3.01:1, "ON THE WHEEL" at
