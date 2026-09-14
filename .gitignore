@@ -39,7 +39,8 @@ products.previous-*.js
 
 # the built brief — the HANDOFF*.md rule above only covers .md
 handoff-prompt.html
-# the workspace's own README; the repo's README.md is the public one
+# the workspace's own README. There is no public README.md any more — it was deleted
+# 2026-09-13 at the owner's instruction and must not come back.
 README-WORKSPACE.md
 
 # the owner's original supplier photographs

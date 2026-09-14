@@ -1465,7 +1465,7 @@
      is `.mobile-pickup-bar` — and renderCart() sets that [hidden] the moment
      the cart empties, fifteen statements after invalidateStaleRequest() has
      already focused it. `.focus()` on a display:none element is a silent no-op
-     and the virtual cursor drops to the top of a 5,000px page. */
+     and the virtual cursor lands at the top of a 5,000px page. */
   function restoreFocus(back) {
     const shown = (n) => !!(n && n.isConnected && !n.hidden && n.getClientRects().length);
     const fallback = [document.querySelector(".nav-list"),

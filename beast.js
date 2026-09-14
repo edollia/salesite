@@ -364,6 +364,12 @@
     };
     return {
       W, H,
+      /* WHICH PLATE THE <picture> ACTUALLY CHOSE, carried out of here so the
+         line-up can use it. The browser picked it with the project's one
+         canonical condition — `(min-aspect-ratio:1/1), (min-width:760px)` — so
+         reading the result back is not a second copy of that rule to drift out
+         of step with the stylesheet; it IS the rule, already evaluated. */
+      portrait: key === "portal-mobile",
       cx: offset(raw[0], W - rw) + p.cx * rw,
       cy: offset(raw[1], H - rh) + p.cy * rh,
       a: p.a * rw,
@@ -488,16 +494,16 @@
        line-up. With that fixed, the coupling is safe and necessary: without it
        the ceiling shrank four bottles to 47x30 px and clustered them in the
        middle of a 538 px disc rather than showing two readable ones. */
-    const shortestHeight = (count, span, scale) => Math.min(...all.map((row) =>
-      rowUnit(row, count, span) * scale * Math.min(...relsOf(row, count))));
+    const shortestHeight = (count, span, scales) => Math.min(...all.map((row, i) =>
+      rowUnit(row, count, span) * scales[i] * Math.min(...relsOf(row, count))));
 
     /* Where each bottle goes, as numbers, before anything is written to the DOM.
        Everything downstream reads this, including the collision passes. */
-    const plan = (count, scale, lo) => {
+    const plan = (count, scales, lo) => {
       const span = Math.max(120, hi - lo);
-      return all.map((row) => {
+      return all.map((row, i) => {
         const shown = visibleOf(row, count);
-        const unit = rowUnit(row, count, span) * scale;
+        const unit = rowUnit(row, count, span) * scales[i];
         const widths = shown.map((b) => unit * b.rel * b.ar);
         const total = widths.reduce((sum, w) => sum + w, 0);
         const slots = Math.max(1, shown.length - 1);
@@ -532,9 +538,20 @@
     };
 
     /* The deepest thing the line-up has run into, and the two ways out of it. */
+    /* SHRINK IS PER STAGE NOW; PUSH IS STILL SHARED, and the asymmetry is the
+       point. `lo` is one number — every stage is laid out along the same span,
+       so a slide is genuinely common to all of them. A SHRINK is not: it is one
+       stage's answer to one stage's collision with the price block, and the
+       stages are never on screen together. Sharing it meant whichever stage hit
+       `.hero-price` first shrank the other two for a clearance they never
+       needed, which is why `8-each` sat at 17.1% of the hero at 320x568 while
+       nothing was in its way. §11 already makes the UNITS per stage by design;
+       the collision remedy was the one place that had not caught up. */
     const clash = (layout) => {
-      let push = 0, shrink = 0;
-      for (const row of layout) {
+      let push = 0;
+      const shrinks = layout.map(() => 0);
+      layout.forEach((row, i) => {
+        const bump = (v) => { shrinks[i] = Math.max(shrinks[i], v); };
         for (const spot of row) {
           if (spot.hidden) continue;
           /* The wordmark: slide clear of it or leave it alone. Never shrink,
@@ -565,7 +582,7 @@
                wordmark out before either remedy is considered. Push-only was
                belt as well as braces, and the belt was the thing with the
                cliff in it. */
-            shrink = Math.max(shrink, (w.b + STAGE_TEXT_CLEAR - spot.t) / Math.max(1, spot.height));
+            bump((w.b + STAGE_TEXT_CLEAR - spot.t) / Math.max(1, spot.height));
           }
           for (const o of obstacles) {
             if (spot.r <= o.l || spot.l >= o.r || spot.base <= o.t || spot.t >= o.b) continue;
@@ -576,11 +593,11 @@
                losing bottles — the line-up lost two products as the window
                got WIDER. There, coming down is the only sane remedy. */
             if (o.r < pod.cx && o.r < spot.r) push = Math.max(push, o.r + STAGE_CLEAR - spot.l);
-            shrink = Math.max(shrink, (o.b + STAGE_CLEAR - spot.t) / Math.max(1, spot.height));
+            bump((o.b + STAGE_CLEAR - spot.t) / Math.max(1, spot.height));
           }
         }
-      }
-      return { push, shrink };
+      });
+      return { push, shrinks };
     };
 
     /* THREE ON A PORTRAIT HERO, FOUR ON A LANDSCAPE ONE — and this is the fix
@@ -596,22 +613,32 @@
        451px of row on a 390px screen. Not a wider disc, not a re-crop, not a
        bigger STAGE_MAXH, not less nesting — the screen is not wide enough. The
        only lever that moves is how many things share the width.
-       `pod.W < pod.H` is a MEASUREMENT of the hero box, not a breakpoint: there
-       is no second copy of 760 in here to drift out of step with the stylesheet,
-       and a landscape window of any size keeps all four. */
-    let count = Math.min(pod.W < pod.H ? 3 : Infinity, ...all.map((row) => row.length));
+       THE GATE IS THE PLATE, not a number and not `pod.W < pod.H`. The first
+       version used the hero box's own aspect, which flips at 1:1 — and at a
+       fixed 900px height that lands the count step at width ~904, in the middle
+       of the desktop band, where `beast-resize.py` correctly called it an
+       undeclared jump: the line-up went 181px -> 145px wide across eight pixels
+       of window. `pod.portrait` is the plate the <picture> element chose, using
+       `(min-aspect-ratio:1/1), (min-width:760px)` — so the step now falls
+       exactly on 760, which is this project's ONE declared breakpoint, and the
+       artwork and the line-up can never disagree about which layout they are in. */
+    let count = Math.min(pod.portrait ? 3 : Infinity, ...all.map((row) => row.length));
     let lo = Math.max(pod.cx - pod.a * STAGE_SPREAD, margin);
-    let scale = 1;
+    let scales = all.map(() => 1);
     // a bottle too short to read is worse than one bottle fewer
     const fitCount = () => {
-      while (count > 2 && shortestHeight(count, hi - lo, scale) < floor) count -= 1;
+      while (count > 2 && shortestHeight(count, hi - lo, scales) < floor) count -= 1;
     };
     fitCount();
-    let layout = plan(count, scale, lo);
+    let layout = plan(count, scales, lo);
     window.__stagePasses = [];
     for (let pass = 0; pass < 5; pass += 1) {
-      const { push, shrink } = clash(layout);
-      if (window.__stageDebug) window.__stagePasses.push({ pass, push: +push.toFixed(1), shrink: +shrink.toFixed(3), lo: +lo.toFixed(1), scale: +scale.toFixed(3) });
+      const { push, shrinks } = clash(layout);
+      /* The push-or-shrink decision below is still taken once, on the WORST
+         stage, because `lo` is shared and a slide has to be judged against the
+         biggest thing it would save. Only the application is per stage. */
+      const shrink = Math.max(...shrinks);
+      if (window.__stageDebug) window.__stagePasses.push({ pass, push: +push.toFixed(1), shrinks: shrinks.map((s) => +s.toFixed(3)), lo: +lo.toFixed(1), scales: scales.map((s) => +s.toFixed(3)) });
       if (!push && shrink <= 0) break;
       /* Take the cheaper way out, measured as a fraction of what it costs. A
          softener overlapping the price block by four pixels used to trigger a
@@ -627,14 +654,14 @@
          the count falling, and the centred layout refuses the slide outright. */
       const room = lo + push < hi - 200;
       if (push > 0 && room && push / Math.max(1, hi - lo) <= shrink) lo += push;
-      else if (shrink > 0) scale *= Math.max(.6, 1 - shrink);
+      else if (shrink > 0) scales = scales.map((s, i) => s * Math.max(.6, 1 - shrinks[i]));
       else if (push > 0 && room) lo += push;
       else break;
       fitCount();
-      layout = plan(count, scale, lo);
+      layout = plan(count, scales, lo);
     }
 
-    if (window.__stageDebug) window.__stageLast = { lo, scale, count, obstacles, hi, passes: window.__stagePasses };
+    if (window.__stageDebug) window.__stageLast = { lo, scales, count, obstacles, hi, passes: window.__stagePasses };
     layout.forEach((row) => row.forEach((spot) => {
       const node = spot.b.node;
       node.hidden = !!spot.hidden || node.dataset.broken === "1";
