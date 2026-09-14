@@ -217,10 +217,64 @@
      little". One word. The + is drawn by CSS as a chip on the right, so it is
      part of the button's shape rather than four more characters of label, and
      the accessible name below still says what is being added. */
+  /* THE BUTTON SAYS WHEN THERE IS NO MORE OF IT. Owner, 2026-09-13: "for calm
+     44oz if i add 1 ok, if i add 2 ok it shows, but if i try to add 3 and
+     there's no 3 in stock the add button should become 'no more in stock'. fix
+     it properly, my solution is just an idea, you know best."
+
+     Before this, hitting the cap fired a toast and left the button reading
+     "ADDED 2" — which is a control that looks addable, refusing silently,
+     three seconds after the toast has gone.
+
+     Four decisions worth writing down:
+     - IT IS NOT `disabled`. A disabled button loses focus and stops being
+       announced, and this project already shipped that defect once (the SPIN
+       button disabled itself while holding focus for 5.2s). Pressing it again
+       re-fires the toast, which is the right answer for someone who did not
+       see it the first time.
+     - IT NAMES THE COUNT — "ALL 4 ADDED" — rather than "NO MORE IN STOCK".
+       "ALL n ADDED" continues the "ADDED n" the button already says on the way
+       up, so the state reads as the end of a sequence rather than an error; the
+       shopper has not done anything wrong. It is also short enough to fit: the
+       label box is 188px at 375px wide and 20px display type, which "NO MORE IN
+       STOCK" is not.
+     - IT IS PER PRODUCT, NOT PER CARD. A card rotates through up to eight
+       products every 2s, so the state has to be recomputed from the variant the
+       button currently carries or it will say "ALL 4 ADDED" about the wrong
+       bottle — the same failure class as the mis-add defect measured at 2/22,
+       5/40 and 10/32.
+     - IT SURVIVES A RELOAD AND A SECOND TAB, because it is derived from the
+       cart at render time rather than set once when the press happened. */
+  function heldOf(id) { return state.cart.get(id) || 0; }
+  function isMaxed(product) {
+    return product.inStock && product.pricingStatus === "active"
+      && heldOf(product.id) >= product.inventoryQuantity;
+  }
   function addButtonLabel(product) {
     if (!product.inStock) return "OUT OF STOCK";
     if (product.pricingStatus === "pending") return "PRICE TO BE SET";
+    if (isMaxed(product)) return `ALL ${heldOf(product.id)} ADDED`;
     return "ADD";
+  }
+  /* One place that knows what this button looks like in every state, so the
+     card renderer, the variant swap and every cart change cannot disagree. */
+  function refreshAddButton(button, product) {
+    if (!button || !product) return;
+    const maxed = isMaxed(product);
+    button.dataset.add = product.id;
+    button.disabled = !product.inStock || product.pricingStatus === "pending";
+    button.classList.toggle("is-maxed", maxed);
+    button.textContent = addButtonLabel(product);
+    button.setAttribute("aria-label", maxed
+      ? `${labelName(product)}, ${product.size} — all ${heldOf(product.id)} in stock are on your list`
+      : `${addButtonLabel(product)} — ${labelName(product)}, ${product.size}`);
+    button.title = !product.inStock
+      ? "This item is not currently available to add."
+      : product.pricingStatus === "pending"
+        ? "In stock; it can go on a list once a price is set."
+        : maxed
+          ? `That is all ${fullName(product)} I have.`
+          : `Add ${fullName(product)} to the pickup list.`;
   }
 
   function applyDisplaySettings(next = window.StockUpSettings?.get?.() || state.displaySettings) {
@@ -238,21 +292,42 @@
     else startBrandRotation();
   }
 
-  /* Same-brand products share one rotating card. Three exceptions:
-     - an explicit `cardGroup` on the product wins. Eight Tide items sat on the
-       $8 shelf behind one brand key; they are three different things (big
-       liquid bottles, evo tiles, Power PODS) and now get a card each.
+  /* ONE PRODUCT LINE, ONE CARD — the key is brand + category, and both fields
+     are already on every product.
+
+     Owner, 2026-09-13, looking at their own phone: "simply all in one green
+     sticker shud be a part of the [rest of the] other med bottles not its own,
+     same with tide pods, all under one, and gain pods, bc seems like some are
+     on its own and that's not ok."
+
+     They had two cards side by side on the $5 shelf BOTH titled "Simply All in
+     One" — one 32 fl oz, one 31. Cause: five Tide Simply bottles share one
+     brand key, MAX_CARD_VARIANTS was 4, and the spill put the fifth on a card
+     of its own. The split is "the first four in file order", so which product
+     gets orphaned is an accident of where it was typed.
+
+     Brand ALONE is too coarse — it puts the evo tiles behind the pod tubs —
+     which is why an explicit `cardGroup` field was added. But a hand-kept list
+     fails by omission, and it had already failed twice: the four pod tubs from
+     the 09-12 and 09-13 restocks never got `tide-pods`, so they rendered as a
+     SECOND Tide pods card; and `gain-hibiscus` was only ever applied to the
+     32-count tub, so the field that exists to MERGE products was isolating one
+     from its own 25-count twin. `category` cannot be forgotten — every record
+     carries it, and it is a business statement the manifest already makes
+     rather than a family guessed from the product name.
+
+     Two exceptions:
      - paper goods: toilet paper and paper towels are different things and get
        a card each;
-     - a group longer than MAX_CARD_VARIANTS spills into a second card, so no
-       product ever hides behind more than four dots. */
-  const MAX_CARD_VARIANTS = 4;
+     - a group longer than MAX_CARD_VARIANTS spills into a second card. That is
+       a SAFETY VALVE, not a layout rule — beast-qa.py asserts it never fires. */
+  const MAX_CARD_VARIANTS = 8;
   function groupByBrand(items) {
     const groups = new Map();
     items.forEach((product) => {
       const key = product.cardGroup ? `group:${product.cardGroup}`
         : product.category === "Paper goods" ? `id:${product.id}`
-        : normalize(product.brand);
+        : `${normalize(product.brand)}|${normalize(product.category)}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key).push(product);
     });
@@ -334,10 +409,8 @@
       stock.hidden = state.displaySettings.showAvailability !== true;
     }
     const button = article.querySelector("[data-add]");
-    button.dataset.add = product.id;
-    button.disabled = !product.inStock || product.pricingStatus === "pending";
     button.classList.remove("is-added");
-    button.textContent = addButtonLabel(product);
+    refreshAddButton(button, product);
     button.title = !product.inStock
       ? "This item is not currently available to add."
       : product.pricingStatus === "pending"
@@ -480,12 +553,7 @@
     const button = document.createElement("button");
     button.type = "button";
     button.className = "add-button";
-    button.dataset.add = product.id;
-    button.disabled = !product.inStock || product.pricingStatus === "pending";
-    button.textContent = addButtonLabel(product);
-    button.setAttribute("aria-label", `${addButtonLabel(product)} — ${labelName(product)}, ${product.size}`);
-    if (!product.inStock) button.title = "This item is not currently available to add.";
-    else if (product.pricingStatus === "pending") button.title = "In stock; it can go on a list once a price is set.";
+    refreshAddButton(button, product);
     copy.append(brand, title, size, stock);
     copy.append(button);
     article.append(visual, copy);
@@ -837,7 +905,16 @@
   }
 
   function fulfillmentLine(fulfillment, itemCount) {
-    if (fulfillment !== "Local delivery") return "Pickup — confirm the place, the time, and what is still available.";
+    /* Just "Pickup." since 2026-09-13, at the owner's instruction: "simpler so
+       nothing unnecessary". The sentence it replaces — "confirm the place, the
+       time, and what is still available" — was three instructions to a seller
+       who already knows all three, in a message they receive dozens of times.
+       THE DELIVERY LINES BELOW ARE NOT SHORTENED and must not be: delivery
+       always carries a fee, that fee is deliberately NOT in the total above it,
+       and this line is the only place in the whole message that says so. A
+       shopper reading a total that excludes a charge is the one thing this
+       document cannot get wrong. */
+    if (fulfillment !== "Local delivery") return "Pickup.";
     if (!deliveryEnabled()) return "Local delivery is not running at the moment.";
     if (deliveryIsFree(itemCount)) return "Local delivery — free on this list";
     const needed = deliveryPrizeMinItems();
@@ -880,6 +957,17 @@
     if (panel.dataset.builtFor === cartSignature()) return;
     closeRequest();
     showToast("Your list changed, so that request is out of date. Make it again.");
+  }
+
+  /* Every ADD button re-reads the list whenever the list moves. Without this,
+     removing an item in the drawer left the card's button still reading
+     "ALL 4 ADDED" for a product the shopper now holds none of — and the cart
+     syncs across tabs, so the stale one could be in a window nobody touched. */
+  function refreshAllAddButtons() {
+    document.querySelectorAll("[data-add]").forEach((button) => {
+      const product = productById.get(button.dataset.add);
+      if (product && !button.classList.contains("is-added")) refreshAddButton(button, product);
+    });
   }
 
   function renderCart() {
@@ -1030,6 +1118,7 @@
       dom.checkout.disabled = !summary.valid;
       dom.checkout.title = summary.valid ? "Write the request and send it as a text" : summary.warnings.join(" ");
     }
+    refreshAllAddButtons();
   }
 
   function announceQuantity(product, before, after) {
@@ -1056,7 +1145,10 @@
     if (!product || !product.inStock || product.pricingStatus !== "active") return;
     const before = state.cart.get(id) || 0;
     if (before >= product.inventoryQuantity) {
-      // saying "Added" while silently refusing is the worst of both
+      // saying "Added" while silently refusing is the worst of both — and so is
+      // a toast that vanishes over a button still reading "ADDED 2"
+      const spent = [...document.querySelectorAll("[data-add]")].find((node) => node.dataset.add === id);
+      if (spent) { spent.classList.remove("is-added"); refreshAddButton(spent, product); }
       showToast(`Only ${product.inventoryQuantity} ${fullName(product)} in stock.`);
       return;
     }
@@ -1085,8 +1177,10 @@
       flyPlusOne(button, count);
       window.setTimeout(() => {
         if (button.dataset.add === id) {
+          // addButtonLabel is cart-aware now, so the eleventh press of a
+          // ten-in-stock product settles on "ALL 10 ADDED" rather than "ADD"
           button.classList.remove("is-added");
-          button.textContent = addButtonLabel(product);
+          refreshAddButton(button, product);
         }
       }, 1500);
     }
@@ -1157,6 +1251,55 @@
     document.querySelector(".skip-link"),
     document.querySelector(".cart-fab"), document.querySelector(".mobile-pickup-bar")
   ].filter(Boolean);
+  /* THE PAGE MUST NOT SCROLL BEHIND THE PICKUP LIST.
+     Owner, 2026-09-13, on their iPhone: "pickup list when opened on mobile you
+     can still scroll underneath the site, it's pretty bad."
+
+     `body.overlay-open{overflow:hidden}` is in beast.css and is all there was.
+     It works on a desktop and iOS Safari ignores it for touch panning — that
+     is long-standing WebKit behaviour, not a bug here. The wheel and the
+     request dialogs did not have the problem because they are native
+     <dialog> elements opened with showModal(), which the browser scroll-locks
+     itself. The pickup drawer is an <aside role="dialog">, so it got nothing.
+
+     Pinning the body at its own offset is what actually holds on iOS. Notes on
+     the things that can go wrong with it, all checked:
+     - the scroll position must be restored EXACTLY, or closing the list throws
+       the shopper back to the top of a 5,000px page;
+     - `.nav`, `.cart-fab` and `.mobile-pickup-bar` are position:fixed and stay
+       put, because a fixed child resolves against the viewport and nothing
+       here sets a transform on an ancestor;
+     - it must be idempotent. setDrawerOpen(true) twice must not save a scroll
+       offset of 0 over the real one, which would scroll the page to the top on
+       close. `lockedAt` being null IS the "not locked" state;
+     - the boot overlay uses the same overflow:hidden rule through
+       `is-booting` and is deliberately NOT given this treatment: boot happens
+       at scroll 0, and position-fixing the body during the hero intro would
+       fight the entrance timeline. */
+  let lockedAt = null;
+  function lockPage(lock) {
+    const body = document.body;
+    if (lock) {
+      if (lockedAt !== null) return;
+      lockedAt = window.scrollY || window.pageYOffset || 0;
+      body.style.position = "fixed";
+      body.style.top = `-${lockedAt}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+    } else {
+      if (lockedAt === null) return;
+      const back = lockedAt;
+      lockedAt = null;
+      body.style.position = "";
+      body.style.top = "";
+      body.style.left = "";
+      body.style.right = "";
+      body.style.width = "";
+      window.scrollTo(0, back);
+    }
+  }
+
   function setDrawerOpen(open) {
     if (!dom.drawer) return;
     dom.drawer.classList.toggle("is-open", open);
@@ -1165,6 +1308,7 @@
     pageRegions().forEach((node) => { node.inert = open; });
     if (dom.scrim) dom.scrim.hidden = !open;
     document.body.classList.toggle("overlay-open", open);
+    lockPage(open);
   }
 
   function openDrawer(trigger) {
@@ -1223,11 +1367,19 @@
       "",
       // the drawer shows "—" for an unrequestable cart; the two documents must
       // never disagree, even though the UI blocks this path
+      /* "Total:", not "Estimated cash total, to confirm:" — owner, 2026-09-13,
+         with their own mock-up of the whole message. The invalid branch keeps
+         its sentence: an incomplete pair is the one case where a bare number
+         would be wrong, and the drawer prints the same words.
+         THE CLOSING LINE IS GONE at their instruction. It read "SEE IT. PAY
+         CASH IN PERSON. NEVER SEND A DEPOSIT." and it was the only sentence in
+         this message warning the BUYER — who keeps it on their phone — not to
+         send money ahead. Said so, and removed it; it is their business and
+         their call. The rules plate on the page still carries it. */
       summary.valid
-        ? `Estimated cash total, to confirm: ${money.format(summary.cashTotal)}`
+        ? `Total: ${money.format(summary.cashTotal)}`
         : "Total pending — a pair on one shelf is still incomplete.",
-      fulfillmentLine(fulfillment, summary.itemCount),
-      "SEE IT. PAY CASH IN PERSON. NEVER SEND A DEPOSIT."
+      fulfillmentLine(fulfillment, summary.itemCount)
     );
     /* The prize is stated, never subtracted, and it is a CLAIM the seller
        settles — a static page cannot enforce one spin per person, so it must
@@ -1241,8 +1393,12 @@
          nothing else says it, and it has to be said. */
       const saidAlready = state.prize.delivery && fulfillment === "Local delivery";
       const note = saidAlready ? "" : standing.note;
-      lines.splice(lines.length - 1, 0,
-        `Wheel prize claimed: ${state.prize.label}${note ? ` — ${note.toLowerCase()}` : ""}`);
+      /* APPENDED, not spliced. This used to insert at `lines.length - 1` to sit
+         above the closing "SEE IT. PAY CASH..." line; that line was removed on
+         2026-09-13, so the same index would now push the prize ABOVE the
+         fulfilment line and separate the delivery prize from the delivery
+         sentence that states its minimum. */
+      lines.push(`Wheel prize claimed: ${state.prize.label}${note ? ` — ${note.toLowerCase()}` : ""}`);
     }
     /* Flattened and placed LAST. A note is free text going into a document a
        seller reads as machine output: three lines of it, second line reading
@@ -1292,9 +1448,12 @@
     }
     if (heading) heading.textContent = sms ? "READY TO SEND" : "COPY THIS";
     if (intro) {
+      // Abbreviated 2026-09-13 at the owner's request. The heading above
+      // already says READY TO SEND; this only has to answer "has anything
+      // happened yet?" and "what does the button do?".
       intro.textContent = sms
-        ? "Nothing has been sent yet. This opens your messages app with the whole request already written — you press send."
-        : "Nothing was sent. Copy it and send it to the seller.";
+        ? "Nothing is sent yet. This opens your messages app with the request already written."
+        : "Nothing is sent yet. Copy it and send it to the seller.";
     }
     dom.orderSuccess?.classList.toggle("has-sms", !!sms);
   }

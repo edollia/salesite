@@ -45,7 +45,7 @@
    so the two offsets composed to 352 px at 1440 and 320 px on a phone, and
    tapping the $8 tile left you looking at the previous shelf's ADD button. */
 html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;
-  scroll-padding-top:calc(var(--nav-h) + 96px);scroll-padding-bottom:88px}
+  scroll-padding-top:calc(var(--nav-h) + 78px);scroll-padding-bottom:88px}
 body{margin:0;overflow-x:clip;background:var(--navy);color:var(--foam);font-family:var(--body);font-weight:600;-webkit-font-smoothing:antialiased}
 body.overlay-open,body.is-booting{overflow:hidden}
 [hidden]{display:none!important}
@@ -64,7 +64,19 @@ button{cursor:pointer}
    off. It is removed, and nothing accessible goes with it: the keyboard ring
    above is :focus-visible, which a tap never triggers, and the nav's own
    underline is the pressed state. */
-a,button,summary,[role=button],input,select,textarea{-webkit-tap-highlight-color:transparent}
+/* EVERY element, 2026-09-13, not just the interactive ones. Owner, from their
+   iPhone: "when an item gets clicked or tapped that thing appears and needs to
+   be fixed", with a screenshot of a hard square-cornered rectangle painted over
+   a product photograph.
+   That is the same platform tap highlight as the nav links above, one element
+   deeper. The list this rule used to carry — a,button,summary,[role=button],
+   input,select,textarea — does not include a DIV, and the thing a thumb lands
+   on inside a card is `.product-image-wrap` (position:absolute; inset:5px -4px
+   1px, so it spans the whole bay) inside `.product-visual`. script.js binds
+   pointerdown on the card to hold the rotation, which is enough to make iOS
+   treat it as tappable and paint the highlight over its box. A selector list
+   only covers the tags someone thought of; `*` covers the next one too. */
+*{-webkit-tap-highlight-color:transparent}
 /* ...and a MOUSE press must not leave the ring behind either. :focus-visible
    already handles that in every current browser; this is the belt for the
    in-page anchors, which are the ones the owner was pressing. */
@@ -135,8 +147,6 @@ a,button,summary,[role=button],input,select,textarea{-webkit-tap-highlight-color
 .brush{position:relative;display:inline-block;font:400 1em/1 var(--brush);color:var(--pink);text-transform:uppercase;transform:rotate(-3deg);text-shadow:0 2px 0 #fff,0 5px 0 #4a0c31,0 12px 22px rgba(0,0,0,.5);white-space:nowrap}
 .brush::after{content:"";position:absolute;left:4%;right:12%;bottom:-.12em;height:.14em;background:var(--pink);clip-path:polygon(0 35%,100% 0,100% 55%,60% 75%,0 100%)}
 .brush-sm{font-size:clamp(30px,7vw,46px)}
-/* "www" sits small above the domain, so the lockup reads as an address. */
-.nav-www{display:block;font:900 9px/1 var(--body);letter-spacing:.34em;color:var(--ice);opacity:.85;margin-bottom:2px}
 /* In the hero the stroke runs the full measure BEAST and the slogan now share,
    so it underscores the PHRASE. Inset it and it draws a box round the second
    line, which is exactly what made the lockup read as a name plus a tagline. */
@@ -202,7 +212,13 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 .nav-panther{width:44px;height:auto}
 .nav-lockup{position:relative;display:grid;line-height:.78;font-family:var(--display);text-transform:uppercase;letter-spacing:-.06em}
 .nav-beast{font-size:21px;padding-top:2px;background:var(--chrome-face);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
-.nav-stock{font-size:18px;color:var(--pink);font-family:var(--brush);letter-spacing:0;transform:rotate(-2deg);margin-top:2px}
+/* The "www" line above this is gone (owner, 2026-09-13), so the lockup is one
+   row and flex centring drops the domain to the panther's midline. translateY
+   lifts it back to where the eye had learned to read it. It is a transform
+   rather than a margin because a margin would change the header's layout
+   height, and nothing here is animated by GSAP — checked — so trap 1 does not
+   apply to this element. */
+.nav-stock{font-size:19px;color:var(--pink);font-family:var(--brush);letter-spacing:0;transform:translateY(-3px) rotate(-2deg);margin-top:0}
 .nav-links{display:none}
 .nav-list{border:1px solid rgba(141,235,255,.4);border-radius:999px;background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.03));display:flex;align-items:center;gap:9px;padding:6px 7px 6px 14px;font:900 9px/1 var(--display);letter-spacing:.1em;transition:box-shadow .3s,border-color .3s}
 @media(hover:hover){.nav-list:hover{border-color:var(--cyan);box-shadow:0 0 20px rgba(0,213,255,.45)}}
@@ -618,18 +634,38 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
 
 /* ---------- shop + price stages ---------- */
 .shop{position:relative;overflow-x:clip;background:radial-gradient(circle at 50% 6%,#0b3866 0,transparent 26%),linear-gradient(180deg,#04162d,#020917 55%,#051a33);padding:0 0 40px}
-/* The rattle. Three causes removed together, none of them reproducible headlessly
-   (integer scroll offsets and deterministic raster hide all of them):
-   1. scroll-snap-type on a position:sticky element is a known Chromium jitter
-      source, and it was dead weight — the tiles only ever overflowed at 320 px
-      with four of them, and there are three now. Measured at 15 widths.
-   2. The bar was not composited, so its full-width gradient, its two inset
-      highlights and its text re-rasterised on every scroll frame. will-change
-      promotes it, so a fractional trackpad offset translates a cached layer
-      instead of repainting one.
-   3. A BLURRED text-shadow inside a repainting sticky bar shimmers worst of all.
-      It is crisp now. */
-.stages{position:sticky;top:var(--nav-h);z-index:400;display:flex;gap:2px;overflow-x:auto;padding:6px 8px 9px;margin-bottom:48px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,inset 0 -2px 0 #07172a,0 12px 28px rgba(0,0,0,.32);scrollbar-width:none;will-change:transform}
+/* THE RATTLE. Confirmed by a human on a real iPhone, 2026-09-13: "the horizontal
+   menu of 2x5, 8 and 2/7 still vibrates on mobile when scrolling up and down."
+   It had been unconfirmed for five sessions and is now confirmed UNFIXED.
+
+   Two of the three earlier remedies stand and are kept: scroll-snap-type is
+   gone from this element (a known Chromium jitter source, and dead weight —
+   the tiles only overflowed at 320px when there were four, and there are
+   three), and the blurred text-shadow is crisp (a blurred shadow inside a
+   repainting sticky bar shimmers worst of all).
+
+   THE THIRD REMEDY WAS THE CAUSE, AND IT IS REMOVED. `will-change:transform`
+   was added to promote this bar to its own compositing layer so a fractional
+   trackpad offset would translate a cached layer instead of repainting one.
+   That is sound on a desktop and it is exactly wrong on iOS: WebKit positions
+   a COMPOSITED position:sticky element from the scrolling thread, using the
+   last committed scrolling tree, while everything around it is positioned by
+   the main thread. A scroll-direction reversal is precisely the moment iOS
+   re-commits that tree — momentum flips and the URL bar animates — so the
+   promoted layer lands a frame or more behind its surroundings. That is the
+   vibration, and it appears on the reversal in BOTH directions, which is what
+   the owner described.
+
+   The check that says this bar holds still (`beast-qa.py`) samples the bar's
+   top at two STATIC scroll positions 400ms apart, in desktop Chromium, with
+   `scrollBehavior:auto` making both an instant teleport. It cannot see this
+   and it never could. Do not trust it here; it has been renamed to say what it
+   actually measures.
+
+   If the repaint cost returns on a trackpad, the answer is a cheaper
+   background — not promotion. Do NOT put will-change, translateZ(0) or
+   backface-visibility back on a position:sticky element. */
+.stages{position:sticky;top:var(--nav-h);z-index:400;display:flex;gap:2px;overflow-x:auto;padding:6px 8px 9px;margin-bottom:48px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,inset 0 -2px 0 #07172a,0 12px 28px rgba(0,0,0,.32);scrollbar-width:none}
 .stages::-webkit-scrollbar{display:none}
 .stages a{position:relative;flex:1 1 0;min-width:84px;height:54px;scroll-margin-left:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;background:linear-gradient(180deg,#0a2d4e,#03142c);box-shadow:inset 0 1px 0 rgba(141,235,255,.3);text-shadow:0 2px 0 rgba(0,0,0,.6);transition:background .28s}
 .stages a:first-child{border-radius:18px 3px 3px 18px}.stages a:last-child{border-radius:3px 18px 18px 3px}
@@ -671,7 +707,7 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
    every bay of a real shop -- and the ONLY stage-coloured layer is the light,
    blended with `screen` so it brightens the wall towards its own hue instead of
    being averaged into it. Yellow light now reads as yellow light. */
-.deal-shelf{position:relative;padding:48px 0 24px;overflow:clip;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent);
+.deal-shelf{position:relative;padding:30px 0 18px;overflow:clip;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent);
   background:
     radial-gradient(ellipse 52% 300px at 50% 0,color-mix(in srgb,var(--stage) 9%,transparent),transparent 70%),
     linear-gradient(180deg,#061b31 0,#07182c 46%,#040f1d 100%);
@@ -704,7 +740,7 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
 /* the headline is an inline-block (.chrome needs a text-sized box), so the
    eyebrow has to be a block or a short eyebrow lands on the same line as a
    108px headline. */
-.shelf-price h3{margin-top:10px;color:#fff;font:900 clamp(52px,14vw,84px)/.82 var(--display);letter-spacing:-.08em;text-transform:uppercase}
+.shelf-price h3{margin-top:10px;color:#fff;font:900 clamp(40px,11.5vw,84px)/.82 var(--display);letter-spacing:-.08em;text-transform:uppercase}
 .shelf-info{margin-top:10px;max-width:530px}
 .shelf-note{font-weight:900;font-size:11px;letter-spacing:.16em;text-transform:uppercase;line-height:1.4;color:var(--stage);margin-top:0;max-width:34ch}
 /* NO scroll-snap. Measured with a real mouse: with `scroll-snap-type: x
@@ -744,7 +780,7 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
    The floor is placed off --visual-h, the same one variable the bay height and
    the per-product contact shadow are placed off, so the shelf cannot drift away
    from the feet standing on it the way the old one had. */
-.product-grid{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:14px 16px 40px;scroll-padding-left:16px;scrollbar-width:none;
+.product-grid{position:relative;display:flex;align-items:stretch;gap:6px;overflow-x:auto;overscroll-behavior-x:contain;padding:14px 16px 28px;scroll-padding-left:16px;scrollbar-width:none;
   --floor:calc(var(--visual-h) + 14px);
   /* lip = paint, the two light layers = screen, the cast shadow = paint */
   background-blend-mode:normal,screen,screen,normal;
@@ -796,14 +832,28 @@ img{-webkit-user-drag:none}
    "bottom shadows aren't at the right height" report. Measured, not guessed —
    the ink bottom sits 1 px inside the bay (.product-image-wrap's bottom inset)
    and the ellipse is 52 px tall, so its centre belongs at --visual-h - 1. */
-.deal-shelf{--visual-h:346px}
-.product-card{flex:0 0 min(82vw,340px);min-height:552px;position:relative;display:flex;flex-direction:column;transform-style:preserve-3d}
+/* PHONE SIZE PASS, 2026-09-13. Owner, from their own iPhone: "this whole UI is
+   too big especially for mobile users", and a screenshot of ONE Arm & Hammer
+   bottle filling the screen with no name, no size, no price and no ADD button
+   anywhere on it.
+   Measured at 375x553 — Safari with its toolbars, which is what a phone
+   actually gives a page, NOT the 390x844 the suite emulates: the card was
+   552.00px in a clear band of 412 (553 less the 72px fixed nav and the 69px
+   sticky price bar). 140px of it, 25.4%, could never be on screen at once, and
+   the ADD button sat 474px into the card. You could not see a product and the
+   button that buys it at the same time.
+   EVERY RULE IN THIS BLOCK IS THE PHONE ARRANGEMENT. The desktop values live in
+   the @media(min-width:760px) band and override each one, so shrinking here
+   cannot reach a laptop — that is how this stylesheet is built and it is why
+   these are base rules rather than a phone media query. */
+.deal-shelf{--visual-h:192px}
+.product-card{flex:0 0 min(82vw,340px);min-height:400px;position:relative;display:flex;flex-direction:column;transform-style:preserve-3d}
 /* The 290px chrome disc is gone. It was the single thing stopping this row
    from reading as a shelf: it gave every product the same silhouette and the
    same apparent size, and it drew a hard edge between neighbours. What is left
    is a soft wash of stage light BEHIND the product only -- no ring, no rim, no
    edge -- so the product's own outline is the shape you see. */
-.product-card::before{content:"";position:absolute;z-index:0;left:50%;top:26px;width:300px;height:300px;transform:translateX(-50%);border-radius:50%;pointer-events:none;
+.product-card::before{content:"";position:absolute;z-index:0;left:50%;top:14px;width:192px;height:192px;transform:translateX(-50%);border-radius:50%;pointer-events:none;
   background:radial-gradient(circle,color-mix(in srgb,var(--stage) 16%,transparent) 0 38%,transparent 68%)}
 .product-card::after{content:"";position:absolute;z-index:1;left:18px;right:18px;top:calc(var(--visual-h) - 27px);height:52px;border-radius:50%;background:radial-gradient(ellipse,color-mix(in srgb,var(--stage) 46%,transparent) 0 26%,rgba(0,0,0,.42) 48%,transparent 72%);pointer-events:none}
 .product-visual{flex:0 0 auto;height:var(--visual-h);position:relative;z-index:3;display:grid;place-items:end center;padding:10px 4px 0}
@@ -828,7 +878,7 @@ img{-webkit-user-drag:none}
   .product-card:hover::after{transform:scale(.94);opacity:.75}}
 .product-card::after{transition:transform .5s var(--ease-out),opacity .5s}
 .image-fallback{max-width:200px;padding:20px;text-align:center;font-weight:900;color:var(--ice)}
-.product-card-copy{position:relative;z-index:4;flex:1 1 auto;display:flex;flex-direction:column;min-height:200px;margin:0 5px;padding:18px 20px 21px;text-align:center;background:linear-gradient(180deg,rgba(10,43,73,.96),rgba(2,12,29,.98));border:1px solid rgba(210,240,255,.6);border-top:3px solid color-mix(in srgb,var(--stage) 70%,white);clip-path:polygon(8% 0,92% 0,100% 16px,100% 100%,0 100%,0 16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 0 #061326,0 12px 0 color-mix(in srgb,var(--stage) 58%,#061326)}
+.product-card-copy{position:relative;z-index:4;flex:1 1 auto;display:flex;flex-direction:column;min-height:0;margin:0 5px;padding:12px 16px 12px;text-align:center;background:linear-gradient(180deg,rgba(10,43,73,.96),rgba(2,12,29,.98));border:1px solid rgba(210,240,255,.6);border-top:3px solid color-mix(in srgb,var(--stage) 70%,white);clip-path:polygon(8% 0,92% 0,100% 16px,100% 100%,0 100%,0 16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 0 #061326,0 12px 0 color-mix(in srgb,var(--stage) 58%,#061326)}
 /* Only the lines that actually CHANGED move, and they move 3 px. The whole
    copy block used to drop to 25% opacity on every rotation, which is what made
    a card look like it was blinking rather than turning over. No translate on
@@ -840,7 +890,7 @@ img{-webkit-user-drag:none}
 .product-card-copy .product-size.is-fresh{animation:variantIn .42s var(--ease-out)}
 @keyframes variantIn{from{opacity:0;transform:translateY(3px)}}
 .product-brand{font:900 10px/1 var(--body);color:var(--stage);letter-spacing:.16em;text-transform:uppercase}
-.product-card-copy h4{font:900 22px/.98 var(--display);margin-top:8px;letter-spacing:-.035em}
+.product-card-copy h4{font:900 18px/.98 var(--display);margin-top:8px;letter-spacing:-.035em}
 .stock-note{font:900 9px/1 var(--body);color:var(--yellow);margin-top:7px;letter-spacing:.1em}
 /* The arrows live on the edges of the product visual, over the podium disc, and
    the dots ride the brand line. They used to own a 34 px row inside the copy
@@ -903,7 +953,7 @@ img{-webkit-user-drag:none}
 
 /* stride must equal the hit region, or a later sibling paints over its
    neighbour's centre and the dot selects the wrong product */
-.product-brand.has-dots{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:24px}
+.product-brand.has-dots{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:20px}
 .product-brand-text{flex:0 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .variant-dots{display:flex;gap:17px;flex:0 0 auto;margin-right:2px}
 .variant-dots button{position:relative;width:7px;height:7px;border:0;padding:0;border-radius:50%;background:#6d8ba1;transition:transform .2s,background .2s}
@@ -918,7 +968,7 @@ img{-webkit-user-drag:none}
    instead of into a hole under the title. `.add-button` keeps its own 14 px, so
    the two never touch on a card with no slack to give. It keeps the price's ink
    colour, which already measures AA on this ground. */
-.product-size{margin-top:7px;margin-bottom:auto;font:900 13px/1.25 var(--body);color:var(--ice);letter-spacing:.055em;text-transform:uppercase}
+.product-size{margin-top:5px;margin-bottom:auto;font:900 12px/1.2 var(--body);color:var(--ice);letter-spacing:.055em;text-transform:uppercase}
 /* WHICHEVER LINE IS LAST takes the slack. The availability note is off by
    default (`showAvailability`), so the size line usually is last — but with the
    note turned on the auto margin has to move, or a stretched grid row opens its
@@ -951,6 +1001,19 @@ img{-webkit-user-drag:none}
 }
 .add-button:active{transform:translateY(4px);box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 2px 0 color-mix(in srgb,var(--stage) 45%,black)}
 .add-button:active::after{scale:.84}
+/* THE STOCK CAP. Spent, not broken: the control keeps its size and its shape so
+   nothing on the card moves, loses the cyan and the drawn + chip so it no
+   longer reads as pressable, and keeps enough contrast to be read — it is
+   still a live button that re-explains itself when pressed, not a disabled
+   one. Colour is not the only signal: the label changes from "ADD" to
+   "ALL n ADDED" and the accessible name says the same thing in words.
+   font-size drops because "ALL 12 ADDED" is eleven characters more than "ADD"
+   and the button must not grow; `.add-button` is min-height, so a narrower
+   glyph cannot change the card's height either. */
+.add-button.is-maxed{background:#22384d;color:#cfe2ef;cursor:default;
+  box-shadow:inset 0 0 0 1px rgba(141,235,255,.28),0 5px 0 #0d1c2b;font-size:14px;letter-spacing:.08em}
+.add-button.is-maxed::after{content:"✓";background:transparent;color:#7fa8c4;box-shadow:none;rotate:0deg}
+.add-button.is-maxed:active{translate:0 2px;box-shadow:inset 0 0 0 1px rgba(141,235,255,.28),0 3px 0 #0d1c2b}
 .add-button.is-added{background:var(--yellow);color:var(--ink);box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 6px 0 #8f9000}
 .add-button.is-added::after{content:"✓";background:#1d2000;color:var(--yellow);rotate:0deg}
 html.motion .add-button.is-added[data-press]{animation:addPunch .46s var(--ease-out)}
@@ -1166,11 +1229,15 @@ html.no-js .plate-medal{display:none}
 }
 @keyframes tagGlint{from{translate:-220% 0}to{translate:320% 0}}
 
-/* the text channel: the primary action when SITE_CONFIG carries a number */
-.ready-sms{border:0;border-radius:999px;padding:15px 20px;background:var(--cyan);color:var(--navy);
-  font:900 12px/1 var(--display);letter-spacing:.06em;cursor:pointer;
-  box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 5px 0 #0a6f8e}
-.ready-sms:active{translate:0 3px;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 2px 0 #0a6f8e}
+/* the text channel: the primary action when SITE_CONFIG carries a number.
+   It was cyan. The owner asked for "the pink button" on 2026-09-13, and pink is
+   this site's primary-action colour everywhere else, so it now simply inherits
+   the .request-ready button gradient rather than overriding it. The ink is
+   --on-pink, the near-black that measures 5.39:1 there — white on this pink is
+   3.51:1 and fails AA, which an audit caught across every pink control. */
+.ready-sms{border:0;border-radius:999px;padding:15px 20px;
+  font:900 12px/1 var(--display);letter-spacing:.06em;cursor:pointer}
+.ready-sms:active{translate:0 3px;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 2px 0 #7a0b4d}
 .ready-sms[hidden]{display:none}
 /* with a text channel the clipboard is the fallback, so it stops shouting */
 .request-ready.has-sms [data-copy-order]{background:transparent;color:#bed6e5;box-shadow:inset 0 0 0 1px rgba(141,235,255,.4)}
@@ -1329,7 +1396,13 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 .request::backdrop{background:rgba(0,4,13,.78)}
 .request form,.request-ready{padding:22px}
 .request header{display:flex;justify-content:space-between;align-items:start}
-.request header p,.request-ready>p:first-of-type{font:900 8px/1 var(--body);color:var(--cyan);letter-spacing:.14em}
+/* `.request-ready>p:first-of-type` was in this selector and out-specified the
+   .request-ready>p rule below it — (0,2,1) against (0,1,1) — so the one
+   explanatory sentence on the last screen before a purchase rendered at 8px
+   cyan with .14em tracking instead of the 11px grey it was written for. 8px was
+   the smallest body copy on the site. The ready panel's eyebrow is the READY
+   stamp, not a paragraph, so this selector only ever needed the header. */
+.request header p{font:900 8px/1 var(--body);color:var(--cyan);letter-spacing:.14em}
 .request h2{font:900 27px/.9 var(--display);margin-top:5px;letter-spacing:-.04em}
 .request header button{width:36px;height:36px;border-radius:50%;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.08);color:#fff;font-size:22px}
 
@@ -1346,8 +1419,19 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 .request-ready>p{font-size:11px;line-height:1.45;color:#9fb7c7;margin-top:13px}
 .request-ready h2{margin-top:6px}
 .request-ready textarea{width:100%;min-height:190px;margin-top:16px;padding:12px;background:#fff;color:#07152a;border-radius:12px;border:0;font-family:ui-monospace,Menlo,monospace;font-size:12px}
-.ready-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.ready-actions button:last-child{background:#24445e;box-shadow:inset 0 2px 0 rgba(255,255,255,.2),0 5px 0 #0f2236}
+/* FLEX, NOT A TWO-COLUMN GRID. The grid held three buttons, so DONE sat alone
+   in the left cell of row two with 158px of dead cell beside it, at the width
+   where this dialog is most cramped. DONE has moved out; but the pair that is
+   left can be ONE button when SITE_CONFIG carries no number and [data-send-sms]
+   is hidden, and a 1fr 1fr grid orphans that too. Flex with a basis does both
+   shapes: side by side when there are two, full width when there is one. */
+.ready-actions{display:flex;flex-wrap:wrap;gap:10px}
+.ready-actions button{flex:1 1 150px}
+/* DONE, outside the pair, below a hairline: quiet, full width, and clearly not
+   one of the two things the shopper came here to do. */
+.ready-done{width:100%;min-height:44px;margin-top:18px;padding-top:16px;border:0;border-top:1px solid rgba(141,235,255,.18);
+  background:transparent;color:#9fb7c7;font:900 11px/1 var(--display);letter-spacing:.1em;cursor:pointer}
+.ready-done:hover{color:#fff}
 .toast{position:fixed;z-index:1600;left:50%;bottom:92px;transform:translate(-50%,25px);opacity:0;pointer-events:none;padding:13px 18px;border-radius:99px;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:.3s var(--ease-out)}
 .toast.is-visible{opacity:1;transform:translate(-50%,0)}
 .cart-fab{position:fixed;right:20px;bottom:22px;z-index:700;border:1px solid rgba(255,255,255,.42);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#ef1a8d);color:var(--on-pink);padding:11px 11px 11px 17px;display:none;align-items:center;gap:10px;font:900 9px/1 var(--display);text-transform:uppercase;letter-spacing:.08em;box-shadow:0 7px 0 #69063f,0 16px 35px rgba(0,0,0,.4)}
@@ -1418,10 +1502,12 @@ html.motion .deal-shelf .product-card{opacity:0}
   .shelf-price h3{font-size:clamp(78px,7.6vw,108px)}
   .shelf-info{margin:0 0 18px}.shelf-note{font-size:12px}
   .product-grid{gap:3px;padding:14px var(--gutter) 46px;scroll-padding-left:var(--gutter)}
-  .deal-shelf{--visual-h:384px}
+  /* restored here because the phone pass shrank the base values, and these two
+     had no desktop override of their own before 2026-09-13. */
+  .deal-shelf{--visual-h:384px;padding:48px 0 24px}
   .product-card{flex-basis:390px;min-height:596px}
   @media(hover:hover){.product-card:hover .product-image-wrap.is-current img{--lift:-8px}}
-  .product-card::before{width:340px;height:340px}.product-card::after{left:22px;right:22px}
+  .product-card::before{width:340px;height:340px;top:26px}.product-card::after{left:22px;right:22px}
   .product-card-copy{min-height:182px;padding:19px 25px 24px}.product-card-copy h4{font-size:26px}.product-size{font-size:13.5px}
   .rules{padding:110px var(--gutter) 120px}
   .plates{grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}

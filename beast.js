@@ -49,14 +49,27 @@
         const m = String(value).match(/^\+1(\d{3})(\d{3})(\d{4})$/);
         return m ? `(${m[1]}) ${m[2]}-${m[3]}` : String(value);
       };
+      /* NAMES THE CHANNEL, NEVER THE NUMBER — owner, 2026-09-13. The plate used
+         to print "Text your list to (323) 301-9200." and they asked for the
+         number to appear only at checkout. `pretty()` above is still used by
+         nothing else on this plate and is kept because the checkout and the QA
+         suite both read the same formatting rule; if it ever becomes genuinely
+         unreferenced, delete it rather than leaving it as furniture. */
       let line = "";
-      if (typeof raw === "string" && text(raw)) line = `Send your request to ${text(raw)}.`;
+      /* KEEP THIS SHORT. The three rules plates are forced to ONE height, so a
+         contact line that wraps to two lines makes all three 24px taller and
+         opens a dead gap under the CASH ONLY stamp — measured at 92px at
+         1024x800, which is over the 90px "blank leftover" limit and failed the
+         suite. The first version of this sentence did exactly that. Anything
+         here must fit one line in the plate at 1024. */
+      let line2 = "";
+      if (typeof raw === "string" && text(raw)) line2 = "Your list goes out from the pickup list.";
       else if (raw && typeof raw === "object" && text(raw.value)) {
-        const verb = text(raw.label) || "Send";
-        line = String(raw.kind) === "sms"
-          ? `${verb} your list to ${pretty(raw.value)}.`
-          : `${verb} your request to ${text(raw.value)}.`;
+        line2 = String(raw.kind) === "sms"
+          ? "Your list goes out as a text."
+          : "Your list goes out from the pickup list.";
       }
+      line = line2;
       const channel = line;
       const when = [text(config.pickupArea), text(config.pickupSchedule)].filter(Boolean).join(" · ");
       if (contact) contact.textContent = line;

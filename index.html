@@ -94,13 +94,18 @@
   <header class="nav" data-nav>
     <a class="nav-brand" href="#top" aria-label="Beast of a Deal — beast.deal, back to top">
       <img draggable="false" class="nav-panther" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="52" height="37">
-      <!-- Owner, 2026-09-12: header reads "www" small, then "beast.deal".
-           NOTE FOR WHOEVER PICKS THIS UP: the domain is bought but does not
-           resolve to this site yet, so `publicUrl` is still null and nothing
-           PRINTABLE carries the address — the flyer's QR box stays a dashed
-           placeholder. This is the one on-screen surface that now names it,
-           at the owner's explicit instruction. -->
-      <span class="nav-lockup"><span class="nav-www">www</span><span class="nav-stock">beast.deal</span></span>
+      <!-- Owner, 2026-09-13: the small "www" above the domain is GONE, and the
+           domain is nudged up to sit where the two-line lockup used to read
+           from. An address without the "www" is how a domain is written now,
+           and the second line was the only thing making this a stacked lockup
+           rather than a name.
+           NOTE FOR WHOEVER PICKS THIS UP: `beast.deal` RESOLVES — a root CNAME
+           carrying it is committed and the site is live on it. `publicUrl` is
+           nevertheless still null, so nothing PRINTABLE carries the address and
+           the flyer's QR box stays a dashed placeholder; turning it on is one
+           line in products.js and it is the owner's call, not a side effect of
+           this change. This is the one on-screen surface that names it. -->
+      <span class="nav-lockup"><span class="nav-stock">beast.deal</span></span>
     </a>
     <nav class="nav-links" aria-label="Sections">
       <a href="#shop" data-nav-link>IN STOCK</a>
@@ -374,19 +379,32 @@
         <article class="plate plate-order">
           <ol class="mini-steps"><li><b>1</b>Pick what you want</li><li><b>2</b>Send the request</li><li><b>3</b>Collect it</li></ol>
           <h3>HOW TO ORDER</h3>
-          <!-- THE NUMBER IS IN THE MARKUP, not only in beast.js. It used to be
-               written solely by beast.js's fillSlots(), so blocking that one
-               124 KB motion file left the HOW TO ORDER plate with an empty gap
-               where the only way to contact the business should be — everything
-               else on the page still worked. The one printed fact the business
-               runs on must not sit behind the motion layer. Found by an audit
-               on 2026-09-12.
-               beast.js still overwrites this from SITE_CONFIG, so the config
-               remains the source of truth and a changed number still propagates;
-               this is the value that survives if the script never arrives.
-               `check-integrity.mjs` compares it against SITE_CONFIG, the same
-               way it already guards the flyer's hand-typed copy of it. -->
-          <p class="channel-line" data-contact-slot><span data-contact-value>Text your list to (323) 301-9200.</span><span data-pickup-value></span></p>
+          <!-- THE NUMBER IS NOT PRINTED HERE ANY MORE. Owner, 2026-09-13, of
+               the sentence that used to sit here: "don't display my phone
+               number like that. only under checkout as it currently is."
+               This line names the CHANNEL and the checkout carries the number.
+
+               The quotation above deliberately does NOT repeat the number.
+               check-integrity.mjs scans this section INCLUDING comments, and it
+               is right to: an HTML comment is served to every visitor and sits
+               in a public GitHub repo, so a number in one is just as scrapeable
+               as a number on the page. Trap 47 — a comment can fail the build.
+
+               WHAT THIS GIVES UP, ON PURPOSE, AND THE OWNER SHOULD KNOW IT:
+               the number was typed into this markup in the first place because
+               beast.js used to be the only thing that wrote it, so blocking one
+               124 KB motion file left this plate with a hole where the only way
+               to reach the business should be. The sentence still survives a
+               dead beast.js — but a visitor with NO JavaScript at all can no
+               longer read a number anywhere on this page, because the checkout
+               that carries it is script-built. The `sms:` link in the
+               catalogue-failure panel above is the one static route left, and
+               it is hidden unless products.js fails.
+               beast.js still writes this line from SITE_CONFIG, so the config
+               is still the source of truth; this is what survives if the script
+               never arrives. `check-integrity.mjs` now asserts the INVERSE of
+               what it used to: that no phone number is printed here at all. -->
+          <p class="channel-line" data-contact-slot><span data-contact-value>Your list goes out as a text.</span><span data-pickup-value></span></p>
           <a class="btn btn-pink" href="#shop"><span>START MY LIST</span><i>→</i></a>
         </article>
         <!-- The six towns used to be six chips at the bottom of the delivery
@@ -578,11 +596,20 @@
       <h2 data-ready-title>COPY THIS</h2>
       <p data-ready-intro>Nothing was sent. Copy it and send it to the seller.</p>
       <textarea readonly data-order-summary aria-label="Copyable pickup request"></textarea>
+      <!-- Owner, 2026-09-13: "make the pink button say 'send txt message', then
+           copy request (copies to clipboard obviously), and done button outside
+           the pop up so it looks nicer."
+           DONE is out of the action pair and sits below a hairline as a quiet
+           full-width row, so the panel ends on the two things a shopper came
+           here to do. It stays INSIDE .request-ready because that block is what
+           carries [hidden] until the request exists — a DONE button outside it
+           would be on screen during the form step, offering to close a dialog
+           the shopper has not finished with. -->
       <div class="ready-actions">
-        <button class="ready-sms" type="button" data-send-sms hidden>SEND THE TEXT →</button>
+        <button class="ready-sms" type="button" data-send-sms hidden>SEND TEXT MESSAGE</button>
         <button type="button" data-copy-order>COPY REQUEST</button>
-        <button type="button" data-close-dialog>DONE</button>
       </div>
+      <button class="ready-done" type="button" data-close-dialog>DONE</button>
     </div>
   </dialog>
 
