@@ -115,6 +115,20 @@
     <button class="nav-list" type="button" data-open-cart aria-haspopup="dialog" aria-controls="pickup-list">
       <span>PICKUP LIST</span><b data-cart-count>0</b>
     </button>
+    <!-- THE PRICE RAIL. It shares ONE grid cell with the thing it replaces —
+         the beast.deal wordmark on a phone, the section links on a desktop —
+         and the swap is opacity + visibility + a 6px transform. Nothing here
+         touches a layout property, so the bar's height never moves and neither
+         does scrollHeight or scrollY.
+         It is STOWED until script.js says the shelves exist: these three hrefs
+         point at sections script.js renders, and offering a jump to a section
+         that was never built is the same defect as the SPIN button that could
+         not spin. -->
+    <nav class="stages" data-stages aria-label="Jump to a price stage">
+      <a href="#deal-2-for-5" data-stage-link="2-for-5" aria-label="2 / $5 — jump to the two for five dollars shelf"><b>2 / $5</b></a>
+      <a href="#deal-8-each" data-stage-link="8-each" aria-label="$8 — jump to the eight dollars each shelf"><b>$8</b></a>
+      <a href="#deal-paper-2-for-7" data-stage-link="paper-2-for-7" aria-label="2 / $7 — jump to the two for seven dollars shelf"><b>2 / $7</b></a>
+    </nav>
     <i class="nav-progress" data-progress aria-hidden="true"></i>
   </header>
 
@@ -289,11 +303,15 @@
 
     <!-- ============================== SHOP ============================== -->
     <section class="shop" id="shop" aria-labelledby="shop-title">
-      <nav class="stages" data-stages aria-label="Jump to a price stage">
-        <a href="#deal-2-for-5" data-stage-link="2-for-5" aria-label="2 / $5 — jump to the two for five dollars shelf"><b>2 / $5</b></a>
-        <a href="#deal-8-each" data-stage-link="8-each" aria-label="$8 — jump to the eight dollars each shelf"><b>$8</b></a>
-        <a href="#deal-paper-2-for-7" data-stage-link="paper-2-for-7" aria-label="2 / $7 — jump to the two for seven dollars shelf"><b>2 / $7</b></a>
-      </nav>
+      <!-- THE PRICE RAIL MOVED INTO THE HEADER, 2026-09-13. Owner, with a
+           screenshot of the two stacked bars: "when scrolling these 2 should
+           become one". Same markup, same three links, same aria-labels — it is
+           a child of <header class="nav"> now, so the page has exactly ONE bar
+           pinned to the top of the viewport instead of two. The arithmetic and
+           the reason this also removes a second, independent source of the
+           iPhone rattle are on .stages in beast.css.
+           The sentinel below is what tells script.js the shop has arrived. -->
+      <i class="shop-dock" data-shop-dock aria-hidden="true"></i>
       <header class="shop-head">
         <div>
           <p class="kicker" data-reveal><i></i>THREE PRICES</p>
@@ -525,7 +543,7 @@
   <dialog class="wheel-dialog" id="wheel-dialog" data-wheel-dialog aria-labelledby="wheel-title">
     <div class="wheel-in">
       <header>
-        <div><p data-wheel-eyebrow>ONE SPIN A DAY · HONOURED IN PERSON</p><h2 id="wheel-title">SPIN THE WHEEL</h2></div>
+        <div><p data-wheel-eyebrow>ONE SPIN A DAY · HONORED IN PERSON</p><h2 id="wheel-title">SPIN THE WHEEL</h2></div>
         <button type="button" data-close-wheel aria-label="Close the wheel">×</button>
       </header>
       <div class="wheel-stage" data-wheel-stage>

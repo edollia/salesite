@@ -279,7 +279,7 @@
          620 px box around a 460 px word; avoiding the box shoved the line-up
          96 px right for a collision that was not happening. The inline span's
          rect IS the text advance, which is the ink.
-       - they are PUSH-ONLY. A wall that can also force a `drop` would shrink
+       - they are PUSH-ONLY. A wall that can also force a `shrink` would cut
          the whole line-up to clear type that sits above it, and in the centred
          layout — where the wordmark straddles the podium — that is every
          viewport. A wall that is not to the LEFT of the podium centre is
@@ -405,7 +405,7 @@
     const hi = Math.min(pod.cx + pod.a * STAGE_SPREAD, pod.W - margin);
     /* The floor is keyed to the SMALLER side of the hero, not its height. On a
        tall narrow window, height * .11 is a bigger number than the width can
-       ever pay for, so widening the window from 624 px to 648 px dropped the
+       ever pay for, so widening the window from 624 px to 648 px cut the
        line-up from four bottles to two — fewer products on a bigger screen,
        which is the wrong direction and the resize sweep now fails on it. */
     const floor = Math.max(64, Math.min(pod.W, pod.H) * .10);
@@ -482,7 +482,7 @@
       pod.H * STAGE_MAXH / Math.max(.001, Math.max(...relsOf(row, count))));
     /* HOW MANY bottles is a question about both the horizontal room and what
        the collision passes have had to give up. It was briefly width-only,
-       because coupling it to the scale used to make widening a tall window drop
+       because coupling it to the scale used to make widening a tall window cut
        the line-up from four bottles to two — but that was the SLIDE remedy
        eating the span, and the slide is now refused when it would starve the
        line-up. With that fixed, the coupling is safe and necessary: without it
@@ -533,7 +533,7 @@
 
     /* The deepest thing the line-up has run into, and the two ways out of it. */
     const clash = (layout) => {
-      let push = 0, drop = 0;
+      let push = 0, shrink = 0;
       for (const row of layout) {
         for (const spot of row) {
           if (spot.hidden) continue;
@@ -553,19 +553,19 @@
                shorter, and it no longer reaches the slogan. Nothing converges,
                and four pixels of window pick a side.
 
-               A drop has no cliff in it: right at the threshold the overlap is
+               A shrink has no cliff in it: right at the threshold the overlap is
                a pixel, so the shrink is a pixel, and the pass below takes
                whichever remedy is cheaper as a fraction of what it costs. The
                push stays and still wins wherever sliding is cheap.
 
-               The note above says walls are push-only because a drop would
+               The note above says walls are push-only because a shrink would
                shrink the line-up to clear type that sits over the podium. That
                is still true and is still handled — by the `w.r >= pod.cx` line
                directly above, which throws the centred layout's straddling
                wordmark out before either remedy is considered. Push-only was
                belt as well as braces, and the belt was the thing with the
                cliff in it. */
-            drop = Math.max(drop, (w.b + STAGE_TEXT_CLEAR - spot.t) / Math.max(1, spot.height));
+            shrink = Math.max(shrink, (w.b + STAGE_TEXT_CLEAR - spot.t) / Math.max(1, spot.height));
           }
           for (const o of obstacles) {
             if (spot.r <= o.l || spot.l >= o.r || spot.base <= o.t || spot.t >= o.b) continue;
@@ -573,14 +573,14 @@
                ONE side. In the centred layout the price block straddles the
                middle of the podium, so "move right" shoved the whole line-up
                off the disc and shrank the span until the solver started
-               dropping bottles — the line-up lost two products as the window
+               losing bottles — the line-up lost two products as the window
                got WIDER. There, coming down is the only sane remedy. */
             if (o.r < pod.cx && o.r < spot.r) push = Math.max(push, o.r + STAGE_CLEAR - spot.l);
-            drop = Math.max(drop, (o.b + STAGE_CLEAR - spot.t) / Math.max(1, spot.height));
+            shrink = Math.max(shrink, (o.b + STAGE_CLEAR - spot.t) / Math.max(1, spot.height));
           }
         }
       }
-      return { push, drop };
+      return { push, shrink };
     };
 
     let count = Math.min(...all.map((row) => row.length));
@@ -594,9 +594,9 @@
     let layout = plan(count, scale, lo);
     window.__stagePasses = [];
     for (let pass = 0; pass < 5; pass += 1) {
-      const { push, drop } = clash(layout);
-      if (window.__stageDebug) window.__stagePasses.push({ pass, push: +push.toFixed(1), drop: +drop.toFixed(3), lo: +lo.toFixed(1), scale: +scale.toFixed(3) });
-      if (!push && drop <= 0) break;
+      const { push, shrink } = clash(layout);
+      if (window.__stageDebug) window.__stagePasses.push({ pass, push: +push.toFixed(1), shrink: +shrink.toFixed(3), lo: +lo.toFixed(1), scale: +scale.toFixed(3) });
+      if (!push && shrink <= 0) break;
       /* Take the cheaper way out, measured as a fraction of what it costs. A
          softener overlapping the price block by four pixels used to trigger a
          146 px sideways shove of all three line-ups, because "slide right" was
@@ -608,10 +608,10 @@
          slide was refused and the whole line-up shrank to 60%, at 1052 px it
          was allowed and they snapped back to full size, a 53% jump for four
          pixels of window. Starving the line-up is handled where it belongs, by
-         the count dropping, and the centred layout refuses the slide outright. */
+         the count falling, and the centred layout refuses the slide outright. */
       const room = lo + push < hi - 200;
-      if (push > 0 && room && push / Math.max(1, hi - lo) <= drop) lo += push;
-      else if (drop > 0) scale *= Math.max(.6, 1 - drop);
+      if (push > 0 && room && push / Math.max(1, hi - lo) <= shrink) lo += push;
+      else if (shrink > 0) scale *= Math.max(.6, 1 - shrink);
       else if (push > 0 && room) lo += push;
       else break;
       fitCount();
@@ -631,7 +631,7 @@
     }));
   }
   function visibleOf(row, count) {
-    // drop the outermost first, then the outermost of what is left
+    // lose the outermost first, then the outermost of what is left
     let list = row.slice();
     while (list.length > count) list = list.length % 2 ? list.slice(0, -1) : list.slice(1);
     return list;
@@ -801,7 +801,7 @@
 
      It was sessionStorage, which is per TAB: an audit opened a third tab and
      reached DUTCH BROS with no devtools and no trickery, while the dialog said
-     ONE SPIN A VISIT. Seventy per cent of the face is TRY AGAIN, which leaves
+     ONE SPIN A DAY. Seventy per cent of the face is TRY AGAIN, which leaves
      no trace, so farming it was free and invisible.
 
      The owner set the business rule: one spin a day. The key carries the local
@@ -974,7 +974,7 @@
        segment: the owner's report on 2026-09-12 that "many titles are glitching
        through or under badly". Both extents are measured off the real bounding
        box and the type is scaled until it fits, down to a floor of 6 px — below
-       that the label is dropped rather than shipped illegible.
+       that the label is cut rather than shipped illegible.
 
        getBBox() is used rather than getBoundingClientRect() because it reports
        the box in the SVG's own units, unrotated, which is the frame the wedge
@@ -1149,7 +1149,7 @@
       band.classList.toggle("has-prize", !!prize);
       if (prize) {
         bandTitle.textContent = `YOU WON ${prize.label}`;
-        bandSub.textContent = prize.note || "Honoured in person.";
+        bandSub.textContent = prize.note || "Honored in person.";
       } else if (spunThisSession()) {
         bandTitle.textContent = "NO LUCK THIS TIME";
         bandSub.textContent = "That was the spin for today.";
@@ -1159,7 +1159,12 @@
         spinButton.classList.add("is-done");
         spinButton.querySelector("span").textContent = prize ? "SEE MY LIST" : "CLOSE";
         if (chip) chip.textContent = prize ? "WON" : "DONE";
-        if (eyebrow) eyebrow.textContent = prize ? "ALREADY WON · HONOURED IN PERSON" : "ONE SPIN A VISIT · HONOURED IN PERSON";
+        /* A DAY, not A VISIT, and HONORED, not HONOURED. The lock became a dated
+           localStorage key on 2026-09-13 and index.html was updated to match — but
+           this line overwrote the correct markup one frame after load, so the
+           dialog reverted to the retired rule at exactly the moment the rule
+           bit. The British spelling was the only one on a Temecula storefront. */
+        if (eyebrow) eyebrow.textContent = prize ? "ALREADY WON · HONORED IN PERSON" : "ONE SPIN A DAY · HONORED IN PERSON";
         if (prize && result) {
           result.textContent = `${prize.label}${prize.note ? ` — ${prize.note}` : ""}. It is on your pickup list.`;
           result.classList.add("is-win");
@@ -1192,7 +1197,7 @@
       if (spinning || !canSpin() || spinButton.getAttribute("aria-disabled") === "true") return;
       spinning = true;
       /* aria-disabled, not disabled: a disabled button loses focus instantly,
-         so pressing SPIN dropped the keyboard on <body> for the whole spin and
+         so pressing SPIN left the keyboard on <body> for the whole spin and
          left it there. It stays focusable and the handler returns early. */
       spinButton.setAttribute("aria-disabled", "true");
       dialog.classList.add("is-spinning");
@@ -1779,13 +1784,13 @@
 
   /* The swap. Everything is transform and opacity; nothing here changes layout,
      which is why the deck and the sets are stacked in one grid cell and one
-     absolute box. The podium takes the light, the old line-up drops into it and
+     absolute box. The podium takes the light, the old line-up sinks into it and
      the new one rises out of it. */
   let stagePending = null;
   function goToStage(index, manual) {
     const sets = stageSets(), cards = priceCards();
     if (!stageReady || !sets[index] || !cards[index]) return;
-    // a press mid-swap used to be dropped on the floor; it queues now
+    // a press mid-swap used to be lost on the floor; it queues now
     if (stageSwapping) { stagePending = { index, manual }; return; }
     if (index === stageIndex) return;
     stageHoldCall?.kill();
@@ -2084,7 +2089,11 @@
     if ("MutationObserver" in window) new MutationObserver(bind).observe(receipt, { childList: true });
   }());
 
-  gsap.fromTo("[data-stages] a", { y: 24, opacity: 0 }, { y: 0, opacity: 1, duration: .7, stagger: .06, scrollTrigger: { trigger: "[data-stages]", start: "top 95%", once: true } });
+  /* The price rail's reveal is gone: it lives in the fixed header now and is
+     shown by the dock class script.js owns, not by a ScrollTrigger. A trigger
+     on an element that sits at the top of the viewport from the first frame is
+     a trigger that fires at load, once:true, while the rail is still stowed —
+     and then never again. See beast.css's note on .stages. */
 
   /* ---------- shelves (dynamic from script.js) ---------- */
   let shelfTriggers = [];
@@ -2112,8 +2121,12 @@
           gsap.fromTo(cards, { y: 60, opacity: 0 }, { y: 0, opacity: 1, duration: 1, stagger: .08, ease: "expo.out", clearProps: "transform" });
         }
       }));
-      const link = document.querySelector(`[data-stage-link="${shelf.dataset.deal}"]`);
-      if (link) shelfTriggers.push(ScrollTrigger.create({ trigger: shelf, start: "top 45%", end: "bottom 45%", onToggle: (self) => link.classList.toggle("is-active", self.isActive) }));
+      /* WHICH STAGE YOU ARE ON MOVED TO script.js, 2026-09-13. It was a
+         ScrollTrigger, which meant a reduced-motion visitor — and any visitor
+         whose GSAP failed — had never once seen the live stage underlined,
+         because beast.js returns at the motion gate long before this line. It
+         is an IntersectionObserver in script.js now, beside the `.is-empty`
+         logic that already owned half of this bar's state. Trap 21, again. */
       if (finePointer) cards.forEach(bindTilt);
     });
     ScrollTrigger.refresh();

@@ -410,13 +410,13 @@
     }
     const button = article.querySelector("[data-add]");
     button.classList.remove("is-added");
+    /* `refreshAddButton` sets the label, the title AND the aria-label, including
+       the "that is all I have" wording at the stock cap. The block that used to
+       follow it here re-wrote both of those one statement later from the
+       pre-cap template, so a button reading "ALL 2 ADDED" carried the tooltip
+       "Add Downy Calm to the pickup list." — and because this runs on every
+       rotation tick, it came back every two seconds. Do not restore it. */
     refreshAddButton(button, product);
-    button.title = !product.inStock
-      ? "This item is not currently available to add."
-      : product.pricingStatus === "pending"
-        ? "In stock; it can go on a list once a price is set."
-        : `Add ${fullName(product)} to the pickup list.`;
-    button.setAttribute("aria-label", `${addButtonLabel(product)} — ${labelName(product)}, ${product.size}`);
     /* THE ARROWS ARE NAMED AFTER WHAT THE CARD IS SHOWING, and the card rotates
        every two seconds. Their labels were written once at render and then never
        touched, so after a single rotation both arrows announced the product that
@@ -646,6 +646,65 @@
     }, variantIntervalMs);
   }
 
+  /* ---------- THE ONE BAR: docking, and which stage you are on ----------
+     THIS IS NAVIGATION, NOT MOTION, AND THAT IS WHY IT LIVES HERE. beast.js
+     does not run past its motion gate for a reduced-motion visitor and never
+     gets that far at all if GSAP fails to load — and the merged bar has to dock
+     and has to say where you are in both cases. Putting the live-stage
+     underline in the motion layer is why a reduced-motion visitor had never
+     seen it (trap 21). script.js is also the only file that knows the shelves
+     exist: the rail is stowed in CSS until this runs, because three links to
+     three sections that were never rendered is a page offering what it cannot
+     deliver (trap 25).
+     No GSAP, no rAF, no scroll listener. Two observers.
+     The dock sentinel is positioned in CSS off var(--nav-h), so nothing here
+     reads a pixel value and nothing needs recomputing when --nav-h changes at
+     760px or at 480px of height (traps 40 and 15c). */
+  let dockObserver = null;
+  let stageObserver = null;
+
+  function bindStageBar() {
+    const root = document.documentElement;
+    try {
+      const dock = document.querySelector("[data-shop-dock]");
+      if (dock && "IntersectionObserver" in window) {
+        if (dockObserver) dockObserver.disconnect();
+        dockObserver = new IntersectionObserver(([entry]) => {
+          /* TWO thresholds, 56px of sentinel apart, deliberately: dock when it
+             is fully gone above the top, undock only when it is fully back.
+             iOS moves the visual viewport 60-80px when it collapses its URL
+             bar, and a single-threshold dock parked at that scroll position
+             would crossfade the whole bar on every URL-bar animation — a NEW
+             rattle, of exactly the kind this merge is fixing. */
+          if (!entry.isIntersecting && entry.boundingClientRect.top < 0) root.classList.add("shop-docked");
+          else if (entry.intersectionRatio >= 0.99) root.classList.remove("shop-docked");
+        }, { threshold: [0, 0.99] });
+        dockObserver.observe(dock);
+      } else {
+        /* No sentinel or no observer: show the rail and leave it shown. A bar
+           that never changes dress is complete and usable; a rail that never
+           appears is a navigation control the visitor simply never gets. */
+        root.classList.add("shop-docked");
+      }
+      if (stageObserver) stageObserver.disconnect();
+      if ("IntersectionObserver" in window && dom.shelves) {
+        /* A zero-height band across 45% of the viewport — the same line the
+           ScrollTrigger this replaces used for `start:"top 45%"`. */
+        stageObserver = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            const link = document.querySelector(`[data-stage-link="${entry.target.dataset.deal}"]`);
+            if (link) link.classList.toggle("is-active", entry.isIntersecting);
+          });
+        }, { rootMargin: "-45% 0px -55% 0px", threshold: 0 });
+        dom.shelves.querySelectorAll(".deal-shelf:not([hidden])").forEach((shelf) => stageObserver.observe(shelf));
+      }
+    } catch (error) {
+      /* Never leave the rail stowed because of a failure in the thing that was
+         only ever meant to dress it. */
+      root.classList.add("shop-docked");
+    }
+  }
+
   function renderShelves() {
     if (!dom.shelves) return;
     dom.shelves.querySelectorAll(".deal-shelf").forEach((node) => node.remove());
@@ -713,6 +772,7 @@
         link.removeAttribute("tabindex");
       }
     });
+    bindStageBar();
     /* The stage count only says something while a search is narrowing things
        down. Unfiltered it printed "3 PRICE STAGES" directly under a kicker
        reading THREE PRICES and directly above a bar showing all three, and at
@@ -1185,7 +1245,13 @@
       }, 1500);
     }
     if (state.deliveryJustAnnounced) state.deliveryJustAnnounced = false;
-    else showToast(`Added ${fullName(product)}.`);
+    /* The press that REACHES the cap was silent. Only the press that EXCEEDS it
+       spoke, so a screen-reader user who had already read the button was never
+       told it had become "ALL n ADDED" — the label is mutated in place and no
+       live region carries it. The toast is the live region that already exists. */
+    else showToast(isMaxed(product)
+      ? `Added ${fullName(product)} — that is all ${product.inventoryQuantity} I have.`
+      : `Added ${fullName(product)}.`);
   }
 
   /* The +1 that leaves the button. It is a decoration and nothing depends on
@@ -1296,7 +1362,15 @@
       body.style.left = "";
       body.style.right = "";
       body.style.width = "";
-      window.scrollTo(0, back);
+      /* `behavior:"instant"`, NOT the two-argument form. `html` carries
+         `scroll-behavior:smooth`, and `scrollTo(x, y)` resolves to the element's
+         computed behaviour — so restoring the position GLIDED back from 0
+         instead of landing, which is the opposite of what the comment above
+         promises. Two things broke on that glide: re-opening the list mid-glide
+         captured a half-way scrollY and lost the original offset for good, and
+         `openRequest()` closes the drawer and calls `showModal()` immediately,
+         so the glide ran underneath a modal that blocks document scrolling. */
+      window.scrollTo({top: back, left: 0, behavior: "instant"});
     }
   }
 
@@ -1321,7 +1395,16 @@
   function closeDrawer() {
     if (!dom.drawer) return;
     setDrawerOpen(false);
-    state.lastDrawerFocus?.focus?.();
+    /* The trigger may no longer be there to go back to. Emptying the list
+       hides `.mobile-pickup-bar` and `.cart-fab` (renderCart), and [hidden] is
+       display:none!important — so on a phone, "open from the bar, remove the
+       last line, close" returned focus to an unrendered element, .focus() was a
+       no-op, and focus fell to <body>: the virtual cursor jumps to the top of a
+       5,000px page. Fall back to a control that is definitely rendered. */
+    const back = state.lastDrawerFocus;
+    const usable = back && back.isConnected && !back.hidden && back.offsetParent !== null;
+    const fallback = document.querySelector(".nav-list") || document.querySelector(".skip-link");
+    (usable ? back : fallback)?.focus?.();
   }
 
   function openRequest() {

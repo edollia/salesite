@@ -45,7 +45,14 @@
    so the two offsets composed to 352 px at 1440 and 320 px on a phone, and
    tapping the $8 tile left you looking at the previous shelf's ADD button. */
 html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;
-  scroll-padding-top:calc(var(--nav-h) + 78px);scroll-padding-bottom:88px}
+  /* WHY 12 AND NOT 78. The chrome used to be two bars — the fixed nav plus a
+     sticky price bar under it — so this had to clear 141px on a phone and 160px
+     on a desktop, and `--nav-h + 78` was the one expression covering both. It
+     covered NEITHER exactly: 72+78 left 9px of air on a phone, and 80+78 landed
+     a section's top edge 2px UNDER the 160px desktop chrome. There is one bar
+     now and it is exactly --nav-h, so this is the bar plus a deliberate 12px of
+     air at every shape. */
+  scroll-padding-top:calc(var(--nav-h) + 12px);scroll-padding-bottom:88px}
 body{margin:0;overflow-x:clip;background:var(--navy);color:var(--foam);font-family:var(--body);font-weight:600;-webkit-font-smoothing:antialiased}
 body.overlay-open,body.is-booting{overflow:hidden}
 [hidden]{display:none!important}
@@ -198,7 +205,7 @@ html.no-js .boot,html.reduced .boot{display:none}
 /* what the rip lands on: a short rim flash on whatever was actually struck */
 /* The flash lives on a pseudo-element. It used to animate the struck element's
    own box-shadow, which REPLACED it — every clicked plate lost its cyan rim and
-   its drop shadow, and every Add button lost its 3-D lip, for 400 ms. */
+   its cast shadow, and every Add button lost its 3-D lip, for 400 ms. */
 html.motion .is-clawed{position:relative}
 html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:20;pointer-events:none;
   border-radius:inherit;box-shadow:0 0 0 2px rgba(234,252,255,.9),0 0 18px 5px rgba(0,213,255,.5);
@@ -206,14 +213,60 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 @keyframes clawHit{0%{opacity:0;transform:scale(.94)}20%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.03)}}
 
 /* ---------- nav ---------- */
-.nav{position:fixed;z-index:500;left:0;right:0;top:0;height:var(--nav-h);display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:0 14px;background:linear-gradient(180deg,rgba(2,8,22,.94),rgba(2,8,22,.72));border-bottom:1px solid rgba(141,235,255,.16);transition:background .4s}
+.nav{position:fixed;z-index:500;left:0;right:0;top:0;height:var(--nav-h);display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:0 14px;background:linear-gradient(180deg,rgba(2,8,22,.94),rgba(2,8,22,.72));border-bottom:1px solid rgba(141,235,255,.16);transition:background .4s,border-color .3s}
+/* THE BAR'S SECOND GROUND. Over the hero the bar is dark glass, so the portal
+   plate reads to the very top of the screen. From the shop down it is the same
+   brushed chrome as the search console and the shelf rails — it stops being a
+   lid on the scene and becomes the shop's own hardware. A separate painted
+   layer crossfaded by OPACITY, not a background transition: gradients do not
+   interpolate, they snap. It carries the lip and the cast shadow the price bar
+   used to carry, so the merged bar keeps the price bar's physical edge.
+   PAINT ORDER, checked: .nav has z-index:500 and so forms a stacking context,
+   and a negative-z-index child paints ABOVE that element's own background and
+   BELOW its in-flow content. The chrome covers the dark gradient completely at
+   opacity 1, the brand and the rail stay on top of it, and `.nav.is-solid`
+   keeps working underneath as the undocked ground. */
+.nav::before{content:"";position:absolute;z-index:-1;inset:0;pointer-events:none;
+  background:var(--chrome-band);opacity:0;transition:opacity .3s var(--ease-out);
+  box-shadow:inset 0 2px 0 #fff,inset 0 -2px 0 #07172a,0 12px 28px rgba(0,0,0,.32)}
+html.shop-docked .nav::before{opacity:1}
+html.shop-docked .nav{border-bottom-color:transparent}
 .nav.is-solid{background:rgba(2,8,22,.96)}
-.nav-brand{display:flex;align-items:center;gap:10px;width:max-content}
+/* THE PANTHER NEVER MOVES, NEVER FADES, NEVER SCALES. Everything else in the
+   bar changes around it, and that is what makes the merge read as one object
+   changing rather than two bars crossfading. It is also why the brand does not
+   vanish when the wordmark retracts: the mark IS the identity, and it is the
+   one constant at every scroll position, every width, and on every failure
+   path. */
+.nav-brand{display:flex;align-items:center;gap:10px;width:max-content;grid-area:1/1;justify-self:start;z-index:2}
+.nav-lockup{transition:opacity .2s var(--ease-out),transform .24s var(--ease-out)}
+/* On a phone there is no room for `beast.deal` AND three price tiles: the
+   lockup is ~78px and three tiles plus gaps are ~256px, which is 340px of a
+   347px content box before the gap between them. So on a phone the wordmark
+   retracts and the rail takes its width; on a desktop there is room, the
+   wordmark stays, and the SECTION LINKS retract instead. */
+@media(max-width:759px){
+  /* one column, explicitly: .nav-links and .nav-list are display:none down
+     here, so the `1fr auto` base leaves a 0-wide second track and a 12px gap
+     the rail would otherwise be short by. */
+  .nav{grid-template-columns:1fr}
+  html.shop-docked .nav-lockup{opacity:0;transform:translateY(-10px)}
+  /* AND IT MUST STOP TAKING TAPS. `opacity:0` hides a box; it does not remove
+     it from hit-testing, and .nav-brand is an <a> sized `width:max-content`, so
+     the retracted wordmark went on eating the first price tile's centre.
+     Measured the moment the merge landed: elementFromPoint at the centre of
+     `2 / $5` returned the brand link, not the tile. That is trap 8 — a hit area
+     wider than the thing it belongs to — arriving through a fix for something
+     else. pointer-events is turned off on the LINK and back on for the mark, so
+     the panther still works as "back to top" and the click still bubbles. */
+  html.shop-docked .nav-brand{pointer-events:none}
+  html.shop-docked .nav-panther{pointer-events:auto}
+}
 .nav-panther{width:44px;height:auto}
 .nav-lockup{position:relative;display:grid;line-height:.78;font-family:var(--display);text-transform:uppercase;letter-spacing:-.06em}
 .nav-beast{font-size:21px;padding-top:2px;background:var(--chrome-face);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent}
 /* The "www" line above this is gone (owner, 2026-09-13), so the lockup is one
-   row and flex centring drops the domain to the panther's midline. translateY
+   row and flex centring sinks the domain to the panther's midline. translateY
    lifts it back to where the eye had learned to read it. It is a transform
    rather than a margin because a margin would change the header's layout
    height, and nothing here is animated by GSAP — checked — so trap 1 does not
@@ -633,41 +686,87 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
 .rip-store i{font-style:normal}
 
 /* ---------- shop + price stages ---------- */
-.shop{position:relative;overflow-x:clip;background:radial-gradient(circle at 50% 6%,#0b3866 0,transparent 26%),linear-gradient(180deg,#04162d,#020917 55%,#051a33);padding:0 0 40px}
-/* THE RATTLE. Confirmed by a human on a real iPhone, 2026-09-13: "the horizontal
-   menu of 2x5, 8 and 2/7 still vibrates on mobile when scrolling up and down."
-   It had been unconfirmed for five sessions and is now confirmed UNFIXED.
+.shop{position:relative;overflow-x:clip;background:radial-gradient(circle at 50% 6%,#0b3866 0,transparent 26%),linear-gradient(180deg,#04162d,#020917 55%,#051a33);padding:28px 0 40px}
+/* 28px of padding-top replaces the 48px the price bar's own margin used to give
+   .shop-head, which has no top margin of its own.
+   THE SENTINEL says "the shop has reached the bar", and it says it in CSS units
+   so it tracks --nav-h through every media query without any script reading a
+   number (trap 40: a custom property computes to a token STREAM, and
+   `calc(72px + 64px)` is not something parseFloat can read).
+   Height 56px, not 1px, on purpose: with thresholds [0, 0.99] that is 56px of
+   hysteresis between docking and undocking. iOS moves the visual viewport
+   60-80px when it collapses its URL bar, and a single-threshold dock parked at
+   that scroll position would crossfade the whole bar on every URL-bar
+   animation — a NEW rattle, of exactly the kind being fixed.
+   position:absolute, so it costs zero document height. */
+.shop-dock{position:absolute;left:0;width:1px;height:56px;pointer-events:none;
+  top:calc(-1 * (var(--nav-h) + 64px))}
+/* THE PRICE RAIL, NOW INSIDE THE HEADER. Owner, 2026-09-13, with a screenshot
+   of the two stacked bars: "when scrolling these 2 should become one".
+   The arithmetic is harder than they put it: --nav-h 72 + this bar 69 = 141px
+   of an iPhone's 553px viewport, 25.5%, permanently, before a single product.
+   With the pink pickup bar up the usable band was 344px and the product card
+   is 400px — so the card resize of 2026-09-13 COULD NOT PAY OFF until these two
+   became one. The chrome is 72px now and the card fits.
 
-   Two of the three earlier remedies stand and are kept: scroll-snap-type is
-   gone from this element (a known Chromium jitter source, and dead weight —
-   the tiles only overflowed at 320px when there were four, and there are
-   three), and the blurred text-shadow is crisp (a blurred shadow inside a
-   repainting sticky bar shimmers worst of all).
+   THE RATTLE: TWO CAUSES, AND WHAT THIS DOES AND DOES NOT FIX.
+   Confirmed by a human on a real iPhone, 2026-09-13, after five sessions
+   unconfirmed: "the horizontal menu of 2x5, 8 and 2/7 still vibrates on mobile
+   when scrolling up and down."
 
-   THE THIRD REMEDY WAS THE CAUSE, AND IT IS REMOVED. `will-change:transform`
-   was added to promote this bar to its own compositing layer so a fractional
-   trackpad offset would translate a cached layer instead of repainting one.
-   That is sound on a desktop and it is exactly wrong on iOS: WebKit positions
-   a COMPOSITED position:sticky element from the scrolling thread, using the
-   last committed scrolling tree, while everything around it is positioned by
-   the main thread. A scroll-direction reversal is precisely the moment iOS
-   re-commits that tree — momentum flips and the URL bar animates — so the
-   promoted layer lands a frame or more behind its surroundings. That is the
-   vibration, and it appears on the reversal in BOTH directions, which is what
-   the owner described.
+   (1) `will-change:transform` on this element promoted it to its own
+   compositing layer — added so a fractional trackpad offset would translate a
+   cached layer instead of repainting one. Sound on a desktop, exactly wrong on
+   iOS: WebKit positions a COMPOSITED position:sticky element from the scrolling
+   thread off the last committed scrolling tree, while everything around it comes
+   from the main thread, and a direction reversal is precisely when iOS
+   re-commits that tree. Removed 2026-09-13.
 
-   The check that says this bar holds still (`beast-qa.py`) samples the bar's
-   top at two STATIC scroll positions 400ms apart, in desktop Chromium, with
-   `scrollBehavior:auto` making both an instant teleport. It cannot see this
-   and it never could. Do not trust it here; it has been renamed to say what it
-   actually measures.
+   (2) INDEPENDENT OF (1), and this is the one the merge fixes. `.nav` is
+   position:FIXED and on iOS is anchored to the VISUAL viewport; this bar was
+   position:STICKY and positioned within the LAYOUT viewport. Its
+   `top:var(--nav-h)` was a constant offset from an origin that MOVES relative
+   to the other one every time iOS animates its URL bar — which is exactly on a
+   scroll-direction reversal. For the length of that animation the two elements
+   are computed against different origins, so the gap between the nav's bottom
+   edge and this bar's top edge opens and closes: a shimmer on the exact edge
+   the owner photographed. ONE ELEMENT CANNOT DESYNCHRONISE FROM ITSELF, and
+   there is no position:sticky in the page's top chrome any more.
 
-   If the repaint cost returns on a trackpad, the answer is a cheaper
-   background — not promotion. Do NOT put will-change, translateZ(0) or
-   backface-visibility back on a position:sticky element. */
-.stages{position:sticky;top:var(--nav-h);z-index:400;display:flex;gap:2px;overflow-x:auto;padding:6px 8px 9px;margin-bottom:48px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,inset 0 -2px 0 #07172a,0 12px 28px rgba(0,0,0,.32);scrollbar-width:none}
+   WHAT IT DOES NOT FIX, said out loud: the whole bar still translates with the
+   visual viewport during a URL-bar animation, as all fixed chrome on iOS does —
+   but it moves as ONE RIGID OBJECT, and a rigid translation does not read as
+   vibration the way a relative shimmer between two adjacent edges does. And
+   `.mobile-pickup-bar`'s `bottom:max(10px,env(safe-area-inset-bottom))` still
+   jumps ~24px on the same gesture: same symptom, different element, untouched
+   by this. No headless test can confirm any of it — Chromium on a Mac has no
+   iOS scrolling thread and no separate visual viewport. Only the owner's phone
+   closes it.
+
+   Do NOT put will-change, translateZ(0) or backface-visibility on this bar. */
+.stages{grid-area:1/1;justify-self:stretch;align-self:center;
+  display:flex;gap:2px;padding-left:56px;overflow-x:auto;scrollbar-width:none;
+  /* pointer-events on the WRAPPER, permanently: the 56px padding sits over the
+     panther and the rail must never eat a tap meant for the brand. */
+  pointer-events:none;
+  /* STOWED IS THE BASE STATE, and that is not a fallback — it is correct.
+     These three hrefs point at sections script.js renders. If script.js has not
+     run there are no shelves, and a page may not offer what it cannot deliver.
+     visibility, not display: a hidden box is still a box, so the rail's geometry
+     is identical in both states and the dock changes no layout — and visibility
+     also takes the links out of the tab order and out of the accessibility
+     tree, which opacity alone does not. */
+  opacity:0;visibility:hidden;transform:translateY(-6px);
+  transition:opacity .24s var(--ease-out),transform .24s var(--ease-out),visibility 0s linear .24s}
+html.shop-docked .nav .stages{opacity:1;visibility:visible;transform:none;transition-delay:0s}
+html.shop-docked .nav .stages a{pointer-events:auto}
 .stages::-webkit-scrollbar{display:none}
-.stages a{position:relative;flex:1 1 0;min-width:84px;height:54px;scroll-margin-left:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;background:linear-gradient(180deg,#0a2d4e,#03142c);box-shadow:inset 0 1px 0 rgba(141,235,255,.3);text-shadow:0 2px 0 rgba(0,0,0,.6);transition:background .28s}
+/* 44px, not 54: the tile lives inside a 72px bar now instead of owning a 69px
+   one. 44 leaves 14px of air above and below and is still 20px past the 24px
+   tap-target floor. min-width is 0 rather than 84 so three tiles always fit a
+   320px screen without the rail becoming a scroller; flex:1 1 0 shares the
+   width evenly and the type steps down below 360. */
+.stages a{position:relative;flex:1 1 0;min-width:0;height:44px;scroll-margin-left:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;border-radius:3px;background:linear-gradient(180deg,#0a2d4e,#03142c);box-shadow:inset 0 1px 0 rgba(141,235,255,.3);text-shadow:0 2px 0 rgba(0,0,0,.6);transition:background .28s}
 .stages a:first-child{border-radius:18px 3px 3px 18px}.stages a:last-child{border-radius:3px 18px 18px 3px}
 .stages a::after{content:"";position:absolute;left:14%;right:14%;bottom:4px;height:2px;border-radius:2px;background:var(--cyan);transform:scaleX(0);transition:transform .4s var(--ease-out)}
 .stages a.is-active::after{transform:none}
@@ -677,6 +776,7 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
 /* The price IS the label. The eyebrow used to name what was on the shelf,
    which goes stale the day the stock changes, and the sub-line repeated the
    price back at itself in words. */
+@media(max-width:359px){.stages b{font-size:19px}}
 .stages b{font:900 24px/.9 var(--display);color:#fff;letter-spacing:-.015em;white-space:nowrap;text-shadow:none}
 .shop-head{position:relative;z-index:3;padding:0 var(--gutter);margin:auto}
 .console{position:relative;margin-top:30px;padding:18px 20px;border-radius:7px 34px 7px 34px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,0 0 0 3px #061a32,0 0 0 5px rgba(0,213,255,.32);clip-path:polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))}
@@ -880,7 +980,7 @@ img{-webkit-user-drag:none}
 .image-fallback{max-width:200px;padding:20px;text-align:center;font-weight:900;color:var(--ice)}
 .product-card-copy{position:relative;z-index:4;flex:1 1 auto;display:flex;flex-direction:column;min-height:0;margin:0 5px;padding:12px 16px 12px;text-align:center;background:linear-gradient(180deg,rgba(10,43,73,.96),rgba(2,12,29,.98));border:1px solid rgba(210,240,255,.6);border-top:3px solid color-mix(in srgb,var(--stage) 70%,white);clip-path:polygon(8% 0,92% 0,100% 16px,100% 100%,0 100%,0 16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 0 #061326,0 12px 0 color-mix(in srgb,var(--stage) 58%,#061326)}
 /* Only the lines that actually CHANGED move, and they move 3 px. The whole
-   copy block used to drop to 25% opacity on every rotation, which is what made
+   copy block used to fall to 25% opacity on every rotation, which is what made
    a card look like it was blinking rather than turning over. No translate on
    the block itself: that nudged every rotating card and read as the whole page
    shifting up and down. */
@@ -1007,7 +1107,7 @@ img{-webkit-user-drag:none}
    still a live button that re-explains itself when pressed, not a disabled
    one. Colour is not the only signal: the label changes from "ADD" to
    "ALL n ADDED" and the accessible name says the same thing in words.
-   font-size drops because "ALL 12 ADDED" is eleven characters more than "ADD"
+   font-size falls because "ALL 12 ADDED" is eleven characters more than "ADD"
    and the button must not grow; `.add-button` is min-height, so a narrower
    glyph cannot change the card's height either. */
 .add-button.is-maxed{background:#22384d;color:#cfe2ef;cursor:default;
@@ -1448,7 +1548,15 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 /* ---------- motion initial states (only when the engine is live) ---------- */
 html.motion [data-reveal]{opacity:0}
 html.motion [data-split]:not(.is-split){opacity:0}
-html.motion .stages a,html.motion .plates .plate{opacity:0}
+/* `html.motion .stages a{opacity:0}` was removed 2026-09-13 together with the
+   ScrollTrigger that undid it. The rail is permanent header chrome now, not
+   content that reveals on scroll, and its entrance is the dock. Keeping the
+   hidden state would have meant a trigger whose `start:"top 95%"` is satisfied
+   on the first frame — the bar is at the top of the viewport from load — so it
+   would fire over the hero while the rail was stowed, `once:true`, and never
+   fire again. It also removes the last GSAP target in the header except
+   [data-progress], so the whole bar is CSS and survives GSAP dying. */
+html.motion .plates .plate{opacity:0}
 /* the motion boxes carry the hidden state, never the layout boxes — the intro
    tween targets [data-hero-copy]/[data-hero-price], which are the inner ones */
 html.motion .hero-copy-in,html.motion .hero-price-in,html.motion .hero-bottle-in,html.motion .hero-glow{opacity:0}
@@ -1478,8 +1586,21 @@ html.motion .deal-shelf .product-card{opacity:0}
   .collab-pill{margin-top:20px;font-size:11px}
   .hero-glow{height:56px}
   .spin-invite{padding:11px var(--gutter)}.spin-copy b{font-size:12.5px}.spin-copy small{font-size:11px}.spin-badge{flex-basis:30px;width:30px;height:30px}
-  .stages{padding:7px var(--gutter) 11px;margin-bottom:80px}
-  .stages a{min-width:150px;height:62px}.stages b{font-size:30px}
+  /* DESKTOP IS NOT THE PHONE HACK LEAKING UPWARD. At 1440 the two bars cost
+     160px of 900 — 17.8% — and the seam between a dark glass bar and a chrome
+     one is still two light sources on one edge. So the merge applies here too,
+     but the payload differs because the problem does: there IS room for the
+     wordmark up here, and what goes stale once you are in the shop is the
+     section index — "IN STOCK" while you are standing in it. So IN STOCK /
+     THE RULES / PRICE NOTES becomes 2/$5 / $8 / 2/$7 in the same centre cell,
+     by the same shutter, and the bar keeps exactly three clusters at every
+     scroll position instead of growing to six. One mechanism, two payloads. */
+  .nav-links{grid-area:1/2;justify-self:center;transition:opacity .2s var(--ease-out),transform .24s var(--ease-out)}
+  html.shop-docked .nav-links{opacity:0;visibility:hidden;transform:translateY(-10px);transition:opacity .2s var(--ease-out),transform .24s var(--ease-out),visibility 0s linear .24s}
+  .nav-list{grid-area:1/3;justify-self:end}
+  html.shop-docked .nav-lockup{opacity:1;transform:none}
+  .stages{grid-area:1/2;justify-self:center;padding-left:0;width:min(100%,470px)}
+  .stages a{height:52px}.stages b{font-size:30px}
   .shop{padding:0 0 60px}
   .shop-head{display:grid;grid-template-columns:1.05fr .95fr;gap:80px;align-items:end;padding:0 var(--gutter);max-width:none}
   .console{margin:0}
@@ -1502,9 +1623,14 @@ html.motion .deal-shelf .product-card{opacity:0}
   .shelf-price h3{font-size:clamp(78px,7.6vw,108px)}
   .shelf-info{margin:0 0 18px}.shelf-note{font-size:12px}
   .product-grid{gap:3px;padding:14px var(--gutter) 46px;scroll-padding-left:var(--gutter)}
-  /* restored here because the phone pass shrank the base values, and these two
-     had no desktop override of their own before 2026-09-13. */
-  .deal-shelf{--visual-h:384px;padding:48px 0 24px}
+  /* restored here because the phone pass shrank the base value. ONLY
+     `--visual-h` had no desktop override before 2026-09-13 — `padding` already
+     had one, 20 lines up at `.deal-shelf{padding:64px 0 30px}`, and repeating
+     it here at the same specificity but LATER in source silently cut the
+     desktop shelf from 64/30 to 48/24 on all three shelves. An audit caught it;
+     the comment that used to sit here claimed both properties were new, which
+     is how it got shipped. Do not re-add padding to this rule. */
+  .deal-shelf{--visual-h:384px}
   .product-card{flex-basis:390px;min-height:596px}
   @media(hover:hover){.product-card:hover .product-image-wrap.is-current img{--lift:-8px}}
   .product-card::before{width:340px;height:340px;top:26px}.product-card::after{left:22px;right:22px}
@@ -1634,8 +1760,12 @@ html.motion .deal-shelf .product-card{opacity:0}
 @media(max-height:480px){
   :root{--nav-h:56px}
   .nav{position:absolute}
-  .stages{position:static;margin-bottom:24px}
-  .stages a{height:44px}.stages b{font-size:20px}
+  /* Under 480px of height the whole bar stops floating and scrolls away with
+     the page (WCAG 1.4.10 reflow) — that is what `.nav{position:absolute}`
+     above does, and it now takes the rail with it, which it could not before:
+     the rail was a separate sticky element and had to be told position:static
+     on its own. One element, one rule. */
+  .stages a{height:40px}.stages b{font-size:20px}
   .mobile-pickup-bar{position:sticky;left:auto;right:auto;bottom:0;margin:10px}
 }
 
@@ -1788,7 +1918,7 @@ html.motion.late-boot .hero-price-in{opacity:1!important}
 }
 
 /* ========================= Cmd-P ON THE STOREFRONT =========================
-   HANDOFF has claimed since session 5 that "there is a small @media print block
+   The master brief has claimed since session 5 that "there is a small @media print block
    so Cmd-P on the storefront produces something legible". There was not: an
    audit on 2026-09-12 found `@media print` in exactly one file in the project,
    `flyer.css`, and it had never been in `beast.css` at all. Measured with print
