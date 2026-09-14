@@ -265,15 +265,27 @@
   };
   const STAGE_SPREAD = .84;   // bottles keep clear of the very rim of the disc
   const STAGE_DEPTH = .66;    // how far forward of the disc's centre line they stand
-  /* NEST IS A FLOOR ON THE GAP, NOT A SETTING THAT STACKS THINGS. It caps how
-     far two neighbours may overlap; it does nothing at all while the row still
-     has room to spare. Raised .06 -> .15 on 2026-09-14 for the owner's "show
-     more products and stack them slightly", and measured at 375x553: on its
-     own it changed NOTHING -- 3 bottles, 23.9% tall, +23.8px APART, identical
-     to the old build in every value -- because the count below was capped at 3
-     and the gap was nowhere near this floor. It only earns its keep once the
-     count cap lets a fourth bottle in and the row genuinely stops fitting.
-     Raise them together or neither does anything. */
+  /* NEST DOES TWO JOBS, AND AN EARLIER VERSION OF THIS COMMENT ONLY KNEW ONE.
+     It is a floor on the GAP at the bottom of `plan()` -- how far two
+     neighbours may overlap -- AND it is a term in the SIZING denominator in
+     `rowUnit`: `span / (Σ(rel·ar) · (1 - NEST·(n-1)/n))`. Raising it therefore
+     makes every bottle BIGGER whenever the width term is the one that binds,
+     which the note above `count` says is every portrait phone.
+
+     Raised .06 -> .15 on 2026-09-14 for the owner's "show more products and
+     stack them slightly". The measurement that motivated it -- 375x553, nest
+     alone, "changed NOTHING: 3 bottles, 23.9% tall, +23.8px APART, identical" --
+     is real but is the ONE case where nest is genuinely inert: a POSITIVE gap
+     means that row was HEIGHT-bound (capped by STAGE_MAXH), where nest cancels
+     out of the size and never reaches the gap floor. Generalising from it to
+     "nest does nothing on its own" was wrong, and the correction is not
+     academic: raising nest is what enlarged every width-bound row by
+     1/(1 - .15·(n-1)/n) -- about 7.6% at four-up -- and that, not the count
+     change, is what carried 768x1024 back over the 18% legibility gate.
+
+     So: the CAP is what lets a fourth bottle in; NEST is what pays for it, and
+     it also deepens the overlap on every row that was already width-bound,
+     desktop included. Change it with a render at more than one shape. */
   const STAGE_NEST = .15;     // neighbours may overlap by this much of a bottle width
   const STAGE_GAP_MAX = .16;  // ...and may stand this far apart before the line looks scattered
   const STAGE_MAXH = .355;    // no bottle taller than this share of the hero

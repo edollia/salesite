@@ -87,11 +87,22 @@
        browser's wheel OFF FOREVER (a spin is refused while a prize is held) on
        a dialog that says ONE SPIN A DAY. The timestamp needed to expire it was
        already being written by setPrize() and thrown away unread by loadPrize().
-       7 is a default, not an answer -- the owner has not set this number yet.
-       Set it to 0 to go back to a prize that never expires.
-       NOTE: this is not printed on the winning ticket. If the owner wants it
-       said out loud, it goes in each prize's `terms` below, in their words. */
-    wheelPrizeExpiryDays: 7,
+       SET BACK TO 0 -- NO EXPIRY -- ON THE SAME DAY IT WAS ADDED, and the
+       reasoning matters more than the number. Shipped at 7, this silently
+       DESTROYS CUSTOMER PROPERTY: `loadPrize()` removes the record, so a shopper
+       who won FREE CAR, screenshotted the foil ticket and came in on day 9
+       arrives holding an unconditional promise the site has already deleted,
+       and the seller has to be the one to say no. Nothing on the ticket, the
+       page or the flyer mentions a window -- no prize's `terms` carries one --
+       so there is no surface on which the shopper could have known.
+       An unapproved business rule that quietly voids something a customer won
+       is worse than the bug it fixes, and the owner has not answered.
+       THE MECHANISM IS KEPT, TESTED AND INERT. `loadPrize()` honours this
+       number and `beast-prove.py` proves it by seeding its own config, so
+       turning it on is one edit here and nothing else. Before turning it on,
+       decide what the TICKET says: a window nobody is told about is not a
+       policy, it is a deletion. */
+    wheelPrizeExpiryDays: 0,
     wheelPrizes: Object.freeze([
       Object.freeze({ id: "off5", label: "$5 OFF", note: "MIN $40", min: 40, weight: 13,
         art: "off-coin", tone: "cyan",

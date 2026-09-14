@@ -534,7 +534,7 @@
        the sticky stage bar said it a third time with the live stage lit — three
        copies of one number on screen at once, the string printed 18 times down
        the page, against an owner rule that reads "say it once". Meanwhile `size`
-       was in products.js for all 38 products and in the ADD button's
+       was in products.js for all 37 products and in the ADD button's
        aria-label, so a screen-reader user was told the size and a sighted one
        never was.
 
@@ -1319,6 +1319,20 @@
         }
       }, 1500);
     }
+    /* THE GUARD NO LONGER GUARDS WHAT IT WAS WRITTEN FOR. It existed so a plain
+       "Added X." toast could not overwrite the free-delivery announcement --
+       and that plain toast was deleted this session (work order 4.6). What the
+       `else` then suppressed was the stock-cap message, which the comment below
+       calls the only place a shopper is ever told they have reached the end of
+       the stock. Reachable: holding FREE DELIVERY at 14 items, adding the last
+       unit of a 1-unit product crosses the threshold AND maxes the product, and
+       the cap message was swallowed. Worse, the flag is only cleared inside
+       addProduct, so a crossing caused by the drawer's +1 left it set and ate
+       the cap message on a later, unrelated add.
+       The two are now independent: the flag is always cleared, and the cap
+       message always fires. If both land on the same press the cap message
+       wins, which is the right way round -- it is about stock the shopper
+       cannot have, and it is far rarer. */
     if (state.deliveryJustAnnounced) state.deliveryJustAnnounced = false;
     /* The press that REACHES the cap was silent. Only the press that EXCEEDS it
        spoke, so a screen-reader user who had already read the button was never
@@ -1333,7 +1347,7 @@
        end of the stock, and it fires on one press, not on every press --
        which is precisely what the owner objected to. If that is unwanted too,
        delete this branch; do not re-add the plain one. */
-    else if (isMaxed(product)) {
+    if (isMaxed(product)) {
       showToast(`Added ${fullName(product)} — that is all ${product.inventoryQuantity} I have.`);
     }
   }
@@ -2290,7 +2304,7 @@
   /* ---------- what a PRINTED page has to say ----------
      A shelf card shows one product at a time and rotates through the rest, so a
      print — which never rotates and never scrolls — carried the current variant
-     of each of the 18 cards and nothing else: **18 of the 38 products, and 20
+     of each of the 18 cards and nothing else: **18 of the 37 products, and 19
      with no name or price anywhere on the paper.** Found by an audit 2026-09-12.
 
      The other twenty names are not hidden on the page, they are not IN it: the

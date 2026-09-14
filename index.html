@@ -566,8 +566,12 @@
              news into it ("Delivery is free on this list", "Pickup only --
              delivery is not running at the moment"), and it now starts hidden
              so a visitor with no JavaScript sees no hole where a sentence was.
-             `.delivery-below[hidden]` is declared in beast.css: a class that
-             sets `display:block` beats the [hidden] attribute's UA rule. -->
+             It really does collapse: `beast.css` carries a top-level
+             `[hidden]{display:none!important}`, which outranks this element's
+             own `display:block`. An earlier draft of this comment claimed the
+             opposite and a matching `.delivery-below[hidden]` rule was added to
+             "fix" it; both were wrong and both are gone. The ROW's dead 11px
+             margin is the thing that needed a rule, and it has one. -->
         <small class="delivery-below" data-delivery-below data-delivery-status hidden></small>
         <div class="delivery-stamp" data-delivery-stamp hidden role="img" aria-label="Free delivery — you won it and this list is long enough">
           <span class="stamp-ring" aria-hidden="true"></span>
