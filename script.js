@@ -32,6 +32,7 @@
     cart: loadCart(),
     query: "",
     lastDrawerFocus: null,
+    touchSeen: false,
     lastDialogFocus: null,
     variantTimer: null,
     deliveryFree: null,
@@ -631,7 +632,14 @@
        undiscoverable. */
     if (state.displaySettings.autoRotateProducts === false || document.hidden
         || window.matchMedia("(prefers-reduced-motion: reduce)").matches
-        || window.matchMedia("(hover: none)").matches) return;
+        || window.matchMedia("(hover: none)").matches
+        /* `(hover: none)` describes the PRIMARY pointer. An iPad with a
+           trackpad, a touchscreen laptop and a phone with a mouse attached all
+           report `hover: hover` and are all still driven by a thumb — and on
+           those the 2000ms rotation is live and the read-then-reach window is
+           30-40% per press, which puts the wrong product in the cart AND in the
+           text the seller reads. One real touch is proof, and it is permanent. */
+        || state.touchSeen) return;
     state.variantTimer = window.setInterval(() => {
       document.querySelectorAll(".product-brand-card[data-variant-count]:not([data-variant-count='1'])").forEach((card) => {
         if (card.dataset.rotationStopped === "1") return;
@@ -1019,7 +1027,17 @@
 
   /* What the cart IS, cheaply, for comparing a generated request against it. */
   function cartSignature() {
-    return [...state.cart.entries()].map(([id, q]) => `${id}:${q}`).sort().join("|");
+    /* THE PRIZE IS PART OF WHAT THE REQUEST SAYS, so it has to be part of what
+       "the request still describes the list" means. It was not, and the prize
+       DOES sync across tabs (the storage listener calls renderCart, which calls
+       invalidateStaleRequest) — so the guard written to catch exactly this ran
+       and returned early, every time. Win FREE DELIVERY in a second tab with a
+       request already built, and the text the seller receives carries no prize
+       line and asserts the delivery fee applies, to a shopper holding a golden
+       ticket. The fulfilment line reads state.prize too, so it is two wrong
+       sentences, not one. */
+    return [state.prize?.id || "-",
+            ...[...state.cart.entries()].map(([id, q]) => `${id}:${q}`).sort()].join("|");
   }
 
   /* A REQUEST THAT NO LONGER DESCRIBES THE LIST MUST NOT STAY SENDABLE.
@@ -1408,6 +1426,7 @@
     dom.drawer.inert = !open;
     pageRegions().forEach((node) => { node.inert = open; });
     if (dom.scrim) dom.scrim.hidden = !open;
+    document.documentElement.classList.toggle("overlay-open", open);
     document.body.classList.toggle("overlay-open", open);
     lockPage(open);
   }
@@ -1437,7 +1456,17 @@
        display:none and NON-empty for a rendered fixed element, which is the
        distinction this actually needs. The chain is ordered, not `||`ed,
        because `||` tests existence and every one of these is always in the DOM. */
-    const back = state.lastDrawerFocus;
+    restoreFocus(state.lastDrawerFocus);
+  }
+
+  /* HOISTED OUT OF closeDrawer, because the same trap was live in two more
+     places that used a bare `?.focus?.()`: closeRequest() and the dialog's own
+     `close` listener. Both restore to `state.lastDialogFocus`, which on a phone
+     is `.mobile-pickup-bar` — and renderCart() sets that [hidden] the moment
+     the cart empties, fifteen statements after invalidateStaleRequest() has
+     already focused it. `.focus()` on a display:none element is a silent no-op
+     and the virtual cursor drops to the top of a 5,000px page. */
+  function restoreFocus(back) {
     const shown = (n) => !!(n && n.isConnected && !n.hidden && n.getClientRects().length);
     const fallback = [document.querySelector(".nav-list"),
                       document.querySelector(".cart-fab"),
@@ -1454,12 +1483,31 @@
     dom.orderForm.hidden = false;
     dom.orderSuccess.hidden = true;
     dom.dialog.showModal();
-    dom.orderForm.elements.name.focus();
+    /* NOT ON A TOUCH SCREEN. `.request` is centred in the LAYOUT viewport while
+       iOS raises the keyboard in the VISUAL one, and `interactive-widget` is not
+       set — so nothing moves. Focusing the name field springs a ~260px keyboard
+       unasked, leaving ~293px of visible dialog, and CREATE THE REQUEST (which
+       sits at roughly y 446-496 of a 484px dialog at 375x553) is behind it and
+       stays behind it for as long as any field has focus. Tapping outside to
+       dismiss the keyboard hits the dialog's own backdrop handler and closes
+       the request entirely. showModal() already focuses the first focusable in
+       tree order, which is correct and accessible; the shopper taps the field
+       themselves and iOS scrolls it into view on its own terms. */
+    if (!window.matchMedia("(any-pointer: coarse)").matches) dom.orderForm.elements.name.focus();
   }
 
   function closeRequest() {
+    /* RESET THE PANEL, or DONE leaves `orderSuccess.hidden === false` and
+       `dataset.builtFor` set for the life of the page — so every later ADD
+       passes invalidateStaleRequest()'s two guards, fires "that request is out
+       of date" and pulls focus off the button the shopper just pressed. Only
+       openRequest() ever cleared these, and DONE does not go through it. */
+    if (dom.orderSuccess) {
+      dom.orderSuccess.hidden = true;
+      delete dom.orderSuccess.dataset.builtFor;
+    }
     if (dom.dialog?.open) dom.dialog.close();
-    state.lastDialogFocus?.focus?.();
+    restoreFocus(state.lastDialogFocus);
   }
 
   function createRequestText(name, note, fulfillment = "Pickup") {
@@ -1895,8 +1943,19 @@
   });
 
   dom.dialog?.addEventListener("close", () => {
-    state.lastDialogFocus?.focus?.();
+    restoreFocus(state.lastDialogFocus);
   });
+
+  /* THE ONE-SHOT THAT PROVES A THUMB. `(hover: none)` describes the primary
+     pointer, so a touchscreen laptop, an iPad with a trackpad and a phone with
+     a mouse all claim hover and all get the rotation — and a finger on any of
+     them generates no :hover, so the freeze guard inside the interval cannot
+     fire either. A real touchstart is unambiguous and permanent; a pure mouse
+     never pays for this listener because it never fires. */
+  window.addEventListener("touchstart", () => {
+    state.touchSeen = true;
+    stopBrandRotation();
+  }, { once: true, passive: true });
 
   document.addEventListener("visibilitychange", () => {
     if (document.hidden) stopBrandRotation();

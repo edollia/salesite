@@ -583,7 +583,23 @@
       return { push, shrink };
     };
 
-    let count = Math.min(...all.map((row) => row.length));
+    /* THREE ON A PORTRAIT HERO, FOUR ON A LANDSCAPE ONE — and this is the fix
+       for the owner's "why the heck on mobile the items show sooo tiny??".
+       The line-up is SPAN-bound on every portrait phone: the row already uses
+       the whole screen width minus the 12px margins, so the height each bottle
+       gets is span / Σ(rel·ar), and the two widest stages (the paper bales at
+       aspect 1.10-1.13, the four jugs at .85-.90) carry 19-24% more ink-width
+       per unit of height than four skinny 2-for-5 bottles. That ratio is the
+       whole defect, and it is why `paper-2-for-7` and `8-each` sit at 14.5% of
+       the hero while `2-for-5` passes at 18.1% on the same screen.
+       IT CANNOT BE SOLVED WITH FOUR PRODUCTS. Four at 18% of an 844px hero need
+       451px of row on a 390px screen. Not a wider disc, not a re-crop, not a
+       bigger STAGE_MAXH, not less nesting — the screen is not wide enough. The
+       only lever that moves is how many things share the width.
+       `pod.W < pod.H` is a MEASUREMENT of the hero box, not a breakpoint: there
+       is no second copy of 760 in here to drift out of step with the stylesheet,
+       and a landscape window of any size keeps all four. */
+    let count = Math.min(pod.W < pod.H ? 3 : Infinity, ...all.map((row) => row.length));
     let lo = Math.max(pod.cx - pod.a * STAGE_SPREAD, margin);
     let scale = 1;
     // a bottle too short to read is worse than one bottle fewer
@@ -1196,6 +1212,13 @@
     function spin(forceId) {
       if (spinning || !canSpin() || spinButton.getAttribute("aria-disabled") === "true") return;
       spinning = true;
+      /* MARK IT NOW. This used to live in land(), 5.2 seconds later, so a reload
+         two seconds into a spin wrote nothing at all: no lock, no prize, and
+         canSpin() still true. Spin, reload, repeat until a win — and 70% of
+         outcomes are a miss, which leaves no trace to notice. A business rule
+         has to fail CLOSED. force() clears the key before calling spin(), so
+         the bench is unaffected. */
+      markSpun();
       /* aria-disabled, not disabled: a disabled button loses focus instantly,
          so pressing SPIN left the keyboard on <body> for the whole spin and
          left it there. It stays focusable and the handler returns early. */
@@ -1216,7 +1239,6 @@
       const land = () => {
           spinning = false;
           dialog.classList.remove("is-spinning");
-          markSpun();
           if (segment.prize) {
             /* Only the id crosses over. script.js owns the label, the minimum
                and what the prize is worth to the list in front of the shopper;
@@ -1341,7 +1363,15 @@
     ticketDialog?.querySelector("[data-ticket-list]")?.addEventListener("click", () => {
       ticketDialog.close();
       closeWheel();
-      document.querySelector("[data-open-cart]")?.click();
+      /* THE FIRST MATCH IN TREE ORDER IS `.nav-list`, WHICH IS display:none
+         BELOW 760px. click() still dispatches, so the drawer opened — but
+         openDrawer recorded that unrendered button as the focus to return to,
+         and closing the list then walked the fallback chain down to the skip
+         link at the top of the document. On a phone, every prize ended with the
+         virtual cursor thrown to the top of a 5,000px page. Pick one that is
+         actually rendered. */
+      [...document.querySelectorAll("[data-open-cart]")]
+        .find((n) => n.getClientRects().length)?.click();
     });
 
     let lastWheelFocus = null;
@@ -1515,7 +1545,13 @@
   const bootedBefore = (() => { try { return sessionStorage.getItem("beast-booted") === "1"; } catch { return false; } })();
   /* Unless the <head> failsafe already gave up on the splash — see its comment.
      Re-locking the page after it has been released is worse than a slow boot. */
-  if (!window.__bootReleased) document.body.classList.add("is-booting");
+  if (!window.__bootReleased) {
+    /* Both, because the rule that actually holds the viewport is on the ROOT:
+       html is overflow-x:clip, which switches off body-to-viewport overflow
+       propagation, so `body{overflow:hidden}` alone never locked anything. */
+    document.documentElement.classList.add("is-booting");
+    document.body.classList.add("is-booting");
+  }
   /* STAND THE <head> FAILSAFE DOWN THE MOMENT THIS FILE IS ALIVE — here, not
      inside releaseBoot(). releaseBoot() is NOT on the happy path: the splash is
      removed by finishBoot's timeline onComplete and `is-booting` by the intro's
@@ -1545,6 +1581,7 @@
        It has, so stand it down — otherwise its 9-second timer would fire in the
        middle of a slow first visit and yank an overlay this file is managing. */
     clearTimeout(window.__bootDeadline);
+    document.documentElement.classList.remove("is-booting");
     document.body.classList.remove("is-booting");
     document.querySelector("[data-boot]")?.remove();
   }
@@ -1581,7 +1618,7 @@
     .add(() => shine("[data-hero-price] .chrome"), .95)
     .fromTo("[data-hero-glow]", { opacity: 0 }, { opacity: 1, duration: 1.2 }, .8)
     .fromTo("[data-hero-bottle]", { y: 70, opacity: 0 }, { y: 0, opacity: 1, duration: 1.3, stagger: .1 }, .7)
-    .add(() => { bootReleased = true; clearTimeout(bootDeadline); document.body.classList.remove("is-booting"); ScrollTrigger.refresh(); }, 1.3);
+    .add(() => { bootReleased = true; clearTimeout(bootDeadline); document.documentElement.classList.remove("is-booting"); document.body.classList.remove("is-booting"); ScrollTrigger.refresh(); }, 1.3);
 
   function finishBoot() {
     try { sessionStorage.setItem("beast-booted", "1"); } catch { /* private mode */ }

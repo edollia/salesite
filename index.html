@@ -9,11 +9,20 @@
   <meta property="og:type" content="website">
   <meta property="og:title" content="Beast Stock-Up — Stock-Up × MrBeast">
   <meta property="og:description" content="Household supplies, in stock now. Two medium bottles $5. Big sizes $8. Paper goods and softener, any two $7. Six towns, pickup or delivery, cash in person.">
-  <meta property="og:image" content="assets/social-thumbnail.png">
+  <!-- ABSOLUTE, because Open Graph requires it. This was a relative path, so
+       Facebook, Slack, iMessage and X could not resolve it and EVERY share of
+       the site rendered with no preview image at all. The asset itself is
+       tracked and public and was never the problem. `publicUrl` in
+       products.js is read by nothing, so it could not have fixed this. -->
+  <meta property="og:url" content="https://beast.deal/">
+  <meta property="og:image" content="https://beast.deal/assets/social-thumbnail.png">
+  <meta property="og:image:secure_url" content="https://beast.deal/assets/social-thumbnail.png">
+  <meta property="og:image:alt" content="Beast Stock-Up — any two medium bottles for $5.">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <title>Beast Stock-Up — Stock-Up × MrBeast household supplies</title>
+  <link rel="canonical" href="https://beast.deal/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon.png" type="image/png" sizes="512x512">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
@@ -58,6 +67,7 @@
       window.__bootReleased = true;
       var boot = document.querySelector("[data-boot]");
       if (boot) boot.remove();
+      document.documentElement.classList.remove("is-booting");
       if (document.body) document.body.classList.remove("is-booting");
     };
     window.__bootDeadline = setTimeout(window.__bootFailsafe, 9000);
@@ -633,6 +643,10 @@
 
   <div class="toast" data-toast role="status" aria-live="polite"></div>
   <button class="cart-fab" type="button" data-open-cart aria-haspopup="dialog" aria-controls="pickup-list" hidden><span>Pickup list</span><b data-cart-count>0</b></button>
-  <button class="mobile-pickup-bar" type="button" data-open-cart hidden><span><b data-mobile-count>0</b> PICKUP LIST</span><strong data-mobile-total>$0.00</strong></button>
+  <!-- aria-haspopup/aria-controls to match .nav-list and .cart-fab. This is the
+       ONLY drawer trigger a phone ever gets (the other two are display:none
+       below 760px), and it was the one without them. -->
+  <button class="mobile-pickup-bar" type="button" data-open-cart
+          aria-haspopup="dialog" aria-controls="pickup-list" hidden><span><b data-mobile-count>0</b> PICKUP LIST</span><strong data-mobile-total>$0.00</strong></button>
 </body>
 </html>

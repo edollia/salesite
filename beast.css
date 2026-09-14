@@ -41,9 +41,18 @@
    under the three things that float over the page — the fixed nav, the sticky
    price-stage bar under it, and the pink pickup bar at the bottom of a phone —
    and it is also what stops a `#deal-8-each` jump landing under the chrome.
-   `scroll-margin-top` on the sections is GONE: a fragment jump applies both,
-   so the two offsets composed to 352 px at 1440 and 320 px on a phone, and
-   tapping the $8 tile left you looking at the previous shelf's ADD button. */
+   `scroll-margin-top` on the sections was GONE for exactly this reason: a
+   fragment jump applies BOTH, so the two offsets composed to 352 px at 1440
+   and 320 px on a phone, and tapping the $8 tile left you looking at the
+   previous shelf's ADD button.
+   IT IS BACK, ON `.deal-shelf` ONLY, AT -19px, AND ONLY BELOW 760px — which is
+   a deliberate composition, not the accident above. It buys 19px of the phone's
+   vertical budget by letting the shelf's 1px border and 12px of empty top
+   padding scroll behind the bar; the HEADLINE still lands 5px clear of it.
+   Measured at the landing position, that 19px is part of what takes the ADD
+   button out from under the pink pickup bar at 375x553, 320x568, 414x568 and
+   430x568. The desktop band sets it back to 0. If you add a second one, you are
+   back in the composing trap this paragraph is about. */
 html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;
   /* WHY 12 AND NOT 78. The chrome used to be two bars — the fixed nav plus a
      sticky price bar under it — so this had to clear 141px on a phone and 160px
@@ -54,13 +63,47 @@ html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;
      air at every shape. */
   scroll-padding-top:calc(var(--nav-h) + 12px);scroll-padding-bottom:88px}
 body{margin:0;overflow-x:clip;background:var(--navy);color:var(--foam);font-family:var(--body);font-weight:600;-webkit-font-smoothing:antialiased}
+/* ON THE ROOT, NOT THE BODY, AND THAT IS THE WHOLE FIX.
+   Per CSS Overflow 3 §3.3 the body's overflow is propagated to the viewport
+   ONLY while the root element's overflow is `visible` in both axes. `html`
+   above is `overflow-x:clip`, so propagation is off and the viewport takes
+   the ROOT's overflow. `body` is `height:auto`, so `overflow:hidden` on it
+   clipped a box exactly as tall as its own content — i.e. it clipped nothing
+   and stopped nothing, in every browser, not merely on iOS touch.
+   `body.overlay-open` was therefore decoration: the drawer only ever held
+   because lockPage() pins the body with position:fixed. `body.is-booting`
+   had NO such partner, so the boot splash — an opaque z-index:2000 sheet the
+   owner sees for up to 9 s on a cold connection — could be panned behind for
+   its whole life. That is the owner's "you can still scroll underneath",
+   live on every device, at the first moment of every visit.
+   The classes stay on <body> too, because other rules select them. */
+html.overlay-open,html.is-booting{overflow:hidden}
+/* `dialog-open` HAD NO CSS AT ALL. beast.js writes it on <html> at four sites
+   and a comment in that file states, as fact, that "the drawer and the wheel
+   use it for scroll locking" — while `grep dialog-open *.css` returned zero
+   hits in every stylesheet. The drawer never used it (it uses lockPage), so
+   the wheel, the ticket and the request had NO scroll lock of any kind beyond
+   whatever showModal() gives them, which on iOS Safari is the project's own
+   open question. Now the class does the job the comment claims it does. */
+html.dialog-open{overflow:hidden}
 body.overlay-open,body.is-booting{overflow:hidden}
+/* A fixed overlay still forwards a touch pan to the page underneath unless it
+   says otherwise. Belt and braces, and it costs nothing on a desktop. */
+.boot{touch-action:none;overscroll-behavior:contain}
 [hidden]{display:none!important}
 img{display:block;max-width:100%}
 button,input,select,textarea{font:inherit}
 button,a{color:inherit}
 a{text-decoration:none}
-p,h1,h2,h3{margin:0}
+/* h4 WAS MISSING FROM THIS LIST and it is the product card's title, the only
+   h4 the site builds (script.js:471). So every card carried the UA's
+   `margin-block-end:1.33em` — 23.94px at the phone's 18px and 34.58px at the
+   desktop's 26px — that nobody wrote, nobody reviewed and nobody could see in
+   this stylesheet. On a 400px phone card that is 6% of the card, more than
+   the size line and its margin together, inside the one measurement this
+   project has been arguing about for two sessions. The title's real spacing
+   is set where the title is styled. */
+p,h1,h2,h3,h4{margin:0}
 button{cursor:pointer}
 ::selection{background:var(--pink);color:var(--on-pink)}
 :focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
@@ -254,17 +297,21 @@ html.shop-docked .nav{border-bottom-color:transparent}
      here, so the `1fr auto` base leaves a 0-wide second track and a 12px gap
      the rail would otherwise be short by. */
   .nav{grid-template-columns:1fr}
-  html.shop-docked .nav-lockup{opacity:0;transform:translateY(-10px)}
-  /* AND IT MUST STOP TAKING TAPS. `opacity:0` hides a box; it does not remove
-     it from hit-testing, and .nav-brand is an <a> sized `width:max-content`, so
-     the retracted wordmark went on eating the first price tile's centre.
-     Measured the moment the merge landed: elementFromPoint at the centre of
-     `2 / $5` returned the brand link, not the tile. That is trap 8 — a hit area
-     wider than the thing it belongs to — arriving through a fix for something
-     else. pointer-events is turned off on the LINK and back on for the mark, so
-     the panther still works as "back to top" and the click still bubbles. */
-  html.shop-docked .nav-brand{pointer-events:none}
-  html.shop-docked .nav-panther{pointer-events:auto}
+  /* THE LINK'S BOX MUST SHRINK, not merely go inert. `opacity:0` hides a box
+     but does not remove it from hit-testing, and .nav-brand is an <a> sized
+     `width:max-content`, so the retracted wordmark went on eating the first
+     price tile's centre — measured the moment the merge landed.
+     The first repair was `pointer-events:none` on the link with `auto` on the
+     mark. It fixed the tile and broke the brand: an inert 167px box cannot
+     receive its OWN centre either, and the tap probe caught that at 390 and 430
+     as soon as it started testing the rail. Two elements share one grid cell;
+     only one can own a given point, so the loser has to stop being there.
+     `width:0` collapses the lockup, so .nav-brand's max-content IS the panther:
+     the brand owns its centre, the tiles own theirs, and back-to-top still works.
+     Width is a layout property, but nothing TRANSITIONS it — it is a discrete
+     state change, the bar's height does not move, and the rail is
+     `justify-self:stretch` in the same cell so it does not shift either. */
+  html.shop-docked .nav-lockup{opacity:0;transform:translateY(-10px);width:0;overflow:hidden;pointer-events:none}
 }
 .nav-panther{width:44px;height:auto}
 .nav-lockup{position:relative;display:grid;line-height:.78;font-family:var(--display);text-transform:uppercase;letter-spacing:-.06em}
@@ -320,7 +367,11 @@ html.shop-docked .nav{border-bottom-color:transparent}
    with object-position (trap 15: the plate, its preload and its anchor must
    be picked by ONE condition). getComputedStyle still reads `50% 50%`, which
    is what podiumMetrics() needs. */
-@media(max-width:759px) and (max-aspect-ratio:0.9999/1) and (min-aspect-ratio:941/1672){
+/* 759.98, matching the nav band: `min-width:760px` and `max-width:759px` are
+   NOT complements, and a fractional layout width in (759, 760) — reachable
+   at 150% zoom — matched neither, so the phone plate anchor silently fell
+   back to `50% 100%` and the whole O14 geometry returned. */
+@media(max-width:759.98px) and (max-aspect-ratio:0.9999/1) and (min-aspect-ratio:941/1672){
   .hero{--plate-y:50%}
 }
 /* The two plates want opposite anchors: the LANDSCAPE one centres, the PORTRAIT
@@ -853,7 +904,7 @@ html.shop-docked .nav .stages a{pointer-events:auto}
    every bay of a real shop -- and the ONLY stage-coloured layer is the light,
    blended with `screen` so it brightens the wall towards its own hue instead of
    being averaged into it. Yellow light now reads as yellow light. */
-.deal-shelf{position:relative;padding:18px 0 12px;overflow:clip;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent);
+.deal-shelf{position:relative;padding:12px 0 12px;overflow:clip;scroll-margin-top:-19px;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent);
   background:
     radial-gradient(ellipse 52% 300px at 50% 0,color-mix(in srgb,var(--stage) 9%,transparent),transparent 70%),
     linear-gradient(180deg,#061b31 0,#07182c 46%,#040f1d 100%);
@@ -888,7 +939,7 @@ html.shop-docked .nav .stages a{pointer-events:auto}
    desktop band has done exactly this since it was written; the phone kept the
    stack for no reason anyone recorded. `1fr` on the second column lets the note
    wrap to two lines at 320 rather than push the headline. */
-.shelf-heading{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline;padding:0 18px;max-width:var(--max);margin:0 auto 8px;position:relative;z-index:2}
+.shelf-heading{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline;padding:0 18px;max-width:var(--max);margin:0 auto 6px;position:relative;z-index:2}
 /* the headline is an inline-block (.chrome needs a text-sized box), so the
    eyebrow has to be a block or a short eyebrow lands on the same line as a
    108px headline. */
@@ -999,7 +1050,14 @@ img{-webkit-user-drag:none}
    cannot reach a laptop — that is how this stylesheet is built and it is why
    these are base rules rather than a phone media query. */
 .deal-shelf{--visual-h:192px}
-.product-card{flex:0 0 min(82vw,340px);min-height:400px;position:relative;display:flex;flex-direction:column;transform-style:preserve-3d}
+/* 400 -> 370 on the phone, and NOT ONE PIXEL OF IT COMES OUT OF THE BAY.
+   `--visual-h` is untouched at 192px — the owner asked for the product
+   artwork BIGGER, not smaller, and shrinking the copy block while the bay
+   holds still makes the artwork a larger share of its own card, not a
+   smaller one (34.6% -> 37.4% for the smallest product). The 30px is the
+   unauthored h4 margin above, 6px of copy padding and 4px off the button's
+   top margin. Desktop keeps its own 596px at :1715. */
+.product-card{flex:0 0 min(82vw,340px);min-height:370px;position:relative;display:flex;flex-direction:column;transform-style:preserve-3d}
 /* The 290px chrome disc is gone. It was the single thing stopping this row
    from reading as a shelf: it gave every product the same silhouette and the
    same apparent size, and it drew a hard edge between neighbours. What is left
@@ -1030,7 +1088,7 @@ img{-webkit-user-drag:none}
   .product-card:hover::after{transform:scale(.94);opacity:.75}}
 .product-card::after{transition:transform .5s var(--ease-out),opacity .5s}
 .image-fallback{max-width:200px;padding:20px;text-align:center;font-weight:900;color:var(--ice)}
-.product-card-copy{position:relative;z-index:4;flex:1 1 auto;display:flex;flex-direction:column;min-height:0;margin:0 5px;padding:12px 16px 12px;text-align:center;background:linear-gradient(180deg,rgba(10,43,73,.96),rgba(2,12,29,.98));border:1px solid rgba(210,240,255,.6);border-top:3px solid color-mix(in srgb,var(--stage) 70%,white);clip-path:polygon(8% 0,92% 0,100% 16px,100% 100%,0 100%,0 16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 0 #061326,0 12px 0 color-mix(in srgb,var(--stage) 58%,#061326)}
+.product-card-copy{position:relative;z-index:4;flex:1 1 auto;display:flex;flex-direction:column;min-height:0;margin:0 5px;padding:9px 16px 9px;text-align:center;background:linear-gradient(180deg,rgba(10,43,73,.96),rgba(2,12,29,.98));border:1px solid rgba(210,240,255,.6);border-top:3px solid color-mix(in srgb,var(--stage) 70%,white);clip-path:polygon(8% 0,92% 0,100% 16px,100% 100%,0 100%,0 16px);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 8px 0 #061326,0 12px 0 color-mix(in srgb,var(--stage) 58%,#061326)}
 /* Only the lines that actually CHANGED move, and they move 3 px. The whole
    copy block used to fall to 25% opacity on every rotation, which is what made
    a card look like it was blinking rather than turning over. No translate on
@@ -1042,7 +1100,7 @@ img{-webkit-user-drag:none}
 .product-card-copy .product-size.is-fresh{animation:variantIn .42s var(--ease-out)}
 @keyframes variantIn{from{opacity:0;transform:translateY(3px)}}
 .product-brand{font:900 10px/1 var(--body);color:var(--stage);letter-spacing:.16em;text-transform:uppercase}
-.product-card-copy h4{font:900 18px/.98 var(--display);margin-top:8px;letter-spacing:-.035em}
+.product-card-copy h4{font:900 18px/.98 var(--display);margin:8px 0 6px;letter-spacing:-.035em}
 .stock-note{font:900 9px/1 var(--body);color:var(--yellow);margin-top:7px;letter-spacing:.1em}
 /* The arrows live on the edges of the product visual, over the podium disc, and
    the dots ride the brand line. They used to own a 34 px row inside the copy
@@ -1129,7 +1187,8 @@ img{-webkit-user-drag:none}
 /* THE SIZE LINE, 2026-09-13, in the slot the price had. It sits under the NAME
    rather than at the foot, and it carries `margin-bottom:auto`, so the slack a
    stretched grid row hands the card falls between the size and the button
-   instead of into a hole under the title. `.add-button` keeps its own 14 px, so
+   instead of into a hole under the title. `.add-button` keeps its own margin
+   (10 px on a phone, restored to 14 px in the desktop band), so
    the two never touch on a card with no slack to give. It keeps the price's ink
    colour, which already measures AA on this ground. */
 .product-size{margin-top:5px;margin-bottom:auto;font:900 12px/1.2 var(--body);color:var(--ice);letter-spacing:.055em;text-transform:uppercase}
@@ -1148,7 +1207,7 @@ img{-webkit-user-drag:none}
    number already on the list and drives the punch, the glow and the chip kick,
    so the tenth press feels harder than the first; data-press cycles 1/2/3 so
    the keyframe restarts on a press that lands while it is still running. */
-.add-button{position:relative;width:100%;min-height:56px;margin-top:14px;padding:0 56px 0 20px;border:0;border-radius:999px;
+.add-button{position:relative;width:100%;min-height:56px;margin-top:10px;padding:0 56px 0 20px;border:0;border-radius:999px;
   background:linear-gradient(180deg,color-mix(in srgb,var(--stage) 86%,white),var(--stage));
   color:var(--navy);font:900 20px/1 var(--display);text-transform:uppercase;letter-spacing:.01em;text-align:left;
   box-shadow:inset 0 2px 0 rgba(255,255,255,.6),0 6px 0 color-mix(in srgb,var(--stage) 45%,black);
@@ -1595,18 +1654,43 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
    one of the two things the shopper came here to do. */
 .ready-done{width:100%;min-height:44px;margin-top:18px;padding-top:16px;border:0;border-top:1px solid rgba(141,235,255,.18);
   background:transparent;color:#9fb7c7;font:900 11px/1 var(--display);letter-spacing:.1em;cursor:pointer}
-.ready-done:hover{color:#fff}
+/* Guarded. This was the only appearance-changing :hover in the file outside
+   the hover:hover block, and the invariant is stated at the top of it: an
+   unguarded hover LATCHES after a tap, so DONE turned white and stayed. */
+@media(hover:hover){.ready-done:hover{color:#fff}}
+/* THE REQUEST FORM HAD NO FOCUS INDICATOR AT ALL, on the last four controls
+   before a purchase. `.request input,.request select,.request textarea`
+   carries `outline:none` at (0,1,1), which out-specifies the global
+   `:focus-visible` at (0,1,0); and the 1px border standing in for it is
+   removed outright on the draft by `.request-ready textarea{border:0}`, so
+   the textarea had neither. WCAG 2.4.7. Restored at the same specificity. */
+.request input:focus-visible,.request select:focus-visible,
+.request textarea:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+/* The field boundary itself was 2.23:1 against its own interior, under SC
+   1.4.11's 3:1 — and on a text input the border IS the affordance. .52 gives
+   3.12:1. */
+.request input,.request select,.request textarea{border-color:rgba(141,235,255,.52)}
 .toast{position:fixed;z-index:1600;left:50%;bottom:92px;transform:translate(-50%,25px);opacity:0;pointer-events:none;padding:13px 18px;border-radius:99px;background:var(--yellow);color:var(--ink);font-size:11px;font-weight:900;box-shadow:0 10px 30px rgba(0,0,0,.35);transition:.3s var(--ease-out)}
 .toast.is-visible{opacity:1;transform:translate(-50%,0)}
 .cart-fab{position:fixed;right:20px;bottom:22px;z-index:700;border:1px solid rgba(255,255,255,.42);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#ef1a8d);color:var(--on-pink);padding:11px 11px 11px 17px;display:none;align-items:center;gap:10px;font:900 9px/1 var(--display);text-transform:uppercase;letter-spacing:.08em;box-shadow:0 7px 0 #69063f,0 16px 35px rgba(0,0,0,.4)}
 .cart-fab b{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:var(--ink)}
 /* Below 760 the pink bar owns the pickup list; the nav chip said the same
    words at the top of the same screen. */
-@media(max-width:759px){.nav-list{display:none}}
-.mobile-pickup-bar{position:fixed;z-index:800;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));min-height:58px;border:1px solid rgba(255,255,255,.6);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#ef1a8d);color:var(--on-pink);display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 18px;box-shadow:0 6px 0 #69063f,0 14px 35px rgba(0,0,0,.5);font:900 10px/1 var(--display);letter-spacing:.06em}
+/* 759.98 for the same reason: at 759.5 the phone nav grid (one column) was
+   live while .nav-list was still display:flex, so the pill auto-placed into
+   an implicit SECOND ROW of a 72px bar and overflowed it. */
+@media(max-width:759.98px){.nav-list{display:none}}
+.mobile-pickup-bar{position:fixed;z-index:800;left:10px;right:10px;bottom:max(10px,env(safe-area-inset-bottom));min-height:44px;border:1px solid rgba(255,255,255,.6);border-radius:999px;background:linear-gradient(180deg,#ff4bb0,#ef1a8d);color:var(--on-pink);display:flex;align-items:center;justify-content:space-between;padding:8px 10px 8px 18px;box-shadow:0 6px 0 #69063f,0 14px 35px rgba(0,0,0,.5);font:900 10px/1 var(--display);letter-spacing:.06em}
 .mobile-pickup-bar span{display:flex;align-items:center;gap:8px}
 .mobile-pickup-bar span b{width:26px;height:26px;border-radius:50%;display:grid;place-items:center;background:var(--yellow);color:var(--ink)}
-.mobile-pickup-bar>strong{font-size:16px;color:var(--yellow)}
+/* --yellow on this gradient measures 2.97-3.20:1 across the line box. At
+   16px/900 that is NOT WCAG large text (large is 24px, or 18.66px bold), so
+   it needs 4.5:1 and misses by about a third. It is the cash total, on the
+   one element that is on screen from the first ADD until checkout.
+   Nothing caught it because beast-contrast.py runs at ONE viewport, 1440x900,
+   where this bar is display:none. --on-pink is the ink every other pink
+   control on the site already uses, and it measures 5.31:1 here. */
+.mobile-pickup-bar>strong{font-size:16px;color:var(--on-pink)}
 .fly{position:fixed;z-index:1500;pointer-events:none;object-fit:contain}
 
 /* ---------- motion initial states (only when the engine is live) ---------- */
@@ -1711,7 +1795,23 @@ html.motion .deal-shelf .product-card{opacity:0}
   .product-card{flex-basis:390px;min-height:596px}
   @media(hover:hover){.product-card:hover .product-image-wrap.is-current img{--lift:-8px}}
   .product-card::before{width:340px;height:340px;top:26px}.product-card::after{left:22px;right:22px}
-  .product-card-copy{min-height:182px;padding:19px 25px 24px}.product-card-copy h4{font-size:26px}
+  .product-card-copy{min-height:182px;padding:19px 25px 24px}
+  /* THE MARGIN COMES WITH THE FONT-SIZE. This band overrode `font-size`
+     alone, so when the phone rule gained `margin:8px 0 6px` (replacing the
+     UA's unauthored 1.33em) the 6px landed on the desktop too — where the
+     UA had been giving 34.58px. That is a 28.58px change to the desktop
+     card, from an edit whose entire subject was the phone. It is the same
+     defect as `.product-size`'s `font:` shorthand twenty lines down, and it
+     was committed by the fix for it. 34px preserves what desktop rendered
+     before; it is the UA's number, not a chosen one, and it is worth a
+     deliberate look next time anyone is in this band. */
+  .product-card-copy h4{font-size:26px;margin-bottom:34px}
+  /* Same reason: `.add-button{margin-top}` went 14 -> 10 for the phone's
+     vertical budget and had NO desktop override, so desktop inherited it. */
+  .add-button{margin-top:14px}
+  /* And the phone's fragment-landing compensation must not reach desktop:
+     at 1440 the chrome is 80px and -19 would land a shelf 7px behind it. */
+  .deal-shelf{scroll-margin-top:0}
   /* `.product-size{font-size:13.5px}` was the ONLY desktop override, but the
      base rule sets `font:900 12px/1.2` — a shorthand, so it also set
      line-height — and `margin-top:5px`. Both of those phone values were
@@ -1846,7 +1946,14 @@ html.motion .deal-shelf .product-card{opacity:0}
   .cart-lines{overflow:visible;flex:0 0 auto;min-height:0}
   .cart-summary{overflow:visible;flex:0 0 auto}
 }
-@media(max-height:480px){
+/* AND IT MUST ACTUALLY BE LANDSCAPE. This block is documented throughout as
+   the phone-held-sideways band, but `max-height` alone also catches 320x480
+   PORTRAIT — a 320-wide iPhone in Safari, whose layout height is ~454-460 by
+   this project's own reckoning. In portrait it silently unpinned the merged
+   bar, deleted the wordmark and made the pickup bar sticky. No shape in the
+   suite has a height at or under 480, so it had never been rendered.
+   min-aspect-ratio:1/1 is the condition every comment below already assumes. */
+@media(max-height:480px) and (min-aspect-ratio:1/1){
   :root{--nav-h:56px}
   .nav{position:absolute}
   /* Under 480px of height the whole bar stops floating and scrolls away with
@@ -1863,7 +1970,19 @@ html.motion .deal-shelf .product-card{opacity:0}
      shelf links unreachable at every scroll position in landscape.
      Links to shelves that were never rendered are already neutralised by
      `.is-empty` in renderShelves(), so trap 25 still holds without the stow. */
-  .stages{opacity:1;visibility:visible;transform:none;transition:none;padding-left:0}
+  /* The wide half of this repair was never written. `.nav-links` is
+     display:flex from the desktop band and shares grid cell 1/2 with
+     `.stages`; it is only ever hidden by `html.shop-docked`, which cannot be
+     true here (the bar has scrolled away by then). So on EVERY phone held
+     sideways the price tiles painted on top of IN STOCK / THE RULES / PRICE
+     NOTES and took their taps. */
+  .nav-links{display:none}
+  /* padding-left:0 was wrong too: `.nav-lockup{display:none}` below removes
+     the WORDMARK, but `.nav-panther` is its sibling and survives at 44px with
+     z-index:2 — so zeroing the clearance put the panther over the left 44px
+     of the first price tile. A centre-only tap probe cannot see that; a thumb
+     aiming at the rounded left cap of the first tile goes back to the top. */
+  .stages{opacity:1;visibility:visible;transform:none;transition:none;padding-left:52px}
   .stages a{pointer-events:auto}
   .nav-lockup{display:none}
   /* and nothing is pinned here, so a fragment needs no chrome cleared */
@@ -2002,6 +2121,25 @@ html.motion.late-boot .hero-price-in{opacity:1!important}
   .btn,.add-button,.cart-summary>button,.request-submit,.ready-actions button,
   .spin-go,.variant-arrow,.variant-dots button,.cart-line-controls button{
     border:1px solid ButtonText!important;background-color:ButtonFace!important;color:ButtonText!important}
+  /* THE PHONE'S OWN CHROME WAS IN NEITHER LIST. Each of these has a gradient or
+     a background-colour as its ONLY boundary, and forced-colors discards both:
+     `.stages a` — the three price tiles, which lose their shape AND their
+     active state twice over (the .is-active gradient and the ::after bar);
+     `.toast` — the only channel the stock cap ever speaks through, rendering as
+     unframed text on top of product cards at z-index 1600; `.hero-dial button`
+     — the WCAG 2.2.2 pause control for the auto-advancing hero, three
+     invisible buttons; and the request draft, `.ready-done` and the three
+     empty-state buttons, all of which become bare words. */
+  .ready-done,.console button,.cart-empty button,.empty-results button,
+  .hero-dial button{
+    border:1px solid ButtonText!important;background-color:ButtonFace!important;color:ButtonText!important}
+  .stages a,.toast,.request-ready textarea{
+    background-color:Canvas!important;background-image:none!important;
+    border:1px solid CanvasText!important;color:CanvasText!important}
+  /* Same precedent as `.variant-dots button[aria-current]` above: the selected
+     state has to survive, or a high-contrast visitor cannot tell which shelf
+     they are on. */
+  .stages a.is-active{background-color:Highlight!important;color:HighlightText!important}
   .add-button:disabled,.cart-summary>button:disabled{color:GrayText!important;border-color:GrayText!important}
   /* Which product the card is showing is carried by the dot's FILL, and
      ButtonFace flattens all four to the same white. Highlight is the system's
