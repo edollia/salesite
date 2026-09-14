@@ -63,11 +63,19 @@
          suite. The first version of this sentence did exactly that. Anything
          here must fit one line in the plate at 1024. */
       let line2 = "";
-      if (typeof raw === "string" && text(raw)) line2 = "Your list goes out from the pickup list.";
+      /* REWORDED 2026-09-14. It said "Your list goes out as a text." and the
+         owner read it as a question: "huh? needs rewording too, text message?"
+         The plate's own step 2 is "Send the request", so "It" has an antecedent
+         one line above it and the sentence only has to answer HOW.
+         STILL SHORTER THAN WHAT IT REPLACED (26 chars vs 29), which matters:
+         the three rules plates are forced to one height, so a line that wraps
+         at 1024 makes all three 24px taller and opens a dead gap under the CASH
+         ONLY stamp. Measure before you lengthen this. */
+      if (typeof raw === "string" && text(raw)) line2 = "You copy it and send it.";
       else if (raw && typeof raw === "object" && text(raw.value)) {
         line2 = String(raw.kind) === "sms"
-          ? "Your list goes out as a text."
-          : "Your list goes out from the pickup list.";
+          ? "It goes as a text message."
+          : "You copy it and send it.";
       }
       line = line2;
       const channel = line;
@@ -257,7 +265,16 @@
   };
   const STAGE_SPREAD = .84;   // bottles keep clear of the very rim of the disc
   const STAGE_DEPTH = .66;    // how far forward of the disc's centre line they stand
-  const STAGE_NEST = .06;     // neighbours may overlap by this much of a bottle width
+  /* NEST IS A FLOOR ON THE GAP, NOT A SETTING THAT STACKS THINGS. It caps how
+     far two neighbours may overlap; it does nothing at all while the row still
+     has room to spare. Raised .06 -> .15 on 2026-09-14 for the owner's "show
+     more products and stack them slightly", and measured at 375x553: on its
+     own it changed NOTHING -- 3 bottles, 23.9% tall, +23.8px APART, identical
+     to the old build in every value -- because the count below was capped at 3
+     and the gap was nowhere near this floor. It only earns its keep once the
+     count cap lets a fourth bottle in and the row genuinely stops fitting.
+     Raise them together or neither does anything. */
+  const STAGE_NEST = .15;     // neighbours may overlap by this much of a bottle width
   const STAGE_GAP_MAX = .16;  // ...and may stand this far apart before the line looks scattered
   const STAGE_MAXH = .355;    // no bottle taller than this share of the hero
   const STAGE_CLEAR = 14;     // px the line-up keeps clear of any copy it meets
@@ -496,6 +513,18 @@
        middle of a 538 px disc rather than showing two readable ones. */
     const shortestHeight = (count, span, scales) => Math.min(...all.map((row, i) =>
       rowUnit(row, count, span) * scales[i] * Math.min(...relsOf(row, count))));
+    /* THE TALLEST BOTTLE OF THE WORST STAGE, which is the exact quantity
+       `beast-viewports.py` gates on (>= 18% of the hero BOX). It is a SECOND
+       floor and not a replacement: `shortestHeight` above is keyed to the
+       smaller SIDE of the hero on purpose, and re-keying that one to height is
+       what once cut a tall narrow window from four bottles to two. This one is
+       keyed to height because the gate is, and it is applied to the TALLEST
+       bottle, where that collapse cannot happen.
+       Math.min across rows, not max: one stage failing is the build failing,
+       and the paper-goods row is the one that fails first -- its packs are wide
+       and short, so it runs out of height while the $5 bottles still look fine. */
+    const tallestHeight = (count, span, scales) => Math.min(...all.map((row, i) =>
+      rowUnit(row, count, span) * scales[i] * Math.max(...relsOf(row, count))));
 
     /* Where each bottle goes, as numbers, before anything is written to the DOM.
        Everything downstream reads this, including the collision passes. */
@@ -622,12 +651,71 @@
        `(min-aspect-ratio:1/1), (min-width:760px)` — so the step now falls
        exactly on 760, which is this project's ONE declared breakpoint, and the
        artwork and the line-up can never disagree about which layout they are in. */
-    let count = Math.min(pod.portrait ? 3 : Infinity, ...all.map((row) => row.length));
+    /* FOUR ON A PHONE, NOT THREE, from 2026-09-14. Session 11 cut this to 3
+       because four at a readable size needed 451px of row on a 390px screen.
+       The owner asked for the fourth back and to pay for it with overlap
+       instead of width, so the nest above rose in the same edit. Measured at
+       375x553 with the stage pinned: 4 bottles, tallest 23.7% of the hero on
+       the opener and 19.2% on the paper-goods row -- which is the tight one,
+       not the $8 row -- against beast-viewports.py's 18% legibility gate, and
+       neighbours overlapping +8.6 to +11.6px. At nest .12 that same row reads
+       18.7%, only 0.7pt of headroom, which is why .15 and not .12.
+       ASKING FOR FIVE DOES NOT GIVE FIVE: the min() below also clamps to the
+       SHORTEST stage, and one of the three holds only four products, so a cap
+       of 5 still renders 4. A fifth would be a catalogue change.
+
+       AND FOUR IS A CEILING, NOT A PROMISE. This is the most the hero may show;
+       `fitCount()` below decides how many it actually CAN, and on a tall phone
+       the answer is still three. Measured, not assumed, across the suite's own
+       shapes: at 375x553 four bottles read 23.7% / 19.2%, but the same four on
+       390x844 read 15.6%, because the hero is `height:100vh` and a taller hero
+       makes the same width-bound bottles a smaller FRACTION of it. Five real
+       phone shapes failed the 18% gate that way -- 320x568, 360x780, 375x667,
+       390x844, 430x932 -- all of them between 15.5% and 16.0%.
+       Session 11's note in beast-qa.py says four at 18% on a portrait phone is
+       "not reachable, by any lever". That is very nearly right and worth
+       correcting precisely: it IS reachable, at STAGE_NEST ~= .29, because nest
+       buys size by overlapping. That is a 29%-of-a-bottle pile-up, and the
+       owner's instruction was "dont over do it just maybe a bit only". So the
+       lever exists and was refused on the owner's own terms, not on physics.
+       The count is adaptive instead: four wherever four can be read, three
+       where it cannot, and never a number that fails the gate. */
+    let count = Math.min(pod.portrait ? 4 : Infinity, ...all.map((row) => row.length));
     let lo = Math.max(pod.cx - pod.a * STAGE_SPREAD, margin);
     let scales = all.map(() => 1);
     // a bottle too short to read is worse than one bottle fewer
+    /* 18% OF THE HERO BOX. This is not a number invented here: it is
+       `beast-viewports.py`'s floor, which is itself STAGE_MAXH / 2 -- half the
+       tallest a bottle is ever allowed to be. Keeping the same figure in the
+       solver is the point. Before this, beast.js's only floor was 64px, so it
+       happily stood four ~100px bottles on a 844px hero at 15.6% and the gate
+       then failed a build the solver thought was fine: two different answers to
+       "is this legible", and the one that shipped was the looser one. */
+    const legible = pod.H * .18;
+    /* IT MUST ONLY GIVE UP A BOTTLE WHEN THAT BUYS HEIGHT, and the first version
+       of this did not check. `rowUnit` is a Math.min of a WIDTH term and a
+       HEIGHT term (`pod.H * STAGE_MAXH / max(rel)`). Whenever the height term
+       wins, `tallestHeight` reduces to `pod.H * .355 * scale` and `count`
+       CANCELS OUT -- so if the scale has been shrunk past .18/.355 = .507, NO
+       count satisfies the floor and a plain `while` walks 4 -> 3 -> 2 gaining
+       exactly nothing, ending with fewer products that are still too short.
+       That is reachable on the designed path, not an edge case: the collision
+       pass multiplies the scale by up to .6 each time and re-runs this, so two
+       passes is .36. Modelled on the real stage data, a 1440x900 desktop
+       needing two shrink passes went from FOUR bottles to TWO -- a regression
+       against the build this session started from, which held four there.
+       So: shrink for the short-bottle floor as before, but only surrender a
+       bottle to the legibility floor if losing it actually makes the tallest
+       one taller. If it does not, keep the products and let the gate judge. */
     const fitCount = () => {
-      while (count > 2 && shortestHeight(count, hi - lo, scales) < floor) count -= 1;
+      const span = hi - lo;
+      while (count > 2) {
+        if (shortestHeight(count, span, scales) < floor) { count -= 1; continue; }
+        const now = tallestHeight(count, span, scales);
+        if (now >= legible) break;
+        if (tallestHeight(count - 1, span, scales) <= now + .5) break;   // buys nothing
+        count -= 1;
+      }
     };
     fitCount();
     let layout = plan(count, scales, lo);

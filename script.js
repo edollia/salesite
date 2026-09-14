@@ -59,6 +59,7 @@
     orderForm: document.querySelector("[data-order-form]"),
     orderSuccess: document.querySelector("[data-order-success]"),
     orderSummary: document.querySelector("[data-order-summary]"),
+    orderBubble: document.querySelector("[data-order-bubble]"),
     toast: document.querySelector("[data-toast]"),
     mobileBar: document.querySelector(".mobile-pickup-bar"),
     cartFab: document.querySelector(".cart-fab"),
@@ -944,7 +945,13 @@
     const threshold = deliveryThreshold();
     if (threshold !== null) return `Delivery is a small fee under ${threshold} items, not in this total. Pickup is always free.`;
     if (deliveryPrizeMinItems() !== null) return "Delivery is a small fee until then, not in this total. Pickup is always free.";
-    return "Delivery is a small fee, not in this total. Pickup is always free.";
+    /* DELETED 2026-09-14, at the owner's instruction: "Delivery is a small fee,
+       not in this total. Pickup is always free." Pickup is what they prefer and
+       the line spent a row saying nothing a shopper did not already know. The
+       four branches above are KEPT deliberately -- each carries real news (the
+       fee is waived, delivery is off, a threshold exists) and an empty string
+       here collapses the slot rather than leaving the gap behind. */
+    return "";
   }
   function renderDelivery(itemCount) {
     const enabled = deliveryEnabled();
@@ -1213,7 +1220,13 @@
          comment described a fix that had only been half made.) */
       node.textContent = summary.valid ? money.format(summary.cashTotal) : "—";
     });
-    document.querySelectorAll("[data-delivery-status]").forEach((node) => { node.textContent = deliveryMessage(summary.itemCount); });
+    document.querySelectorAll("[data-delivery-status]").forEach((node) => {
+      const message = deliveryMessage(summary.itemCount);
+      node.textContent = message;
+      // an empty <small> still costs its 7px top margin: collapse it, or
+      // deleting the sentence just moves the gap instead of closing it
+      node.hidden = !message;
+    });
     renderDelivery(summary.itemCount);
     // the prize's standing depends on the total, so it is re-read every render
     renderPrize(summary);
@@ -1311,9 +1324,18 @@
        spoke, so a screen-reader user who had already read the button was never
        told it had become "ALL n ADDED" — the label is mutated in place and no
        live region carries it. The toast is the live region that already exists. */
-    else showToast(isMaxed(product)
-      ? `Added ${fullName(product)} — that is all ${product.inventoryQuantity} I have.`
-      : `Added ${fullName(product)}.`);
+    /* NO TOAST ON AN ORDINARY ADD, 2026-09-14. Owner: "everytime i add to cart
+       i do not need the yellow pop up." The button already changes, the cart
+       count already moves, and the item is already visible in the list -- the
+       toast was a fourth telling of the same fact.
+       THE CAP MESSAGE STAYS, and it is not the same fact: "that is all 3 I
+       have" is the only place a shopper is ever told they have reached the
+       end of the stock, and it fires on one press, not on every press --
+       which is precisely what the owner objected to. If that is unwanted too,
+       delete this branch; do not re-add the plain one. */
+    else if (isMaxed(product)) {
+      showToast(`Added ${fullName(product)} — that is all ${product.inventoryQuantity} I have.`);
+    }
   }
 
   /* The +1 that leaves the button. It is a decoration and nothing depends on
@@ -1544,8 +1566,13 @@
 
   function createRequestText(name, note, fulfillment = "Pickup") {
     const summary = cartMath();
+    /* NO TITLE LINE, 2026-09-14. It said "STOCK-UP REQUEST" and the owner had
+       it deleted: this arrives as a text message from one person to another,
+       and a message that begins by naming itself reads like a form, not like a
+       person. The name is the first line now. (It also happened to be one of
+       the STOCK-UP occurrences; the rest of that decision is work order 4.9 and
+       is NOT actioned here -- this line went on its own merits.) */
     const lines = [
-      "STOCK-UP REQUEST",
       `Name: ${name}`,
       "",
       "Items:"
@@ -1992,7 +2019,16 @@
     const note = String(formData.get("note") || "").trim();
     const fulfillment = String(formData.get("fulfillment") || "Pickup");
     const text = createRequestText(name, note, fulfillment);
+    /* ONE STRING, TWO SURFACES (work order 6). The bubble is what the shopper
+       reads and the textarea is what the clipboard, the sms: href and the QA
+       suite read — so they are written from the same `text` on the same line
+       and cannot drift. `textContent`, never `innerHTML`: the note field is
+       shopper input and this document is sent to the seller.
+       Trap 48 is the reason this is not "render the bubble instead": a
+       suppression is about a PLACE. The textarea is not display:none, it is
+       clipped, so select() still works where the async clipboard does not. */
     dom.orderSummary.value = text;
+    if (dom.orderBubble) dom.orderBubble.textContent = text;
     renderRequestChannel(text);
     dom.orderForm.hidden = true;
     dom.orderSuccess.hidden = false;
@@ -2120,10 +2156,40 @@
         delivery: !!p.delivery
       })])));
 
+  /* AN UNCOLLECTED PRIZE EXPIRES, 2026-09-14. `setPrize` has always written
+     `{ id, at }` and this function has always read only `.id`, so the `at` was
+     stored and thrown away on every load -- and because a spin is refused while
+     a prize is held, one win turned that browser's wheel off FOREVER, under a
+     dialog reading ONE SPIN A DAY. The window is a business fact and lives in
+     SITE_CONFIG (products.js), not here; 0 or missing means never expire, which
+     is the old behaviour exactly.
+     A MISSING `at` IS TREATED AS EXPIRED-UNKNOWN AND KEPT, not discarded: prizes
+     won before this shipped have no timestamp, and silently deleting a prize
+     somebody actually won is worse than honouring one a day longer. They get a
+     timestamp the first time they are loaded, so the window starts now. */
+  function prizeExpiryMs() {
+    const days = Number(window.SITE_CONFIG?.wheelPrizeExpiryDays) || 0;
+    return days > 0 ? days * 86400000 : 0;
+  }
   function loadPrize() {
     try {
       const raw = JSON.parse(localStorage.getItem(prizeKey) || "null");
-      return raw && PRIZES[raw.id] ? { id: raw.id, ...PRIZES[raw.id] } : null;
+      if (!raw || !PRIZES[raw.id]) return null;
+      const window_ms = prizeExpiryMs();
+      if (window_ms) {
+        const at = Date.parse(raw.at || "");
+        if (Number.isFinite(at)) {
+          if (Date.now() - at > window_ms) {
+            try { localStorage.removeItem(prizeKey); } catch { /* private mode */ }
+            return null;
+          }
+        } else {
+          // no timestamp: stamp it now so the window starts, and keep the prize
+          try { localStorage.setItem(prizeKey, JSON.stringify({ id: raw.id, at: new Date().toISOString() })); }
+          catch { /* private mode */ }
+        }
+      }
+      return { id: raw.id, ...PRIZES[raw.id] };
     } catch { return null; }
   }
   function setPrize(prize) {

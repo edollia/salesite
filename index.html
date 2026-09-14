@@ -28,7 +28,10 @@
        Facebook, Slack, iMessage and X could not resolve it and EVERY share of
        the site rendered with no preview image at all. The asset itself is
        tracked and public and was never the problem. `publicUrl` in
-       products.js is read by nothing, so it could not have fixed this. -->
+       products.js could not have fixed this either: no JavaScript on this page
+       reads it. (It stopped being null on 2026-09-14 and is now read at BUILD
+       time by check-integrity.mjs and printed on the flyer -- but still by
+       nothing at runtime, so the point above stands.) -->
   <meta property="og:url" content="https://beast.deal/">
   <meta property="og:image" content="https://beast.deal/assets/social-thumbnail.png">
   <meta property="og:image:secure_url" content="https://beast.deal/assets/social-thumbnail.png">
@@ -125,10 +128,10 @@
            and the second line was the only thing making this a stacked lockup
            rather than a name.
            NOTE FOR WHOEVER PICKS THIS UP: `beast.deal` RESOLVES — a root CNAME
-           carrying it is committed and the site is live on it. `publicUrl` is
-           nevertheless still null, so nothing PRINTABLE carries the address and
-           the flyer's QR box stays a dashed placeholder; turning it on is one
-           line in products.js and it is the owner's call, not a side effect of
+           carrying it is committed and the site is live on it. `publicUrl` was
+           null until 2026-09-14 and is now "https://beast.deal/", so the flyer
+           prints the address and a real QR instead of a dashed placeholder.
+           This stayed the owner's call and not a side effect of
            this change. This is the one on-screen surface that names it. -->
       <span class="nav-lockup"><span class="nav-stock">beast.deal</span></span>
     </a>
@@ -354,7 +357,7 @@
                run -- which is exactly the visitor who cannot be corrected later. It said
                31 while the shelf held 38. Nothing guards it; keep it equal to the product
                count in products.js. -->
-          <p role="status"><strong data-results-count>38</strong> SHOWING<span data-stage-count></span></p>
+          <p role="status"><strong data-results-count>37</strong> SHOWING<span data-stage-count></span></p>
         </div>
       </header>
 
@@ -410,7 +413,7 @@
             <b>ON THE<i>WHEEL</i></b>
           </div>
           <h3>PICKUP IS FREE.</h3>
-          <p>Delivery is a small fee inside the six towns below — free only if you win it on the wheel.</p>
+          <p>Delivery is a small fee in the six towns below. The wheel&rsquo;s FREE DELIVERY prize waives it on lists of 15+ items.</p>
         </article>
         <article class="plate plate-cash">
           <div class="stamp-slot"><div class="cash-stamp" aria-hidden="true">
@@ -447,7 +450,7 @@
                is still the source of truth; this is what survives if the script
                never arrives. `check-integrity.mjs` now asserts the INVERSE of
                what it used to: that no phone number is printed here at all. -->
-          <p class="channel-line" data-contact-slot><span data-contact-value>Your list goes out as a text.</span><span data-pickup-value></span></p>
+          <p class="channel-line" data-contact-slot><span data-contact-value>It goes as a text message.</span><span data-pickup-value></span></p>
           <a class="btn btn-pink" href="#shop"><span>START MY LIST</span><i>→</i></a>
         </article>
         <!-- The six towns used to be six chips at the bottom of the delivery
@@ -460,7 +463,6 @@
              of their own now, which is also more room than a footnote in one
              plate: where delivery goes is a headline fact, not a detail. -->
         <div class="plates-towns">
-          <p class="towns-label">SIX TOWNS</p>
           <ul class="chips" data-towns><li>TEMECULA</li><li>HEMET</li><li>WINCHESTER</li><li>MENIFEE</li><li>MURRIETA</li><li>FRENCH VALLEY</li></ul>
         </div>
       </div>
@@ -556,7 +558,17 @@
              more". The brief is explicit that every repeated phrase is a
              defect. The delivery row owns this story now and the prize line
              steps out of the way whenever the prize is the delivery one. -->
-        <small class="delivery-below" data-delivery-below data-delivery-status>Delivery is a small fee, not in this total. Pickup is always free.</small>
+        <!-- EMPTY AND HIDDEN ON PURPOSE, 2026-09-14. The sentence that used to be
+             typed here -- "Delivery is a small fee, not in this total. Pickup is
+             always free." -- was deleted at the owner's instruction; pickup is
+             what they prefer and the line said the obvious twice. The ELEMENT
+             stays because script.js still writes the messages that carry real
+             news into it ("Delivery is free on this list", "Pickup only --
+             delivery is not running at the moment"), and it now starts hidden
+             so a visitor with no JavaScript sees no hole where a sentence was.
+             `.delivery-below[hidden]` is declared in beast.css: a class that
+             sets `display:block` beats the [hidden] attribute's UA rule. -->
+        <small class="delivery-below" data-delivery-below data-delivery-status hidden></small>
         <div class="delivery-stamp" data-delivery-stamp hidden role="img" aria-label="Free delivery — you won it and this list is long enough">
           <span class="stamp-ring" aria-hidden="true"></span>
           <b>FREE<i>DELIVERY</i></b>
@@ -640,7 +652,7 @@
       <header><div><p>NO PAYMENT TAKEN HERE</p><h2 id="request-title">YOUR REQUEST</h2></div><button type="button" data-close-dialog aria-label="Close the request">×</button></header>
       <label>Your name<input name="name" required autocomplete="name" maxlength="80"></label>
       <label>Pickup or delivery<select name="fulfillment"><option>Pickup</option><option>Local delivery</option></select></label>
-      <label>Optional note<textarea name="note" rows="3" maxlength="500" placeholder="Preferred day, your town, or swaps you would accept"></textarea></label>
+      <label>Optional note<textarea name="note" rows="3" maxlength="500" placeholder="Preferred day or your town"></textarea></label>
       <div class="request-total"><span>Estimated cash total</span><b data-dialog-total>$0.00</b></div>
       <button class="request-submit" type="submit">CREATE THE REQUEST →</button>
     </form>
@@ -649,10 +661,24 @@
          and the seller's number already filled in; until it does, the panel is
          the copy-and-paste flow it has always been and claims no address. -->
     <div class="request-ready" data-order-success hidden>
-      <div class="ready-stamp">READY</div>
       <h2 data-ready-title>COPY THIS</h2>
       <p data-ready-intro>Nothing was sent. Copy it and send it to the seller.</p>
-      <textarea readonly data-order-summary aria-label="Copyable pickup request"></textarea>
+      <!-- THE DRAFT IS A MESSAGE, NOT A CODE BOX. Owner, twice: "i told you to
+           make the whole [request text] to look like its imessages style and
+           coming out or idk but just not plain lame boring text."
+           TWO ELEMENTS, ONE STRING. The bubble is what the shopper sees; the
+           <textarea> below it is the copyable source of truth and is the thing
+           COPY REQUEST and the QA suite both read. Both are written from the
+           SAME string in one place in script.js, so they cannot disagree.
+           The textarea stays `readonly` and is NOT editable or reachable by tab
+           — a note field that could forge a line into the seller's message is a
+           defect that has already shipped here once. The bubble is filled with
+           textContent, never innerHTML, for the same reason. -->
+      <div class="msg-thread" aria-hidden="true">
+        <div class="msg-bubble" data-order-bubble></div>
+        <p class="msg-meta">YOU · TO THE SELLER</p>
+      </div>
+      <textarea readonly tabindex="-1" data-order-summary aria-label="Copyable pickup request"></textarea>
       <!-- Owner, 2026-09-13: "make the pink button say 'send txt message', then
            copy request (copies to clipboard obviously), and done button outside
            the pop up so it looks nicer."
