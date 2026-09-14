@@ -613,7 +613,25 @@
 
   function startBrandRotation() {
     stopBrandRotation();
-    if (state.displaySettings.autoRotateProducts === false || document.hidden || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    /* A TOUCH SCREEN HAS NO HOVER, so the copy-block freeze below — which IS the
+       mis-add guard — can never fire on a phone. Session 7 called this "the worst
+       thing found tonight" and fixed it: a shopper reads "Plus OxiClean Stain
+       Fighters", travels to the button, the card turns over on the way, and they
+       add "Plus OxiClean Odor Blasters" — which flows into the pickup list AND
+       into the text the seller reads. That fix was built on four `:hover`
+       selectors, and `grep hover:none` over this project returns one hit, inside
+       a comment. So the defect has been live for every phone visitor since.
+       The PRESS is atomic (pointerdown sets the hold before click adds); it is
+       the READ-THEN-REACH interval that is unguarded, and at a realistic 600-800ms
+       thumb travel against a 2000ms tick that is a 30-40% chance per press, worst
+       on the 6-variant Tide PODS card where adjacent variants differ only by scent.
+       There is no gesture a thumb can make that means "I am reading this one", so
+       the only safe behaviour is not to change it underneath them. The arrows and
+       dots stay, and beast.css makes them permanent on touch so nothing becomes
+       undiscoverable. */
+    if (state.displaySettings.autoRotateProducts === false || document.hidden
+        || window.matchMedia("(prefers-reduced-motion: reduce)").matches
+        || window.matchMedia("(hover: none)").matches) return;
     state.variantTimer = window.setInterval(() => {
       document.querySelectorAll(".product-brand-card[data-variant-count]:not([data-variant-count='1'])").forEach((card) => {
         if (card.dataset.rotationStopped === "1") return;
@@ -1370,7 +1388,16 @@
          captured a half-way scrollY and lost the original offset for good, and
          `openRequest()` closes the drawer and calls `showModal()` immediately,
          so the glide ran underneath a modal that blocks document scrolling. */
-      window.scrollTo({top: back, left: 0, behavior: "instant"});
+      /* try/catch because WebIDL REJECTS an unknown ScrollBehavior rather than
+         falling back, and `instant` is Safari 15.4+. A throw here would abort
+         closeDrawer() before the focus restore below it. */
+      try { window.scrollTo({top: back, left: 0, behavior: "instant"}); }
+      catch (error) {
+        const previous = document.documentElement.style.scrollBehavior;
+        document.documentElement.style.scrollBehavior = "auto";
+        window.scrollTo(0, back);
+        document.documentElement.style.scrollBehavior = previous;
+      }
     }
   }
 
@@ -1401,10 +1428,22 @@
        last line, close" returned focus to an unrendered element, .focus() was a
        no-op, and focus fell to <body>: the virtual cursor jumps to the top of a
        5,000px page. Fall back to a control that is definitely rendered. */
+    /* `offsetParent` IS NULL FOR ANY position:fixed ELEMENT — before it ever
+       considers rendering — and BOTH drawer triggers are fixed
+       (.mobile-pickup-bar, .cart-fab). The first version of this fix used it, so
+       `usable` was false for a perfectly visible trigger, the fallback ran every
+       time, and the fallback was `.nav-list`, which is display:none below 760px:
+       focus fell to <body> unconditionally. `getClientRects()` is empty for
+       display:none and NON-empty for a rendered fixed element, which is the
+       distinction this actually needs. The chain is ordered, not `||`ed,
+       because `||` tests existence and every one of these is always in the DOM. */
     const back = state.lastDrawerFocus;
-    const usable = back && back.isConnected && !back.hidden && back.offsetParent !== null;
-    const fallback = document.querySelector(".nav-list") || document.querySelector(".skip-link");
-    (usable ? back : fallback)?.focus?.();
+    const shown = (n) => !!(n && n.isConnected && !n.hidden && n.getClientRects().length);
+    const fallback = [document.querySelector(".nav-list"),
+                      document.querySelector(".cart-fab"),
+                      document.querySelector(".mobile-pickup-bar"),
+                      document.querySelector(".skip-link")].find(shown);
+    (shown(back) ? back : fallback)?.focus?.();
   }
 
   function openRequest() {

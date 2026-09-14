@@ -213,7 +213,7 @@ html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:2
 @keyframes clawHit{0%{opacity:0;transform:scale(.94)}20%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.03)}}
 
 /* ---------- nav ---------- */
-.nav{position:fixed;z-index:500;left:0;right:0;top:0;height:var(--nav-h);display:grid;grid-template-columns:1fr auto;align-items:center;gap:12px;padding:0 14px;background:linear-gradient(180deg,rgba(2,8,22,.94),rgba(2,8,22,.72));border-bottom:1px solid rgba(141,235,255,.16);transition:background .4s,border-color .3s}
+.nav{position:fixed;z-index:500;left:0;right:0;top:0;height:var(--nav-h);display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:12px;padding:0 14px;background:linear-gradient(180deg,rgba(2,8,22,.94),rgba(2,8,22,.72));border-bottom:1px solid rgba(141,235,255,.16);transition:background .4s,border-color .3s}
 /* THE BAR'S SECOND GROUND. Over the hero the bar is dark glass, so the portal
    plate reads to the very top of the screen. From the shop down it is the same
    brushed chrome as the search console and the shelf rails — it stops being a
@@ -245,7 +245,11 @@ html.shop-docked .nav{border-bottom-color:transparent}
    347px content box before the gap between them. So on a phone the wordmark
    retracts and the rail takes its width; on a desktop there is room, the
    wordmark stays, and the SECTION LINKS retract instead. */
-@media(max-width:759px){
+/* 759.98, not 759: at a FRACTIONAL width in (759, 760) neither band matched,
+   and in that gap the wordmark is fully opaque, on top of the rail, in the
+   same grid cell, eating its taps — the tile-overlap defect reappearing in a
+   1px band. Fractional viewport widths are reachable under browser zoom. */
+@media(max-width:759.98px){
   /* one column, explicitly: .nav-links and .nav-list are display:none down
      here, so the `1fr auto` base leaves a 0-wide second track and a 12px gap
      the rail would otherwise be short by. */
@@ -295,7 +299,30 @@ html.shop-docked .nav{border-bottom-color:transparent}
 .hero-scene{position:absolute;inset:0;z-index:-1}
 .hero-plate,.hero-plate img{position:absolute;inset:0;width:100%;height:100%}
 .hero-plate{transform-origin:50% 60%}
-.hero-plate img{object-fit:cover;object-position:50% 100%}
+.hero-plate img{object-fit:cover;object-position:50% var(--plate-y,100%)}
+/* THE BOTTOM ANCHOR IS ONLY RIGHT WHILE THE COVER CROP IS VERTICAL.
+   portal-mobile is 941x1672, so it is HEIGHT-driven whenever the hero box is
+   narrower than 941/1672 = .5628 of its height — 390x844, 360x780, 430x932 —
+   and there the vertical slack is ZERO and this value cannot do anything.
+   WIDER than that the crop turns horizontal and `100%` starts spending real
+   slack lifting the disc: at 375x553 the plate renders 666px tall in a 553px
+   box and the bottom anchor spends all 113px of it, putting the podium disc
+   at cy=404 and leaving the line-up 43px of headroom under the price deck.
+   MEASURED THERE: 2 of 4 products rendered, tallest 9.6% of the hero, against
+   33-35% on a desktop. The owner reported it from their own phone.
+   THE BINDING CONSTRAINT IS THAT HEADROOM, NOT THE DISC SIZE — which is why
+   "zoom in the plate" makes it WORSE (7.8% -> 4.6% at 1.15x -> 2.7% at 1.25x):
+   a bottom-anchored plate pulls the disc UP as it grows.
+   The crossing at .5628 is continuous — slack is zero there, so this term
+   fades in from nothing and beast-resize sees no step.
+   It is set on .hero, NOT in a second rule naming `.hero-plate img`, because
+   beast-prove.py asserts that exactly ONE media rule carries that selector
+   with object-position (trap 15: the plate, its preload and its anchor must
+   be picked by ONE condition). getComputedStyle still reads `50% 50%`, which
+   is what podiumMetrics() needs. */
+@media(max-width:759px) and (max-aspect-ratio:0.9999/1) and (min-aspect-ratio:941/1672){
+  .hero{--plate-y:50%}
+}
 /* The two plates want opposite anchors: the LANDSCAPE one centres, the PORTRAIT
    one stands on its bottom edge where its podium is. So this must be gated on
    exactly the condition that picks the plate -- the HERO BOX's shape, not the
@@ -309,7 +336,7 @@ html.shop-docked .nav{border-bottom-color:transparent}
    cannot collide. The desktop two-column band turns the wrapper into
    display:contents, leaving the measured, working absolute layout alone. */
 .hero-column{position:absolute;z-index:6;left:16px;right:16px;top:calc(var(--nav-h) + 8px);
-  display:flex;flex-direction:column;align-items:center;gap:clamp(6px,2.2vh,22px);pointer-events:none}
+  display:flex;flex-direction:column;align-items:center;gap:clamp(4px,1.2vh,22px);pointer-events:none}
 .hero-column>*{pointer-events:none}
 .hero-column .btn,.hero-column a{pointer-events:auto}
 
@@ -318,8 +345,13 @@ html.shop-docked .nav{border-bottom-color:transparent}
 /* MOTION box. The only thing GSAP animates, so it may never carry a layout offset. */
 .hero-copy-in{display:flex;flex-direction:column;align-items:inherit;max-width:100%}
 .hero-copy .btn{pointer-events:auto}
-.hero-title{display:grid;justify-items:center;margin-top:24px;line-height:1}
-.hero-beast{position:relative;display:block;font-size:clamp(40px,min(17vw,12vh),164px);line-height:.86}
+/* THE COPY COLUMN GIVES BACK ~40px ON A SHORT PHONE. At 375x553 it ran to
+   362px — 65% of the hero was copy — and the podium surface is at 419, so the
+   line-up had 43px to live in. Every value below is a vh-CONTINUOUS clamp,
+   never a height breakpoint: beast-resize.py sweeps WIDTH at a fixed height,
+   so a height step is a cliff nothing in this project would ever see. */
+.hero-title{display:grid;justify-items:center;margin-top:clamp(8px,2.4vh,24px);line-height:1}
+.hero-beast{position:relative;display:block;font-size:clamp(40px,min(15vw,12vh),164px);line-height:.86}
 /* THE LOCKUP IS ONE PHRASE, NOT A NAME WITH A SUBTITLE. The owner, 2026-09-12:
    "of a deal reads too separate no?" They were right, and it was measurable: at
    1440 the slogan overhung BEAST by 57px on the right while sitting 11px in on
@@ -330,7 +362,7 @@ html.shop-docked .nav{border-bottom-color:transparent}
    CSS keeps the base size -- --slogan-fit only ever nudges it, and is clamped --
    so a no-JS visit still gets a sane lockup and nothing here can run away. */
 .hero-stockup{display:block;margin-top:-.13em;--slogan-base:clamp(22px,min(8.6vw,6.2vh),88px);font-size:calc(var(--slogan-base) * var(--slogan-fit, 1))}
-.collab-pill{margin-top:14px;display:inline-flex;align-items:center;gap:9px;padding:6px 13px 6px 8px;border:1px solid rgba(255,255,255,.35);background:rgba(1,9,24,.7);border-radius:999px;font:900 9px/1 var(--body);letter-spacing:.18em}
+.collab-pill{margin-top:clamp(6px,1.6vh,14px);display:inline-flex;align-items:center;gap:9px;padding:4px 13px 4px 8px;border:1px solid rgba(255,255,255,.35);background:rgba(1,9,24,.7);border-radius:999px;font:900 9px/1 var(--body);letter-spacing:.18em}
 .collab-pill img{width:28px;height:auto}
 .collab-pill b{color:var(--pink);font-size:13px}
 .hero-sub{display:none;max-width:460px;font-size:15px;line-height:1.5;color:#cfe4f1;margin-top:18px}
@@ -527,7 +559,13 @@ html.motion .hero-price-in:has(.hero-dial.is-ready){padding-bottom:0}
    236-wide wheel — the padding is the flag gutter, not slack. */
 /* The stage box holds the wheel AND the flag gutter around it, so the wheel
    itself is about 70% of this number. Bigger than it looks. */
-.wheel-stage{position:relative;width:min(92vw,58svh,386px);aspect-ratio:1;margin:0 auto}
+/* 100%, NOT 92vw. This box lives inside .wheel-in's 20px padding and inside
+   the dialog's own max-width, so a VIEWPORT-relative cap cannot know how much
+   room it actually has. Measured overflow before: 375x553 +8.24 · 390x844
+   +32.20 · 375x667 +32.50 · 430x932 +21.80 · 360x640 +32.80 · 320x568 +33.60 —
+   every phone width, not the two on the board. The disc rendered off-centre
+   under a centred needle, inside a horizontal scrollbar. */
+.wheel-stage{position:relative;width:min(100%,58svh,386px);aspect-ratio:1;margin:0 auto}
 .wheel-floor{position:absolute;left:16%;right:16%;bottom:6%;height:8%;border-radius:50%;
   background:radial-gradient(ellipse,rgba(0,213,255,.34),rgba(0,0,0,.5) 55%,transparent 74%);filter:blur(2px)}
 .wheel-disc{position:absolute;inset:0;filter:drop-shadow(0 16px 34px rgba(0,0,0,.6))}
@@ -700,7 +738,11 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
    animation — a NEW rattle, of exactly the kind being fixed.
    position:absolute, so it costs zero document height. */
 .shop-dock{position:absolute;left:0;width:1px;height:56px;pointer-events:none;
-  top:calc(-1 * (var(--nav-h) + 64px))}
+  /* 76, not 64: the sentinel's BOTTOM must sit above where a fragment lands.
+     scroll-padding-top puts #shop at --nav-h + 12, and at 64 the sentinel's
+     bottom was at --nav-h + 8 — so following the skip link or the IN STOCK nav
+     link landed inside the hysteresis band and left the rail stowed. */
+  top:calc(-1 * (var(--nav-h) + 76px))}
 /* THE PRICE RAIL, NOW INSIDE THE HEADER. Owner, 2026-09-13, with a screenshot
    of the two stacked bars: "when scrolling these 2 should become one".
    The arithmetic is harder than they put it: --nav-h 72 + this bar 69 = 141px
@@ -776,8 +818,12 @@ html.shop-docked .nav .stages a{pointer-events:auto}
 /* The price IS the label. The eyebrow used to name what was on the shelf,
    which goes stale the day the stock changes, and the sub-line repeated the
    price back at itself in words. */
-@media(max-width:359px){.stages b{font-size:19px}}
 .stages b{font:900 24px/.9 var(--display);color:#fff;letter-spacing:-.015em;white-space:nowrap;text-shadow:none}
+/* AFTER the base rule, not before it. A media query adds no specificity, so a
+   `@media` block declared above the rule it means to override loses to the
+   `font` shorthand's own font-size and is a no-op — trap 6, and the comment
+   above claimed the step-down worked while it did not. */
+@media(max-width:359px){.stages b{font-size:19px}}
 .shop-head{position:relative;z-index:3;padding:0 var(--gutter);margin:auto}
 .console{position:relative;margin-top:30px;padding:18px 20px;border-radius:7px 34px 7px 34px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,0 0 0 3px #061a32,0 0 0 5px rgba(0,213,255,.32);clip-path:polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))}
 .console label{display:inline-block;padding:7px 10px;border-radius:999px;background:rgba(3,18,41,.9);font:900 9px/1 var(--body);letter-spacing:.16em;color:var(--ice);margin:0 0 10px 2px}
@@ -807,7 +853,7 @@ html.shop-docked .nav .stages a{pointer-events:auto}
    every bay of a real shop -- and the ONLY stage-coloured layer is the light,
    blended with `screen` so it brightens the wall towards its own hue instead of
    being averaged into it. Yellow light now reads as yellow light. */
-.deal-shelf{position:relative;padding:30px 0 18px;overflow:clip;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent);
+.deal-shelf{position:relative;padding:18px 0 12px;overflow:clip;border-top:1px solid color-mix(in srgb,var(--stage) 30%,transparent);
   background:
     radial-gradient(ellipse 52% 300px at 50% 0,color-mix(in srgb,var(--stage) 9%,transparent),transparent 70%),
     linear-gradient(180deg,#061b31 0,#07182c 46%,#040f1d 100%);
@@ -836,12 +882,18 @@ html.shop-docked .nav .stages a{pointer-events:auto}
     radial-gradient(ellipse 46% 132px at 50% 0,color-mix(in srgb,var(--stage) 26%,transparent),transparent 72%);
   background-blend-mode:normal,screen}
 .deal-shelf[data-deal="2-for-5"]{--stage:#00d5ff}.deal-shelf[data-deal="8-each"]{--stage:#f5f739}.deal-shelf[data-deal="paper-2-for-7"]{--stage:#ffcf33}.deal-shelf[data-deal="pricing-pending"]{--stage:#8394a8}
-.shelf-heading{padding:0 18px;max-width:var(--max);margin:0 auto 14px;position:relative;z-index:2}
+/* THE NOTE GOES BESIDE THE HEADLINE ON A PHONE TOO. Stacked, the headline row
+   plus the note row plus their two margins cost 70.76px of a 553px screen, and
+   the card below them lost its ADD button off the bottom of the viewport. The
+   desktop band has done exactly this since it was written; the phone kept the
+   stack for no reason anyone recorded. `1fr` on the second column lets the note
+   wrap to two lines at 320 rather than push the headline. */
+.shelf-heading{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:baseline;padding:0 18px;max-width:var(--max);margin:0 auto 8px;position:relative;z-index:2}
 /* the headline is an inline-block (.chrome needs a text-sized box), so the
    eyebrow has to be a block or a short eyebrow lands on the same line as a
    108px headline. */
-.shelf-price h3{margin-top:10px;color:#fff;font:900 clamp(40px,11.5vw,84px)/.82 var(--display);letter-spacing:-.08em;text-transform:uppercase}
-.shelf-info{margin-top:10px;max-width:530px}
+.shelf-price h3{color:#fff;font:900 clamp(40px,11.5vw,84px)/.82 var(--display);letter-spacing:-.08em;text-transform:uppercase}
+.shelf-info{max-width:530px}
 .shelf-note{font-weight:900;font-size:11px;letter-spacing:.16em;text-transform:uppercase;line-height:1.4;color:var(--stage);margin-top:0;max-width:34ch}
 /* NO scroll-snap. Measured with a real mouse: with `scroll-snap-type: x
    proximity` a 90 px drag of this row settled back to 0 — the drag was thrown
@@ -1035,6 +1087,18 @@ img{-webkit-user-drag:none}
    braces for the keyboard, whose focus is inside the card while it is in use. */
 .product-card.is-touched .variant-arrow,
 .product-card:focus-within .variant-arrow{opacity:1;pointer-events:auto;translate:0 0}
+/* ON TOUCH THE ARROWS ARE PERMANENT, and this is not decoration — it is the
+   other half of stopping the rotation on touch (script.js, startBrandRotation).
+   Once a card does not turn over by itself, the arrows and dots are the ONLY way
+   a thumb discovers there is more than one product behind it.
+   They were also a two-tap control: `.is-touched` arrives from `pointerdown`,
+   but the arrow is `pointer-events:none` at that instant, so the first tap
+   lands on `.product-image-wrap` and the arrow only becomes tappable AFTERWARDS
+   — then disappears again 7s later. A control that needs to be tapped twice,
+   the second time within seven seconds, is a control most people never find. */
+@media(hover:none){
+  .variant-arrow{opacity:1;pointer-events:auto;translate:0 0}
+}
 @media(hover:hover){
   .product-card:hover .variant-arrow{opacity:1;pointer-events:auto;translate:0 0}
 }
@@ -1584,7 +1648,11 @@ html.motion .deal-shelf .product-card{opacity:0}
   .hero{height:100vh;min-height:min(760px,100vh);max-height:1000px}
   .hero-bubbles{display:block}
   .collab-pill{margin-top:20px;font-size:11px}
-  .hero-glow{height:56px}
+  /* `.hero-glow{height:56px}` deleted 2026-09-13: it could never win. This
+     block is `min-width:760px`; `.hero-glow{height:64px}` sits in the family-B
+     band `(min-aspect-ratio:1/1), (min-width:760px)`, which is a strict
+     SUPERSET of this condition, at the same specificity and later in source.
+     Swept across 65,000 viewport shapes: zero contexts where 56px applied. */
   .spin-invite{padding:11px var(--gutter)}.spin-copy b{font-size:12.5px}.spin-copy small{font-size:11px}.spin-badge{flex-basis:30px;width:30px;height:30px}
   /* DESKTOP IS NOT THE PHONE HACK LEAKING UPWARD. At 1440 the two bars cost
      160px of 900 — 17.8% — and the seam between a dark glass bar and a chrome
@@ -1601,7 +1669,14 @@ html.motion .deal-shelf .product-card{opacity:0}
   html.shop-docked .nav-lockup{opacity:1;transform:none}
   .stages{grid-area:1/2;justify-self:center;padding-left:0;width:min(100%,470px)}
   .stages a{height:52px}.stages b{font-size:30px}
-  .shop{padding:0 0 60px}
+  /* 64px, NOT 0. The price rail used to be .shop's first child and paid
+     7+62+11 of its own box plus margin-bottom:80px = 160px above .shop-head.
+     The merge moved it into the header and put 28px on the BASE .shop rule —
+     but this desktop rule is the same specificity and LATER in source, so
+     padding-top stayed 0 and "THREE PRICES" butted flush against the spin
+     band's lip. Same trap as the .deal-shelf padding a few rules down, and it
+     shipped in the same commit as the comment warning about it. */
+  .shop{padding:64px 0 60px}
   .shop-head{display:grid;grid-template-columns:1.05fr .95fr;gap:80px;align-items:end;padding:0 var(--gutter);max-width:none}
   .console{margin:0}
   .shelves{margin-top:64px}
@@ -1620,7 +1695,9 @@ html.motion .deal-shelf .product-card{opacity:0}
      shelf has no pairing rule to state — so it put "$8 EACH" in column two
      while column one resolved to 0 px and left 606 px of empty row beside it.
      All three heads sit on the gutter now. */
-  .shelf-price h3{font-size:clamp(78px,7.6vw,108px)}
+  /* restored here: the base rule no longer carries these, because the phone
+     needed the headline row and the note row collapsed into one. */
+  .shelf-price h3{margin-top:10px;font-size:clamp(78px,7.6vw,108px)}
   .shelf-info{margin:0 0 18px}.shelf-note{font-size:12px}
   .product-grid{gap:3px;padding:14px var(--gutter) 46px;scroll-padding-left:var(--gutter)}
   /* restored here because the phone pass shrank the base value. ONLY
@@ -1634,7 +1711,19 @@ html.motion .deal-shelf .product-card{opacity:0}
   .product-card{flex-basis:390px;min-height:596px}
   @media(hover:hover){.product-card:hover .product-image-wrap.is-current img{--lift:-8px}}
   .product-card::before{width:340px;height:340px;top:26px}.product-card::after{left:22px;right:22px}
-  .product-card-copy{min-height:182px;padding:19px 25px 24px}.product-card-copy h4{font-size:26px}.product-size{font-size:13.5px}
+  .product-card-copy{min-height:182px;padding:19px 25px 24px}.product-card-copy h4{font-size:26px}
+  /* `.product-size{font-size:13.5px}` was the ONLY desktop override, but the
+     base rule sets `font:900 12px/1.2` — a shorthand, so it also set
+     line-height — and `margin-top:5px`. Both of those phone values were
+     therefore live at every width >=760px, unreviewed. Restored to the
+     pre-2026-09-13 desktop values. An override of a shorthand must name every
+     property the shorthand set. */
+  .product-size{margin-top:7px;font-size:13.5px;line-height:1.25}
+  /* 24px is not decoration: it is the dots' hit pad. `.variant-dots button` is
+     7px with `::after{inset:-8.5px}` = a 24x24 target on a 24px stride, and
+     the row was sized to hold it. The phone pass cut it to 20 and the pad has
+     overhung its row by 2px top and bottom at every desktop width since. */
+  .product-brand.has-dots{min-height:24px}
   .rules{padding:110px var(--gutter) 120px}
   .plates{grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
   .plate{padding:24px 24px 26px;gap:12px}
@@ -1765,6 +1854,20 @@ html.motion .deal-shelf .product-card{opacity:0}
      above does, and it now takes the rail with it, which it could not before:
      the rail was a separate sticky element and had to be told position:static
      on its own. One element, one rule. */
+  /* THE RAIL MUST NOT WAIT FOR THE DOCK HERE. `.nav{position:absolute}` above
+     means the bar scrolls away with the page (WCAG 1.4.10 reflow), so it is on
+     screen only while scrollY < --nav-h — but `.stages` is stowed until
+     `html.shop-docked`, which script.js sets only once the sentinel has gone
+     above the top, at scrollY > ~370. THE TWO CONDITIONS HAVE AN EMPTY
+     INTERSECTION: introduced by the bar merge on 2026-09-13, it made the three
+     shelf links unreachable at every scroll position in landscape.
+     Links to shelves that were never rendered are already neutralised by
+     `.is-empty` in renderShelves(), so trap 25 still holds without the stow. */
+  .stages{opacity:1;visibility:visible;transform:none;transition:none;padding-left:0}
+  .stages a{pointer-events:auto}
+  .nav-lockup{display:none}
+  /* and nothing is pinned here, so a fragment needs no chrome cleared */
+  html{scroll-padding-top:12px}
   .stages a{height:40px}.stages b{font-size:20px}
   .mobile-pickup-bar{position:sticky;left:auto;right:auto;bottom:0;margin:10px}
 }
