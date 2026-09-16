@@ -1686,7 +1686,14 @@ html.no-js .plate-medal{display:none}
              0 14px 34px rgba(255,36,157,.34)}
 /* the chevron is DRAWN, not typed — same reason as .variant-arrow::before: an
    arrow glyph lands on a different weight and a different optical centre in
-   every font that might have to stand in for the display face. */
+   every font that might have to stand in for the display face.
+   It went away for one revision, replaced by a ghost tap-hand, and came
+   straight back: the hand was the label's own near-black ink standing next to
+   the label, so it read as a second silhouette competing with the type rather
+   than an arrow pointing past it. Owner, 2026-09-15: "that hand is horrible and
+   why black and black letters". A 11px chevron is not a hint, it is
+   punctuation, and it does not have to carry the invitation — `smsBounce` does
+   that now. */
 .ready-actions button.ready-sms::after{content:"";width:11px;height:11px;flex:0 0 auto;
   border-top:3px solid currentColor;border-right:3px solid currentColor;border-radius:2px;
   rotate:45deg;translate:-2px 0}
@@ -1699,29 +1706,29 @@ html.no-js .plate-medal{display:none}
    reads as part of the control. (0,2,2) beats the global (0,1,0). */
 .ready-actions button.ready-sms:focus-visible{outline:2px solid var(--foam);outline-offset:3px}
 
-/* THE CUE. `.request-ready>p` is (0,1,1) and sets 11px/#9fb7c7 on every direct
-   <p> in this panel, so this is written at (0,2,1) to beat it — the same trap
-   already documented twenty lines above that rule. --ice on this ground is the
-   panel's brightest small type and well clear of AA. */
-.request-ready>p.ready-cue{display:flex;align-items:center;justify-content:center;gap:10px;
-  margin:20px 0 0;color:var(--ice);text-align:center;
-  font:900 11px/1.35 var(--body);letter-spacing:.12em;text-transform:uppercase;text-wrap:balance}
-/* two hairlines flanking it, so it reads as a step marker rather than another
-   sentence in the paragraph stack above */
-.request-ready>p.ready-cue::before,.request-ready>p.ready-cue::after{content:"";height:1px;flex:1 1 auto;
-  max-width:46px;background:linear-gradient(90deg,transparent,rgba(141,235,255,.5))}
-.request-ready>p.ready-cue::after{background:linear-gradient(90deg,rgba(141,235,255,.5),transparent)}
-/* No number configured means no button to point at, and the flow is the
-   copy-and-paste one the panel has always had. */
-.request-ready:not(.has-sms)>p.ready-cue{display:none}
-
 @media(prefers-reduced-motion:no-preference){
   /* THE FANCY HALF, and it is two effects, not five: a slow breath on the glow
      so the eye is drawn back to the pill, and one glint sweep across it. Both
      are on the one element that is the point of this panel. `html.motion` gates
      them with everything else decorative in this file, so a no-JS or
      reduced-motion visitor gets the bigger, brighter button and no loop. */
-  html.motion .ready-actions button.ready-sms{animation:smsBreath 2.6s var(--ease-out) infinite}
+  /* TWO ANIMATIONS, ONE BEAT. Both run at 2.6s and the glow peaks on the same
+     frame the pill is highest, so it reads as one object drawing breath rather
+     than two effects running at unrelated speeds.
+     THE BOUNCE IS ON `transform`, NOT ON `translate`. They are separate
+     properties and both apply, in the order translate-rotate-scale-transform —
+     which matters here because `:active` sets `translate:0 3px` to press the
+     pill onto its own 3-D lip. An animation beats a normal declaration, so a
+     bounce written with `translate` would have eaten the pressed state; written
+     with `transform` the two compose and a press still lands while the loop
+     runs. Measured, not assumed: pressing mid-bounce moves the pill.
+     The shape is a bounce, not a hover: it rests for two thirds of the cycle,
+     leaves the ground once, lands, and gives one small second hop. A control
+     that never stops moving is noise; one that waits and then asks is an
+     invitation. */
+  html.motion .ready-actions button.ready-sms{
+    animation:smsBreath 2.6s var(--ease-out) infinite,
+              smsBounce 2.6s cubic-bezier(.28,.84,.42,1) infinite}
   html.motion .ready-actions button.ready-sms::before{content:"";position:absolute;z-index:1;
     inset:0 auto 0 0;width:38%;pointer-events:none;
     background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
@@ -1730,8 +1737,15 @@ html.no-js .plate-medal{display:none}
   html.motion .ready-actions button.ready-sms::after{z-index:2}
 }
 @keyframes smsBreath{
-  0%,100%{box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 14px 34px rgba(255,36,157,.34)}
-  50%    {box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 18px 44px rgba(255,36,157,.62)}}
+  0%,46%,100%{box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 14px 34px rgba(255,36,157,.34)}
+  /* peaks at 62%, the frame the pill is at the top of its hop */
+  62%        {box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 22px 52px rgba(255,36,157,.66)}}
+@keyframes smsBounce{
+  0%,46%   {transform:translateY(0)}
+  62%      {transform:translateY(-9px)}
+  74%      {transform:translateY(0)}
+  82%      {transform:translateY(-4px)}
+  90%,100% {transform:translateY(0)}}
 @keyframes smsGlint{0%,62%{translate:-160% 0}100%{translate:420% 0}}
 /* with a text channel the clipboard is the fallback, so it stops shouting */
 .request-ready.has-sms [data-copy-order]{background:transparent;color:#bed6e5;box-shadow:inset 0 0 0 1px rgba(141,235,255,.4)}

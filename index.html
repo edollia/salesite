@@ -715,25 +715,17 @@
            carries [hidden] until the request exists — a DONE button outside it
            would be on screen during the form step, offering to close a dialog
            the shopper has not finished with. -->
-      <!-- THE CUE, 2026-09-15. Owner: "easy to read so its obvious that you
-           have to press that button in order ot finish ur order". The intro
-           paragraph at the top of this panel says the same thing, but it is
-           11px grey and eight inches of message draft away from the control it
-           is about — by the time the eye reaches the buttons it has been read
-           and forgotten. This sits ON the button.
-           IT STATES THE FACT, NOT THE OUTCOME. "Nothing is sent yet" is true;
-           "tap to finish your order" would not be, because the tap opens the
-           messages app and the shopper still has to send from there. The panel
-           has never claimed otherwise and must not start. CSS hides this line
-           when there is no number, where the flow is copy-and-paste and there
-           is no button to point at.
-           SHORT ON PURPOSE. It read "Nothing is sent yet — tap to send it"
-           for one render and wrapped to two lines at 390px, orphaning "IT"
-           under a 36-character rule; and it repeated the intro's first
-           sentence word for word. The intro states the FACT, this states the
-           STEP, and it holds one line down to 320px. -->
-      <p class="ready-cue">Last step &mdash; tap to send</p>
       <div class="ready-actions">
+        <!-- Owner, 2026-09-15, twice over. First the words "LAST STEP — TAP TO
+             SEND" above this button: "cringe", removed. Then the ghost hand
+             that replaced them: "horrible", and "why black and black letters" —
+             fair, it was the label's own near-black ink sitting beside the
+             label, which is a silhouette competing with type rather than
+             pointing at it. Removed too.
+             The invitation is MOTION now and nothing else: the pill bounces.
+             Nothing in the markup says so, which is the point — a button that
+             behaves like it wants pressing does not need a caption telling you
+             to press it. See `smsBounce` in beast.css. -->
         <button class="ready-sms" type="button" data-send-sms hidden>SEND TEXT MESSAGE</button>
         <button type="button" data-copy-order>COPY REQUEST</button>
       </div>
