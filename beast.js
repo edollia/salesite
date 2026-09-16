@@ -172,9 +172,29 @@
   disarmImageDrag(document);
 
   function bindDrag(grid) {
+    /* MEASURE THE ROW ON EVERY POINTER TYPE, BIND THE GESTURE ON FINE ONES.
+       These two were the same statement until 2026-09-15, so `is-scrollable`
+       was never set on a touch device: the early return fired first. Measured
+       at 390x844, the three rows overflow by 946-1924px and every one of them
+       reported `is-scrollable` false at first paint, while at 1440x900 all three
+       reported true. (Precisely: the unthrottled `resize` listener above DOES
+       call markScrollable on every pointer type, so on a phone the class
+       eventually arrived when the URL bar collapsed. The broken window was first
+       paint until the first resize -- which is exactly the window a visitor
+       drags in, so the bug is real, but it was not "never".) The class was a lie on exactly the devices that scroll these rows
+       by hand, and it was gating `user-select:none` -- which is why a finger
+       dragged along a row started a TEXT SELECTION and painted the blue square
+       the owner reported. The stylesheet no longer depends on the class for
+       that, but a class named `is-scrollable` still has to be true when the row
+       scrolls. The CURSOR is now gated in the stylesheet by `(pointer: fine)`
+       instead of by this class -- setting the class on every pointer type would
+       otherwise paint a grab cursor on a hybrid device (a touchscreen laptop,
+       Android with a mouse) where `bindDrag` returns below and binds nothing,
+       which is the same lie this function's own comment warns about, pointing
+       the other way. */
+    markScrollable(grid);
     if (grid.dataset.dragBound || !finePointer) return;
     grid.dataset.dragBound = "1";
-    markScrollable(grid);
     disarmImageDrag(grid);
     let candidate = null, dragging = false, moved = 0;
     const endDrag = () => {
@@ -296,7 +316,11 @@
      80 px right at 1440 for a collision that does not exist. */
   /* What the bottles may not touch. These can push the line-up sideways OR
      shrink it, whichever costs less. */
-  const STAGE_OBSTACLES = [".collab-pill", ".hero-sub", ".hero-cta", ".hero-price"];
+  /* `.collab-pill` was here until 2026-09-15, when the owner had the pill deleted
+     ("deletet this whole pill"). A selector that matches nothing is not harmless
+     in this list -- `boxOf()` returns null and the obstacle silently stops
+     existing, which is the quiet direction -- so it is removed rather than left. */
+  const STAGE_OBSTACLES = [".hero-sub", ".hero-cta", ".hero-price"];
   /* And what they may not COVER. Owner, 2026-09-12: "the P from STOCK-UP is
      covered too much by the bottles." Measured before the fix: the last letter
      was 62% covered at 1440x900 and 92% at 1728x1100 — not an edge case, the
@@ -1797,7 +1821,17 @@
   window.addEventListener("error", releaseBoot);
   window.addEventListener("unhandledrejection", releaseBoot);
 
-  function waitForHeroAssets(onProgress) {
+  function waitForHeroAssets(onProgress = () => {}) {
+    /* THE DEFAULT IS LOAD-BEARING, and it is here because the obvious tidy-up
+       is fatal. `progress` became write-only on 2026-09-15 when the boot bar was
+       deleted -- its only reader was the filler tween, which is now null. So a
+       later session deletes the unused variable, then removes this argument at the
+       call site, and `onProgress` is undefined. `tick()` is called SYNCHRONOUSLY
+       inside the .map() below for any already-cached image, so the TypeError
+       escapes before `.then()` is ever attached: no finishBoot, no heroIntro,
+       and the rest of this file's top-level body aborts. The splash then sits
+       until the 8s deadline and releaseBoot() uncovers a blank hero. Found by
+       audit. One default parameter closes it; keep it even if the argument goes. */
     const images = [...document.querySelectorAll(".hero-plate img, [data-hero-product]")];
     let done = 0;
     const total = images.length + 1;
@@ -1859,11 +1893,32 @@
        to 380 ms on 2026-09-11: it is there so the wipe does not stutter, not to
        make the visitor watch a progress bar, and on a warm cache the whole
        screen was a second of nothing. */
-    const filler = gsap.to({ v: 0 }, { v: 1, duration: bootedBefore ? .3 : .8, ease: "power2.out", onUpdate() { gsap.set(bootBar, { width: `${Math.max(progress, this.targets()[0].v * .8) * 100}%` }); } });
+    /* THE HOLD IS A TIMER, NOT A BAR. 2026-09-15, when the owner had the blue
+       progress line deleted from the splash. `finishBoot` used to hang off the
+       onComplete of a tween TARGETING that bar, so removing the element would
+       have made the entire splash-release depend on a tween with no target.
+
+       CORRECTED THE SAME DAY, BY MEASUREMENT, BECAUSE THE SENTENCE ABOVE OVERSTATED
+       IT: an audit executed these exact shapes against this repo's own vendored
+       GSAP 3.13 and `gsap.to(null, {onComplete})` DOES fire its onComplete. The
+       old code would have produced console noise every frame -- the filler's
+       onUpdate calls `gsap.set(bootBar, ...)` -- not a hung splash. The
+       restructure is still right for a better reason: the splash is the one
+       thing on this page that must never depend on anything (trap 12), and that
+       includes depending on a LIBRARY'S TOLERANCE for a target that no longer
+       exists. It is an object tween now and fires on its own terms; the bar half
+       is kept and guarded so re-adding one is a markup change and nothing more. */
+    const filler = bootBar
+      ? gsap.to({ v: 0 }, { v: 1, duration: bootedBefore ? .3 : .8, ease: "power2.out", onUpdate() { gsap.set(bootBar, { width: `${Math.max(progress, this.targets()[0].v * .8) * 100}%` }); } })
+      : null;
     waitForHeroAssets((p) => { progress = p; }).then(() => {
       const minimum = bootedBefore ? 160 : 380;
       const wait = Math.max(0, minimum - (performance.now() - start));
-      setTimeout(() => { filler.kill(); gsap.to(bootBar, { width: "100%", duration: .25, onComplete: finishBoot }); }, wait);
+      setTimeout(() => {
+        if (filler) filler.kill();
+        if (bootBar) gsap.to(bootBar, { width: "100%", duration: .25 });
+        gsap.to({}, { duration: .25, onComplete: finishBoot });
+      }, wait);
     });
   } else {
     heroIntro.play();

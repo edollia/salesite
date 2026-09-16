@@ -972,7 +972,7 @@
   /* DELIVERY, from 2026-09-12.
 
      There is no free-delivery threshold any more. `freeMinimumItems` is null
-     in SITE_CONFIG and delivery always carries the seller's small fee — the
+     in SITE_CONFIG. Delivery is no longer priced on any surface (2026-09-15, owner's instruction); a charge still exists but is at their discretion — the
      ONLY thing that waives it is the FREE DELIVERY prize, and that prize has
      its own item minimum. Every number below is read from the prize, so the
      three surfaces that print one (the meter, the stamp, the request text)

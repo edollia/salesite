@@ -26,7 +26,7 @@
      was failing WCAG AA: SPIN, MAKE MY REQUEST, CREATE THE REQUEST, START MY
      LIST and both pickup-count badges. Measured, not assumed.
 
-     The brand pink is NOT changed: the wordmark, the brush, the collab pill and
+     The brand pink is NOT changed: the wordmark, the brush and
      every pink surface are exactly as they were. Only the ink on top of it moves,
      to the same near-black the CYAN buttons have always used — so this is the
      page's own idiom rather than a new one. On #ff249d it measures 5.39:1.
@@ -242,8 +242,6 @@ button{cursor:pointer}
    as a third brand colour arriving for no reason. It is a hairline in one
    colour now, and a narrower one, so the lockup is the only thing on the boot
    screen with any weight. */
-.boot-bar{width:132px;height:2px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden;margin-top:4px}
-.boot-bar i{display:block;height:100%;width:0;background:var(--cyan);opacity:.9}
 html.no-js .boot,html.reduced .boot{display:none}
 
 /* ---- the claw rip ----
@@ -441,9 +439,6 @@ html.shop-docked .nav{border-bottom-color:transparent}
    CSS keeps the base size -- --slogan-fit only ever nudges it, and is clamped --
    so a no-JS visit still gets a sane lockup and nothing here can run away. */
 .hero-stockup{display:block;margin-top:-.13em;--slogan-base:clamp(22px,min(8.6vw,6.2vh),88px);font-size:calc(var(--slogan-base) * var(--slogan-fit, 1))}
-.collab-pill{margin-top:clamp(6px,1.6vh,14px);display:inline-flex;align-items:center;gap:9px;padding:4px 13px 4px 8px;border:1px solid rgba(255,255,255,.35);background:rgba(1,9,24,.7);border-radius:999px;font:900 9px/1 var(--body);letter-spacing:.18em}
-.collab-pill img{width:28px;height:auto}
-.collab-pill b{color:var(--pink);font-size:13px}
 .hero-sub{display:none;max-width:460px;font-size:15px;line-height:1.5;color:#cfe4f1;margin-top:18px}
 .hero-cta .btn{white-space:nowrap}
 .hero-cta{display:none;flex-wrap:wrap;justify-content:center;gap:9px;margin-top:16px}
@@ -1065,7 +1060,30 @@ html.shop-docked .nav .stages a{pointer-events:auto}
   /* the lip highlight stays; the 59px seams that rode with it are gone, 2026-09-14 */
   background:linear-gradient(180deg,rgba(255,255,255,.10),transparent 60%)}
 .product-grid::-webkit-scrollbar{display:none}
-.product-grid.is-scrollable{cursor:grab;-webkit-user-select:none;user-select:none}
+/* SELECTION AND THE LONG-PRESS CALLOUT ARE OFF ON THE ROW UNCONDITIONALLY.
+   2026-09-15, owner: "on mobile or grabbing or touchscreen this square appears
+   when trying to run through the items". Dragging a finger along the row was
+   starting a TEXT SELECTION across the cards, and Chromium and WebKit both
+   paint a selected <img> as a translucent blue rectangle -- the square in the
+   report. `::selection{background:var(--pink)}` does not repaint that: a
+   replaced element gets the UA's own selection tint, not the page's.
+   THE OLD RULE ONLY APPLIED WITH `.is-scrollable`, which beast.js toggles from
+   `scrollWidth - clientWidth > 4` -- so it was absent before that first measure
+   and absent whenever a row happens not to overflow, which is precisely the
+   window a visitor drags in. Nobody selects text in a product carousel, so this
+   is unconditional now and the cursor stays keyed to the scrollable state.
+   `-webkit-touch-callout` stops the iOS press-and-hold panel, which is the
+   same gesture producing a second square on that platform. */
+.product-grid{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+/* THE CURSOR IS GATED ON THE POINTER, NOT ON THE CLASS. `is-scrollable` is set
+   on every pointer type since 2026-09-15 so the class tells the truth about the
+   row; `bindDrag` still binds the gesture only where `(pointer: fine)` matches.
+   Keying the cursor to the class alone painted an open-hand grab on a hybrid
+   device -- a touchscreen laptop, Android with a mouse -- where dragging does
+   nothing, which is the lie markScrollable's own comment exists to prevent. */
+@media (pointer: fine){
+  .product-grid.is-scrollable{cursor:grab}
+}
 /* Nothing on this page is draggable; see the note in script.js. This is the
    CSS half of it — non-standard, Chromium/WebKit only, which is exactly why it
    was not enough on its own. */
@@ -1747,7 +1765,6 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 }
 .cart-total{display:flex;justify-content:space-between;align-items:end;gap:12px}
 .cart-total span{font-size:11px;font-weight:800}
-.cart-total span small{font-size:7px;color:var(--cyan);letter-spacing:.1em}
 /* 44px was "way too big"; the ordering the owner asked for is kept — the
    cash total stays larger than the yellow saving (34 vs 27). */
 .cart-total strong{font:900 34px/.86 var(--display);color:#fff;letter-spacing:-.05em;text-shadow:0 3px 0 rgba(0,0,0,.35)}
@@ -1951,7 +1968,6 @@ html.motion .deal-shelf .product-card{opacity:0}
      collapsing URL bar; min() keeps it honest on a short window. */
   .hero{height:100vh;min-height:min(760px,100vh);max-height:1000px}
   .hero-bubbles{display:block}
-  .collab-pill{margin-top:20px;font-size:11px}
   /* `.hero-glow{height:56px}` deleted 2026-09-13: it could never win. This
      block is `min-width:760px`; `.hero-glow{height:64px}` sits in the family-B
      band `(min-aspect-ratio:1/1), (min-width:760px)`, which is a strict
@@ -2172,7 +2188,6 @@ html.motion .deal-shelf .product-card{opacity:0}
    scrim with a top-and-bottom one, so on every portrait tablet the hero copy
    sat on the left with no scrim under it. A dead rule that was still painting. */
 @media(max-height:820px){
-  .collab-pill{margin-top:10px;padding:5px 11px 5px 7px;font-size:8px}
   .hero-column{gap:clamp(4px,1.4vh,14px)}
 }
 
@@ -2354,8 +2369,6 @@ html.motion .deal-shelf .product-card{opacity:0}
   .hero-stockup{--slogan-base:clamp(20px,min(6vw,11vh),64px)}
   .hero-title{margin-top:10px}
   .kicker{font-size:8px}
-  .collab-pill{margin-top:8px;padding:6px 11px;font-size:8px}
-  .collab-pill img{width:20px;height:auto}
   .hero-sub{margin-top:8px;font-size:12px;max-width:340px}
   /* THE BAND WAS SIZING A BUTTON IT NEVER SHOWED. `.hero-cta` is display:none in
      the base and only turned on in the two-column desktop band, which carries
@@ -2617,7 +2630,7 @@ html.motion.late-boot .hero-price-in{opacity:1!important}
   .spin-band,.wheel-dialog,.ticket-dialog,.request,.claw,.footer-giant,
   .variant-arrow,.variant-dots,.add-button,.console,.stages,
   .savings-rip,.hero-dial,.hero-cta,.skip-link,.kicker i,
-  .collab-pill img,.footer-mark img{display:none!important}
+  .footer-mark img{display:none!important}
   /* the hero reserves a viewport of height it does not need on paper: without
      this the first sheet is the lockup and then most of a blank page */
   .hero{min-height:0!important;max-height:none!important;height:auto!important;padding:0 0 12px!important}

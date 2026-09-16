@@ -115,7 +115,6 @@
     <div class="boot-in">
       <img draggable="false" class="boot-panther" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="150" height="107">
       <p class="boot-word"><span class="boot-beast"><span class="chrome chrome-md" data-text="BEAST">BEAST</span></span><span class="brush brush-sm">STOCK-UP</span></p>
-      <div class="boot-bar"><i data-boot-bar></i></div>
     </div>
   </div>
 
@@ -230,14 +229,15 @@
           <!-- THE SLOGAN, not the business name. Owner, 2026-09-12: "we will do
                the 'beast of a deal' slogan in the main view, instead of
                Stock-Up." So the HERO carries the pitch and everything else
-               carries the identity — the nav lockup, the boot screen, the
-               footer mark, the collab pill and the copied request all still say
-               STOCK-UP, because that is the business and it survives whether or
-               not the collab does. This is the one surface that is an
+               carries the identity. CORRECTED 2026-09-15: of the five surfaces
+               this used to list, only the BOOT SCREEN still says STOCK-UP. The
+               nav lockup reads beast.deal, the footer mark reads OF A DEAL, the
+               copied request's title line was deleted on 2026-09-14, and the
+               collab pill was deleted outright on 2026-09-15 at the owner's
+               instruction. The panther stays on every surface it was already on. This is the one surface that is an
                advertisement rather than a name. -->
           <span class="hero-stockup" data-hero-stock><span class="brush">OF A DEAL</span></span>
         </h1>
-        <p class="collab-pill" data-hero-line><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="34" height="24">STOCK-UP <b>×</b> MRBEAST</p>
         <p class="hero-sub" data-hero-line>Household supplies. Cash in person. Pickup or local delivery.</p>
         <!-- One button. "SEE WHAT'S IN STOCK" sat next to a nav link reading
              IN STOCK and a kicker reading IN STOCK NOW, and the second button
@@ -543,8 +543,10 @@
 
       <!-- The meter used to count every list toward twenty. There is no
            twenty: it appears only when a FREE DELIVERY prize is in hand and
-           this list is still short of what that prize needs. With no prize it
-           is one quiet line saying delivery costs a small fee. -->
+           this list is still short of what that prize needs. With no prize the
+           slot is EMPTY and collapses: the fee sentence was deleted on
+           2026-09-15 at the owner's instruction ("just delivery period. Pickup
+           period.") and deliveryMessage() returns "" for that branch. -->
       <div class="delivery-row" data-delivery-row>
         <div class="delivery-meter" data-delivery-meter hidden>
           <p><b data-delivery-left>0</b> more items to use FREE DELIVERY</p>
