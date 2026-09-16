@@ -453,7 +453,57 @@
         : (data.ar || .65);
       return { node, rel: data.rel || 1, ar };
     });
-    const all = sets.map(readSet);
+    /* THE LINE-UP IS SOLVED AGAINST ALL THREE STAGES FROM THE FIRST FRAME, even
+       though two of them are not in the DOM yet. 2026-09-15.
+
+       MEASURED BEFORE AND AFTER, because trap 61's own numbers turned out to be
+       stale and this replaces them. `startStageCycle()` builds stages two and
+       three after idle, so until ~3.5 s `all` held ONE row. `fitCount()` reads
+       `Math.min(...all.map(...))`, so a one-row `all` answers a question about
+       three stages using only the friendliest one, keeps a fourth bottle it
+       cannot afford, and then surrenders it the moment the paper packs arrive.
+       On EVERY portrait phone measured -- 390x844, 375x667, 360x780, 430x932 --
+       the hero stood FOUR bottles for 3.5 s, fell to THREE, and grew the
+       survivors 36.0% in a single frame. That is the owner's own report, "when
+       it all loads the bottles and the 2 for 5 jumps", still live.
+
+       Nothing in the suite could see it: `beast-viewports.py` waits for
+       `.hero-set` to reach three before it probes, so it has only ever measured
+       the settled state. A whole class of defect lives in the 3.5 s before that.
+
+       `HERO_STAGES` carries `rel` and `ar` as literals for all twelve items, so
+       the final answer is knowable at the first solve. A stage that is not in
+       the DOM contributes its GEOMETRY and no nodes. THIS CHANGES THE TRANSIENT
+       ONLY -- the settled count and every settled width are asserted unchanged,
+       at eleven shapes, by `beast-prove.py`. It does NOT decide work order 1.3:
+       whatever the hero settles on today it still settles on.
+
+       Filtered through `window.PRODUCTS` because `buildStageContent()` skips an
+       item whose id is missing and discards a set that ends up empty -- reserving
+       room for a bottle that will never be built is the same bug pointing the
+       other way. Empty rows are removed for `Math.max(...[])`, which is -Infinity. */
+    /* ONLY RESERVE FOR A STAGE THAT WILL ACTUALLY BE BUILT. This condition is
+       `startStageCycle()`'s own guard, copied deliberately: under reduced motion
+       or a failed GSAP load it returns early and stages two and three are NEVER
+       built. Without this the solver reserved podium width, forever, for two
+       stages that never paint -- and because `fitCount()` takes a Math.min over
+       the rows, a reduced-motion phone showed THREE bottles where it used to
+       show four, permanently. Found by audit, not by measurement: every probe
+       here runs with motion enabled, and the suite's only reduced-motion podium
+       case is a 1280x800 desktop asserting `placed >= 3`, so nothing in the
+       stack looks at a reduced-motion phone. Trap 21 -- the motion gate decides
+       what exists -- reached one level further out than usual. */
+    const willBuildStages = motion && stageBox && priceDeck;
+    const haveProduct = new Set((window.PRODUCTS || []).map((item) => item.id));
+    const setByDeal = new Map(sets.map((set) => [set.dataset.heroSet, set]));
+    const all = HERO_STAGES.map((stage) => {
+      const set = setByDeal.get(stage.deal);
+      if (set) return readSet(set);
+      if (!willBuildStages) return [];
+      return stage.items.filter((item) => haveProduct.has(item.id))
+        .map((item) => ({ node: null, rel: item.rel || 1, ar: item.ar || .65 }));
+    }).filter((row) => row.length);
+    if (!all.length) return;
 
     const heroBox = hero.getBoundingClientRect();
     const boxOf = (selector) => {
@@ -764,6 +814,12 @@
     if (window.__stageDebug) window.__stageLast = { lo, scales, count, obstacles, hi, passes: window.__stagePasses };
     layout.forEach((row) => row.forEach((spot) => {
       const node = spot.b.node;
+      /* A stage still waiting to be built contributes geometry and no nodes, and
+         `plan()` returns an entry for every item including the hidden ones — so
+         this dereferenced `undefined` twice per phantom item, on the first solve,
+         before the `spot.hidden` guard below could ever be reached. Eight
+         TypeErrors, thrown mid-write, leaving the live stage half-positioned. */
+      if (!node) return;
       node.hidden = !!spot.hidden || node.dataset.broken === "1";
       if (spot.hidden) return;
       node.style.setProperty("--x", spot.centre.toFixed(2) + "px");

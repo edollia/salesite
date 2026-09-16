@@ -148,14 +148,77 @@
      three identical request lines: the seller could not tell which scents to pull.
      fullName() is the cart contract and stays as it is; this is the naming used
      anywhere a human has to tell two products apart. */
+  /* THE SUFFIX IS THE FIRST VARIANT TOKEN THAT ACTUALLY DIFFERS, 2026-09-15.
+     It used to be `variant.split("·")[0]` — always the FIRST token, whether or
+     not it told the two apart — and on two of the four colliding groups it was
+     identical for every member, so it separated nothing while adding weight to
+     the longest lines in the seller's message:
+       Tide Simply Oxi + Stain 22 / 70 loads   both "Refreshing Breeze"
+       all Free Clear 30oz / 73oz              both "100% free of perfumes and dyes"
+     The second is the worse of the two: the base name already ends in an em dash,
+     so the line got a SECOND one plus a 30-character marketing sentence, taking
+     the longest product line in the catalogue to 90 characters to say nothing.
+
+     THE OBVIOUS FIX IS WRONG AND WAS CHECKED BEFORE IT WAS REJECTED. The work
+     order proposed leaning on the `(size)` already on the line. `(size)` is
+     BYTE-IDENTICAL across all three Tide evo tile boxes and across the two 107
+     fl oz Tide Simply bottles, so that would have made five products
+     indistinguishable in the one document the seller acts on — reintroducing
+     exactly the defect the comment above says this was written to fix.
+
+     So: compare the colliding members token by token and take the first index
+     where they disagree. Measured outcome, all four groups: evo keeps working
+     (token 0), and Oxi + Stain and all Free Clear now pick token 1 and read
+     "small bottle" / "large bottle" — which actually tells them apart, where
+     the old suffix did not.
+
+     THE LENGTH CLAIM, MEASURED PROPERLY. An earlier version of this comment said
+     "the longest request line falls 98 -> 80", which was true of ONE product at
+     ONE quantity and was not the catalogue maximum. Across all 37 products the
+     longest request line goes 100 -> 93 characters, and the new maximum is a
+     Tide evo tile line this change does not touch at all. The improvement is
+     real; budget the seller's message against 93, not 80.
+
+     TWO THINGS THIS DOES NOT FIX, said plainly so nobody reads more into it.
+     (1) The pick is ONE index for the whole group, so `Tide Simply All in One`
+     still yields two identical pairs — token 0 separates Breeze from Daybreak
+     and leaves each scent's two sizes sharing a suffix. That is pre-existing and
+     unchanged; `labelName + size` is unique across all 37 products and every
+     surface a human acts on carries the size -- with ONE exception found by
+     audit: the drawer line puts the size in a sibling <small> that is REPLACED
+     by "OUT OF STOCK · RECONFIRM" when a product runs out, so two out-of-stock
+     members of this group would render identically. Unreachable today (nothing
+     carries inStock:false), and recorded so it is not rediscovered.
+     (2) The `pick < 0` fallback returns "" for EVERY member, which by
+     construction makes the whole group identical. No group reaches it today. It
+     is the lesser evil only when the variant truly carries nothing; if a group
+     ever lands there, the size is doing all the work and that should be
+     deliberate rather than discovered. */
   const ambiguousNames = new Set();
+  const variantMark = new Map();
   (function findAmbiguousNames() {
-    const seen = new Map();
+    const groups = new Map();
     for (const item of products) {
       const key = normalize(fullName(item));
-      seen.set(key, (seen.get(key) || 0) + 1);
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(item);
     }
-    for (const [key, count] of seen) if (count > 1) ambiguousNames.add(key);
+    for (const [key, members] of groups) {
+      if (members.length < 2) continue;
+      ambiguousNames.add(key);
+      const tokens = members.map((item) => (typeof item.variant === "string"
+        ? item.variant.split("·").map((part) => part.trim()).filter(Boolean) : []));
+      const width = Math.max(0, ...tokens.map((list) => list.length));
+      let pick = -1;
+      for (let i = 0; i < width; i += 1) {
+        if (new Set(tokens.map((list) => normalize(list[i] || ""))).size > 1) { pick = i; break; }
+      }
+      // pick < 0 means every token agrees: there is nothing here that tells them
+      // apart, and a suffix that is the same on both is noise with a cost.
+      members.forEach((item, index) => {
+        variantMark.set(item.id, pick < 0 ? "" : (tokens[index][pick] || ""));
+      });
+    }
   }());
 
   function labelName(product) {
@@ -163,7 +226,7 @@
     // only where it is actually needed: appending a variant to a name that is
     // already unique just makes every line longer
     if (!ambiguousNames.has(normalize(base))) return base;
-    const variant = typeof product.variant === "string" ? product.variant.split("·")[0].trim() : "";
+    const variant = variantMark.get(product.id) || "";
     if (!variant) return base;
     return normalize(base).includes(normalize(variant)) ? base : `${base} — ${variant}`;
   }
@@ -943,8 +1006,24 @@
     if (!deliveryEnabled()) return "Pickup only — delivery is not running at the moment.";
     if (deliveryIsFree(itemCount)) return "Delivery is free on this list. Pickup is free too.";
     const threshold = deliveryThreshold();
-    if (threshold !== null) return `Delivery is a small fee under ${threshold} items, not in this total. Pickup is always free.`;
-    if (deliveryPrizeMinItems() !== null) return "Delivery is a small fee until then, not in this total. Pickup is always free.";
+    /* NO FEE LANGUAGE ANYWHERE, 2026-09-15, at the owner's instruction: "as for
+       delivery and pickup goes just don't say delivery is a small fee, just
+       delivery period. Pickup period." Every branch below keeps its real news --
+       a threshold, a prize, delivery being off -- and says nothing about cost.
+       WHAT THIS GIVES UP, STATED PLAINLY BECAUSE IT IS A BUSINESS CHANGE AND NOT
+       A WORDING ONE: "not in this total" was the only disclosure that the figure
+       a shopper reads excludes a delivery charge. With it gone the total reads as
+       the total, on every surface. That is the honest consequence of the
+       instruction and the owner is owed it in those words. */
+    if (threshold !== null) return `Delivery is free from ${threshold} items. Pickup is always free.`;
+    /* EMPTY, not "Pickup is always free." Removing the fee clause from this
+       branch left the subordinate half standing alone, so a shopper watching a
+       DELIVERY meter count down was told, apropos of nothing, that PICKUP is
+       free -- a fact the rules plate already shouts, and the only branch that
+       went from two facts to one orphan. The meter directly above owns this
+       row; the no-prize branch below already returns "" and the slot collapses,
+       and beast-qa asserts that empty IS the intended state of this slot. */
+    if (deliveryPrizeMinItems() !== null) return "";
     /* DELETED 2026-09-14, at the owner's instruction: "Delivery is a small fee,
        not in this total. Pickup is always free." Pickup is what they prefer and
        the line spent a row saying nothing a shopper did not already know. The
@@ -1002,17 +1081,24 @@
        nothing unnecessary". The sentence it replaces — "confirm the place, the
        time, and what is still available" — was three instructions to a seller
        who already knows all three, in a message they receive dozens of times.
-       THE DELIVERY LINES BELOW ARE NOT SHORTENED and must not be: delivery
-       always carries a fee, that fee is deliberately NOT in the total above it,
-       and this line is the only place in the whole message that says so. A
-       shopper reading a total that excludes a charge is the one thing this
-       document cannot get wrong. */
+       THE FEE CLAUSE IS GONE, 2026-09-15, at the owner's instruction: "just
+       delivery period. Pickup period." The paragraph above used to say this line
+       was the only place in the message disclosing that the total excludes a
+       charge, and that was true -- so removing it means the total now reads as
+       the total. That is a business change, it was asked for in those words, and
+       it is recorded here rather than absorbed quietly.
+       THE PRIZE MINIMUM STAYS. Trap 48: the seller's message has no delivery row,
+       so if this line does not carry the FREE DELIVERY shortfall, nothing does. */
     if (fulfillment !== "Local delivery") return "Pickup.";
     if (!deliveryEnabled()) return "Local delivery is not running at the moment.";
     if (deliveryIsFree(itemCount)) return "Local delivery — free on this list";
     const needed = deliveryPrizeMinItems();
-    if (needed !== null) return `Local delivery — the FREE DELIVERY prize needs ${needed} items; this list has ${itemCount}, so the small fee applies and is not in the total above`;
-    return "Local delivery — small fee, not in the total above";
+    /* IT HAS TO REACH A VERDICT. Removing the fee clause removed the sentence's
+       conclusion, not just its price: "needs 15 items; this list has 14" is a
+       dangling premise that makes the seller do the comparison. Say what
+       follows, without naming a charge. */
+    if (needed !== null) return `Local delivery — the FREE DELIVERY prize needs ${needed} items and this list has ${itemCount}, so it does not apply here`;
+    return "Local delivery.";
   }
 
   /* renderCart() replaces the whole list, so the button that was just pressed
