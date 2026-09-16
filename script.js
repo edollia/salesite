@@ -834,8 +834,9 @@
       /* NOT A TAB STOP, 2026-09-15. A scroll container is in Firefox's tab
          order always, and in Chrome 127+ whenever it holds no focusable child,
          and the global :focus-visible ring then draws a lime rectangle around
-         the whole row — the artefact the owner photographed, "happend when i
-         try to scroll horizontally thorguh all 3 menus". The row never needed
+         the whole row. NOT the square the owner photographed — that was the
+         claw rim flash, trap 78 — but a real second one, found on the same
+         pass by tab-walking the shelves in Firefox. Trap 79. The row never needed
          to be a stop: every card carries an ADD button, and the `focusin`
          handler further down scrolls the focused card into view, so Tab walks
          the row and the row follows. -1 takes it out of the sequence and keeps

@@ -135,15 +135,18 @@ p,h1,h2,h3,h4{margin:0}
 button{cursor:pointer}
 ::selection{background:var(--pink);color:var(--on-pink)}
 :focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
-/* A SCROLL CONTAINER IS NOT A CONTROL AND MUST NOT TAKE THIS RING. Owner,
-   2026-09-15, with a screenshot of a lime rectangle across the $8 shelf:
-   "happend when i try to scroll horizontally thorguh all 3 menus".
+/* A SCROLL CONTAINER IS NOT A CONTROL AND MUST NOT TAKE THIS RING. Found
+   2026-09-15 while chasing the square the owner photographed on the $8 shelf,
+   and it is NOT that square — that one was the claw rim flash (trap 78, fixed
+   in beast.js). This is a second, real stray rectangle on the same page, found
+   by tab-walking the shelves in Firefox, and it is written up as trap 79.
    Every scroll container sits in Firefox's tab order, always; Chrome 127+ puts
    one there whenever it holds no keyboard-focusable child. So Tab lands on the
    ROW — `.product-grid`, 390x412 on a phone, 1440x676 on a desktop — and the
    rule above paints a 3px ring 3px OUTSIDE it. It reads as card art rather
    than as focus because it is the same #f5f739 as that shelf's own --stage
-   (see `.deal-shelf[data-deal="8-each"]`), and it reads as a glitch because
+   (see `.deal-shelf[data-deal="8-each"]`) — which is exactly why it was easy
+   to mistake for the reported square — and it reads as a glitch because
    only part of it survives: the left and right edges fall outside the
    viewport and `.deal-shelf{overflow:clip}` cuts the rest, leaving two stray
    lime bars bleeding into the shelves above and below. `.cart-lines` does the
