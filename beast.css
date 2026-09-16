@@ -452,7 +452,29 @@ html.shop-docked .nav{border-bottom-color:transparent}
 /* The centred bands stack the copy and the price in one flow column so they
    cannot collide. The desktop two-column band turns the wrapper into
    display:contents, leaving the measured, working absolute layout alone. */
-.hero-column{position:absolute;z-index:6;left:16px;right:16px;top:calc(var(--nav-h) + 8px);
+/* THE COLUMN STOPS HUGGING THE NAV, 2026-09-15. Owner, looking at a phone:
+   "shoud i be lower the beast of a deal and price a bit lower isnt it too
+   hig?" — yes. At `+8px` the kicker started 16px under the nav bar while the
+   gap between the bottom of the price and the tops of the bottles measured
+   125px at 390x844: the whole cluster was jammed against the chrome with the
+   composition's slack dumped in the middle of the drum, which is the empty
+   band the owner is looking at.
+   A vh-CONTINUOUS clamp, never a height breakpoint — the rule this file states
+   thirty lines down and the reason is the same: beast-resize.py sweeps WIDTH at
+   a fixed height, so a height step is a cliff nothing in this project would
+   ever see.
+   THE FIRST VALUE HERE WAS `7vh` AND IT WAS WRONG, measured not guessed: it
+   lowers the column 32px at 568px tall, where the clearance between the bottom
+   of the price and the tops of the bottles is only 46px to begin with. 320x568
+   came back with FOURTEEN pixels of daylight and 375x553 with 25. A short phone
+   has no slack to spend — the offset has to come out of slack that EXISTS, so
+   the term is `14vh - 80px`, which is zero below ~580px tall and opens up from
+   there: +21px at 780, +30px at 844, +42px at 932. Clearance measured after:
+   320x568 46px, 375x553 56px, 390x844 91px, 430x932 103px.
+   The 72px ceiling stops a tall tablet-portrait window from pushing the
+   headline down onto the bottles. */
+.hero-column{position:absolute;z-index:6;left:16px;right:16px;
+  top:calc(var(--nav-h) + clamp(8px,14vh - 80px,72px));
   display:flex;flex-direction:column;align-items:center;gap:clamp(4px,1.2vh,22px);pointer-events:none}
 .hero-column>*{pointer-events:none}
 .hero-column .btn,.hero-column a{pointer-events:auto}
@@ -1642,6 +1664,75 @@ html.no-js .plate-medal{display:none}
   font:900 12px/1 var(--display);letter-spacing:.06em;cursor:pointer}
 .ready-sms:active{translate:0 3px;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 2px 0 #7a0b4d}
 .ready-sms[hidden]{display:none}
+
+/* ---- THE FINISH LINE, 2026-09-15 ----------------------------------------
+   Owner: "add some fancy effects here and better reading easy to read so its
+   obvious that you have to press that button in order to finish your order".
+   THE 12px ABOVE WAS NEVER APPLIED. `.ready-sms` is (0,1,0) and
+   `.request-submit,.ready-actions button` a few hundred lines down is (0,1,1),
+   so the button rendered at that rule's 11px — measured, not assumed. The rule
+   above is left exactly as it was rather than quietly "fixed", because it is
+   the record of what someone intended; everything that has to WIN is written
+   below at (0,2,1) and says so. Do not delete one for the other.
+   Size first, effects second: this is the last control before a sale and it
+   was the same weight as COPY REQUEST beside it. */
+.ready-actions button.ready-sms{
+  flex:1 1 100%;                      /* the pair becomes a stack: primary, then fallback */
+  display:flex;align-items:center;justify-content:center;gap:13px;
+  position:relative;overflow:hidden;  /* clips the glint to the pill */
+  min-height:62px;padding:18px 24px;margin-top:10px;
+  font:900 15px/1 var(--display);letter-spacing:.075em;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,
+             0 14px 34px rgba(255,36,157,.34)}
+/* the chevron is DRAWN, not typed — same reason as .variant-arrow::before: an
+   arrow glyph lands on a different weight and a different optical centre in
+   every font that might have to stand in for the display face. */
+.ready-actions button.ready-sms::after{content:"";width:11px;height:11px;flex:0 0 auto;
+  border-top:3px solid currentColor;border-right:3px solid currentColor;border-radius:2px;
+  rotate:45deg;translate:-2px 0}
+.ready-actions button.ready-sms:active{translate:0 3px;
+  box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 2px 0 #7a0b4d,0 6px 18px rgba(255,36,157,.3)}
+/* A DELIBERATE RING, because script.js FOCUSES this button the moment the panel
+   opens — so the global lime `:focus-visible` was painting a 3px yellow
+   rectangle around the pink pill for every shopper who got this far, which is
+   the same accident the owner reported on the dialog's close button. White
+   reads as part of the control. (0,2,2) beats the global (0,1,0). */
+.ready-actions button.ready-sms:focus-visible{outline:2px solid var(--foam);outline-offset:3px}
+
+/* THE CUE. `.request-ready>p` is (0,1,1) and sets 11px/#9fb7c7 on every direct
+   <p> in this panel, so this is written at (0,2,1) to beat it — the same trap
+   already documented twenty lines above that rule. --ice on this ground is the
+   panel's brightest small type and well clear of AA. */
+.request-ready>p.ready-cue{display:flex;align-items:center;justify-content:center;gap:10px;
+  margin:20px 0 0;color:var(--ice);text-align:center;
+  font:900 11px/1.35 var(--body);letter-spacing:.12em;text-transform:uppercase;text-wrap:balance}
+/* two hairlines flanking it, so it reads as a step marker rather than another
+   sentence in the paragraph stack above */
+.request-ready>p.ready-cue::before,.request-ready>p.ready-cue::after{content:"";height:1px;flex:1 1 auto;
+  max-width:46px;background:linear-gradient(90deg,transparent,rgba(141,235,255,.5))}
+.request-ready>p.ready-cue::after{background:linear-gradient(90deg,rgba(141,235,255,.5),transparent)}
+/* No number configured means no button to point at, and the flow is the
+   copy-and-paste one the panel has always had. */
+.request-ready:not(.has-sms)>p.ready-cue{display:none}
+
+@media(prefers-reduced-motion:no-preference){
+  /* THE FANCY HALF, and it is two effects, not five: a slow breath on the glow
+     so the eye is drawn back to the pill, and one glint sweep across it. Both
+     are on the one element that is the point of this panel. `html.motion` gates
+     them with everything else decorative in this file, so a no-JS or
+     reduced-motion visitor gets the bigger, brighter button and no loop. */
+  html.motion .ready-actions button.ready-sms{animation:smsBreath 2.6s var(--ease-out) infinite}
+  html.motion .ready-actions button.ready-sms::before{content:"";position:absolute;z-index:1;
+    inset:0 auto 0 0;width:38%;pointer-events:none;
+    background:linear-gradient(100deg,transparent,rgba(255,255,255,.55),transparent);
+    translate:-160% 0;rotate:9deg;animation:smsGlint 2.6s var(--ease-out) infinite}
+  /* the label and the chevron sit above the sweep */
+  html.motion .ready-actions button.ready-sms::after{z-index:2}
+}
+@keyframes smsBreath{
+  0%,100%{box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 14px 34px rgba(255,36,157,.34)}
+  50%    {box-shadow:inset 0 2px 0 rgba(255,255,255,.55),0 6px 0 #7a0b4d,0 18px 44px rgba(255,36,157,.62)}}
+@keyframes smsGlint{0%,62%{translate:-160% 0}100%{translate:420% 0}}
 /* with a text channel the clipboard is the fallback, so it stops shouting */
 .request-ready.has-sms [data-copy-order]{background:transparent;color:#bed6e5;box-shadow:inset 0 0 0 1px rgba(141,235,255,.4)}
 .receipt>small{display:block;font-size:10px;line-height:1.5;color:#4c5c68;margin-top:15px}
