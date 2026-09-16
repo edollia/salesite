@@ -2406,8 +2406,14 @@
   /* ---------- what a PRINTED page has to say ----------
      A shelf card shows one product at a time and rotates through the rest, so a
      print — which never rotates and never scrolls — carried the current variant
-     of each of the 18 cards and nothing else: **18 of the 37 products, and 19
+     of each of the 18 cards and nothing else: **18 of the 38 products, and 20
      with no name or price anywhere on the paper.** Found by an audit 2026-09-12.
+     (Those three figures are the SHAPE OF THE DEFECT ON ITS DATE and are not
+     meant to track the catalogue. A later pass rewrote two of them to 37 and 19
+     and left "twenty" below untouched, which made a dated finding disagree with
+     itself; they are restored here, 2026-09-15. The shelves carry 15 cards and
+     37 products today, so the same defect would now hide 22 names — the fix
+     below is what stops it being a number that has to be maintained at all.)
 
      The other twenty names are not hidden on the page, they are not IN it: the
      copy block is rewritten in place on every rotation. So the list is built

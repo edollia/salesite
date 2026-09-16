@@ -231,8 +231,17 @@
     product({ id: "unbranded-paper-towels-6-rolls", sourcePath: "assets/products/everyday-essential-paper-towels-6-rolls.png", image: "assets/products/everyday-essential-paper-towels-6-rolls.webp", imagePng: "assets/products/everyday-essential-paper-towels-6-rolls.png", brand: "Unbranded / unknown", name: "Paper Towels", variant: "Brand not provided", size: "6 rolls per package", category: "Paper goods", inventoryQuantity: 64, inventoryUnit: "packages", packaging: "Exact retail SKU and package artwork not provided", quantityNote: "40 packages + 10 from Group 3 (2026-09-13) + 14 restocked (2026-09-15) = 64 packages × 6 rolls = 384 total rolls", inventoryStatus: "quantity-confirmed; brand unresolved", dealGroup: "paper-2-for-7", comparePrice: 6.29, sourceStatus: "working_value", sourceRemovedOn: "2026-09-12", sourceRemovedWhy: "cited Target A-79727136, which is six TRIPLE rolls at $14.99 — neither the size nor the price this product was ever compared against", imageSourceType: "Earlier generated package artwork restored at owner request", searchTags: ["paper towels", "paper goods", "6 rolls", "unbranded"], alt: "Orange package of six rolls of paper towels" })
   ]);
 
+  /* IDS THAT HAVE BEEN USED AND MUST NEVER BE REUSED. Nothing reads this list
+     today — it is a record, not a guard — but an id is what the pickup list in
+     a visitor's localStorage refers to, so handing an old id to a new product
+     silently turns a saved line into the wrong item.
+     `gain-happy-hibiscus-32ct` was missing until 2026-09-15. The 32 ct tub was
+     retired on 2026-09-14 and its 9 units were re-homed onto the 25 ct row, so
+     the id left the manifest without ever being written down here. Found by an
+     audit of the documentation, not by a gate, because there is no gate. */
   window.ARCHIVED_PRODUCT_IDS = Object.freeze([
     "tide-pods-original-14ct", "tide-pods-spring-meadow-16ct", "suavitel-complete-field-flowers-100-loads",
-    "everyday-essential-toilet-paper-12-rolls", "everyday-essential-paper-towels-6-rolls"
+    "everyday-essential-toilet-paper-12-rolls", "everyday-essential-paper-towels-6-rolls",
+    "gain-happy-hibiscus-32ct"
   ]);
 }());
