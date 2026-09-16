@@ -2585,8 +2585,24 @@
     tearClaw(host, event.clientX, event.clientY);
     /* The rip has to land on something or it is just a decal. Anything already
        interactive takes a short rim flash, so the click visibly HITS. Scoped to
-       buttons, links and cards so nothing else on the page is ever touched. */
-    const struck = event.target.closest?.("button, a[href], .product-card, .plate, .stages a");
+       buttons, links and plates so nothing else on the page is ever touched.
+       `.product-card` WAS IN THIS LIST AND IS THE SQUARE THE OWNER REPORTED,
+       twice — 2026-09-15, "on mobile or grabbing or touchscreen this square
+       appears when trying to run through the items", and again the same day
+       with a screenshot of the $8 shelf: "if you grab onto an item and then
+       scroll... that's when the square happens".
+       A card is not a control. Its ADD button, its arrows and its dots are,
+       and they all still flash. But the card is 320x370, so the flash was a
+       full-card rectangle painted at z-index 20 OVER the artwork — and it fired
+       on `pointerdown`, which is the first half of the drag gesture that scrolls
+       the row. Every attempt to browse the shelf by grabbing a bottle and
+       pulling therefore drew a bright box across the bottle. Parts of it are
+       covered by the bottle cutout and the copy block, so what reaches the eye
+       is a partial rectangle over the product photograph — which is why two
+       earlier passes went looking for a tap highlight and a text selection.
+       DO NOT PUT `.product-card` BACK. The rip itself (`tearClaw` above) still
+       lands at the pointer, so the press is still answered. */
+    const struck = event.target.closest?.("button, a[href], .plate, .stages a");
     /* .is-clawed adds position:relative so its ::before can sit over the element.
        On a FIXED element that collapses it out of place — the full-screen drawer
        scrim stopped being under the pointer between pointerdown and pointerup, so

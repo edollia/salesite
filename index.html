@@ -151,7 +151,13 @@
          point at sections script.js renders, and offering a jump to a section
          that was never built is the same defect as the SPIN button that could
          not spin. -->
-    <nav class="stages" data-stages aria-label="Jump to a price stage">
+    <!-- tabindex="-1": a scroll container is a tab stop in Firefox (always) and
+         in Chrome 127+ (when it holds no focusable child), and the global
+         :focus-visible ring then paints a lime rectangle around the whole
+         container. Owner, 2026-09-15, screenshot of the $8 shelf. The links
+         inside stay in the sequence; only the box around them leaves it.
+         Belt rule in beast.css under the global :focus-visible. -->
+    <nav class="stages" data-stages tabindex="-1" aria-label="Jump to a price stage">
       <a href="#deal-2-for-5" data-stage-link="2-for-5" aria-label="2 / $5 — jump to the two for five dollars shelf"><b>2 / $5</b></a>
       <a href="#deal-8-each" data-stage-link="8-each" aria-label="$8 — jump to the eight dollars each shelf"><b>$8</b></a>
       <a href="#deal-paper-2-for-7" data-stage-link="paper-2-for-7" aria-label="2 / $7 — jump to the two for seven dollars shelf"><b>2 / $7</b></a>
@@ -517,13 +523,17 @@
          2-for-$5 line got the total flipped to "—" and the checkout taken away
          with no sound at all. WCAG 4.1.3 Status Messages. -->
     <div class="pair-status" role="status" data-pair-status hidden></div>
-    <div class="cart-lines" data-cart-items></div>
+    <!-- tabindex="-1", 2026-09-15: this is the one that fires inside the
+         drawer. 390x547 of lime ring on the first Tab in Firefox, same defect
+         as the product rows. Every line carries its own +/- and remove
+         buttons, so nothing here stops being reachable. -->
+    <div class="cart-lines" data-cart-items tabindex="-1"></div>
     <div class="cart-empty" data-cart-empty>
       <img draggable="false" class="cart-empty-mark" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="96" height="69">
       <h3>NOTHING ON THE LIST</h3>
       <button type="button" data-close-cart>BACK TO THE SHELF</button>
     </div>
-    <div class="cart-summary" data-cart-footer hidden>
+    <div class="cart-summary" data-cart-footer tabindex="-1" hidden>
       <div class="cart-total"><span>Cash total</span><strong data-cart-total>$0.00</strong></div>
 
       <!-- One line, two facts. The claw rip is the transition from the store
@@ -680,7 +690,10 @@
            — a note field that could forge a line into the seller's message is a
            defect that has already shipped here once. The bubble is filled with
            textContent, never innerHTML, for the same reason. -->
-      <div class="msg-thread" aria-hidden="true">
+      <!-- tabindex="-1" as well as aria-hidden: a scroller this browser can focus
+           while aria-hidden hides it from the accessibility tree is a
+           focusable nothing. Same 2026-09-15 pass as the rows above. -->
+      <div class="msg-thread" aria-hidden="true" tabindex="-1">
         <div class="msg-bubble" data-order-bubble></div>
         <p class="msg-meta">YOU · TO THE SELLER</p>
       </div>

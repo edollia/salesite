@@ -135,6 +135,36 @@ p,h1,h2,h3,h4{margin:0}
 button{cursor:pointer}
 ::selection{background:var(--pink);color:var(--on-pink)}
 :focus-visible{outline:3px solid var(--yellow);outline-offset:3px}
+/* A SCROLL CONTAINER IS NOT A CONTROL AND MUST NOT TAKE THIS RING. Owner,
+   2026-09-15, with a screenshot of a lime rectangle across the $8 shelf:
+   "happend when i try to scroll horizontally thorguh all 3 menus".
+   Every scroll container sits in Firefox's tab order, always; Chrome 127+ puts
+   one there whenever it holds no keyboard-focusable child. So Tab lands on the
+   ROW — `.product-grid`, 390x412 on a phone, 1440x676 on a desktop — and the
+   rule above paints a 3px ring 3px OUTSIDE it. It reads as card art rather
+   than as focus because it is the same #f5f739 as that shelf's own --stage
+   (see `.deal-shelf[data-deal="8-each"]`), and it reads as a glitch because
+   only part of it survives: the left and right edges fall outside the
+   viewport and `.deal-shelf{overflow:clip}` cuts the rest, leaving two stray
+   lime bars bleeding into the shelves above and below. `.cart-lines` does the
+   same thing inside the pickup drawer, 390x547, on the same Tab.
+   Nothing is lost by taking these containers out of the sequence — they carry
+   `tabindex="-1"` in index.html and script.js now. Every card holds an ADD
+   button and every cart line its own controls, and the `focusin` handler in
+   script.js already scrolls the focused card into view, so Tab walks the row
+   and the row follows it. The row itself never needed to be a stop.
+   This rule is the belt for the other half: a container that finds focus some
+   other way — a mouse press, a browser that ignores tabindex on a scroller —
+   must not paint the big outward ring either. `:focus` rather than
+   `:focus-visible` so a press is covered as well, and at (0,2,0) it
+   out-specifies the (0,1,0) global rule above without !important.
+   IT IS THE BELT, NOT THE FIX: the forced-colors block at the foot of this
+   file restores `:focus-visible` with `!important`, which beats (0,2,0), so a
+   high-contrast visitor would still see the bar if the row were still a stop.
+   The `tabindex="-1"` is what covers both, and neither half is redundant —
+   do not delete one because the other looks sufficient. */
+.product-grid:focus,.stages:focus,.cart-lines:focus,.cart-summary:focus,
+.msg-thread:focus,.drawer:focus,.request:focus,.wheel-dialog:focus{outline:none}
 /* No grey box on tap. Owner, 2026-09-12: the nav links "display a flickering
    square border when tapped or clicked". That is the platform tap highlight —
    a filled rectangle Chrome and Safari paint over the TOUCHED BOX, which on a
@@ -278,7 +308,14 @@ html.no-js .boot,html.reduced .boot{display:none}
 html.motion .is-clawed{position:relative}
 html.motion .is-clawed::before{content:"";position:absolute;inset:-2px;z-index:20;pointer-events:none;
   border-radius:inherit;box-shadow:0 0 0 2px rgba(234,252,255,.9),0 0 18px 5px rgba(0,213,255,.5);
-  animation:clawHit .4s var(--ease-out) 1}
+  animation:clawHit .4s var(--ease-out) 1 forwards}
+/* `forwards` IS NOT DECORATION, 2026-09-15. The animation ENDS at opacity 0 but
+   the rule sets no resting opacity, so without a fill mode the ring snapped back
+   to its default — fully opaque — the moment the animation finished, and stayed
+   there for the 20 ms until the `setTimeout(..., 420)` in beast.js took the
+   class off. Every rim flash on this page therefore ended with a hard bright
+   rectangle rather than a fade. It is most of a frame at 60Hz, it is the LAST
+   thing the eye sees, and on a slow frame it is longer than that. */
 @keyframes clawHit{0%{opacity:0;transform:scale(.94)}20%{opacity:1;transform:scale(1)}100%{opacity:0;transform:scale(1.03)}}
 
 /* ---------- nav ---------- */

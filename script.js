@@ -831,6 +831,21 @@
       }
       const grid = document.createElement("div");
       grid.className = "product-grid";
+      /* NOT A TAB STOP, 2026-09-15. A scroll container is in Firefox's tab
+         order always, and in Chrome 127+ whenever it holds no focusable child,
+         and the global :focus-visible ring then draws a lime rectangle around
+         the whole row — the artefact the owner photographed, "happend when i
+         try to scroll horizontally thorguh all 3 menus". The row never needed
+         to be a stop: every card carries an ADD button, and the `focusin`
+         handler further down scrolls the focused card into view, so Tab walks
+         the row and the row follows. -1 takes it out of the sequence and keeps
+         it programmatically focusable, keeps it a real scroll container (the
+         drag checks in beast-qa.py measure scrollWidth on this element), and
+         focusableWithin() below ignores [tabindex="-1"], so the drawer's tab
+         trap is unchanged. The matching belt is in beast.css under the global
+         :focus-visible rule; that one cannot win inside forced-colors, which
+         is why the attribute is here as well. */
+      grid.tabIndex = -1;
       grid.dataset.cardCount = String(brandGroups.length);
       brandGroups.forEach((group, index) => grid.append(renderBrandCard(group, index)));
       section.append(heading, grid);
