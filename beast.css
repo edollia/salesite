@@ -869,8 +869,8 @@ html.motion .ticket-rays{animation:rayTurn 26s linear infinite}
 
 /* ---------- shop + price stages ---------- */
 .shop{position:relative;overflow-x:clip;background:radial-gradient(circle at 50% 6%,#0b3866 0,transparent 26%),linear-gradient(180deg,#04162d,#020917 55%,#051a33);padding:28px 0 40px}
-/* 28px of padding-top replaces the 48px the price bar's own margin used to give
-   .shop-head, which has no top margin of its own.
+/* The top padding separates the search from the wheel band without reserving
+   any of the space formerly occupied by a shop headline.
    THE SENTINEL says "the shop has reached the bar", and it says it in CSS units
    so it tracks --nav-h through every media query without any script reading a
    number (trap 40: a custom property computes to a token STREAM, and
@@ -968,8 +968,8 @@ html.shop-docked .nav .stages a{pointer-events:auto}
    `font` shorthand's own font-size and is a no-op — trap 6, and the comment
    above claimed the step-down worked while it did not. */
 @media(max-width:359px){.stages b{font-size:19px}}
-.shop-head{position:relative;z-index:3;padding:0 var(--gutter);margin:auto}
-.console{position:relative;margin-top:30px;padding:18px 20px;border-radius:7px 34px 7px 34px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,0 0 0 3px #061a32,0 0 0 5px rgba(0,213,255,.32);clip-path:polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))}
+.shop-head{position:relative;z-index:3;max-width:760px;padding:0 var(--gutter);margin:auto}
+.console{position:relative;margin:0;padding:18px 20px;border-radius:7px 34px 7px 34px;background:var(--chrome-band);box-shadow:inset 0 2px 0 #fff,0 0 0 3px #061a32,0 0 0 5px rgba(0,213,255,.32);clip-path:polygon(0 0,calc(100% - 28px) 0,100% 28px,100% 100%,28px 100%,0 calc(100% - 28px))}
 .console label{display:inline-block;padding:7px 10px;border-radius:999px;background:rgba(3,18,41,.9);font:900 9px/1 var(--body);letter-spacing:.16em;color:var(--ice);margin:0 0 10px 2px}
 .console-field{height:52px;border-radius:999px;background:var(--foam);display:flex;align-items:center;padding:0 8px 0 16px;color:var(--navy);box-shadow:inset 0 3px 7px rgba(3,21,47,.2),0 0 0 3px rgba(0,213,255,.28);transition:box-shadow .3s}
 .console-field:focus-within{box-shadow:inset 0 3px 7px rgba(3,21,47,.2),0 0 0 3px var(--cyan),0 0 0 6px rgba(3,18,41,.85)}
@@ -1422,10 +1422,8 @@ html.no-js [data-spin-band],html.no-js .console{display:none!important}
 .hide-comparisons [data-comparison-row],.hide-comparisons [data-comparison-section]{display:none!important}
 
 /* ---------- the rules: three plates ---------- */
-.rules{position:relative;overflow:clip;padding:64px 18px 72px;background:radial-gradient(circle at 85% 0,rgba(0,213,255,.16),transparent 30%),radial-gradient(circle at 0 100%,rgba(255,36,157,.14),transparent 30%),linear-gradient(180deg,#061d3b,#020916)}
-.rules-head,.plates{max-width:var(--max);margin-left:auto;margin-right:auto}
-.rules .display .accent{color:var(--pink)}
-.plates{margin-top:34px;display:grid;gap:14px;align-items:stretch}
+.rules{position:relative;overflow:clip;padding:40px 18px 72px;background:radial-gradient(circle at 85% 0,rgba(0,213,255,.16),transparent 30%),radial-gradient(circle at 0 100%,rgba(255,36,157,.14),transparent 30%),linear-gradient(180deg,#061d3b,#020916)}
+.plates{max-width:var(--max);margin-left:auto;margin-right:auto;display:grid;gap:14px;align-items:stretch}
 /* the towns row spans whatever column count the plates are in */
 .plates-towns{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;
   padding:15px 20px;border-radius:7px 30px 7px 30px;
@@ -1759,6 +1757,9 @@ html.no-js .plate-medal{display:none}
 .footer-mark img{width:76px;height:auto}
 
 .footer small{display:block;font-size:10px;line-height:1.5;color:#6f8ba1}
+.footer-legal{display:flex;align-items:center;justify-content:center;gap:10px;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+.footer-legal a{display:inline-flex;min-height:44px;align-items:center;padding:0 5px;color:#a9c6d8;text-decoration-thickness:1px;text-underline-offset:4px}
+@media(hover:hover){.footer-legal a:hover{color:#fff}}
 
 /* ---------- drawer + request ---------- */
 .drawer-scrim{position:fixed;inset:0;z-index:900;border:0;background:rgba(0,4,13,.72)}
@@ -2130,17 +2131,11 @@ html.motion .deal-shelf .product-card{opacity:0}
   html.shop-docked .nav-lockup{opacity:1;transform:none}
   .stages{grid-area:1/2;justify-self:center;padding-left:0;width:min(100%,470px)}
   .stages a{height:52px}.stages b{font-size:30px}
-  /* 64px, NOT 0. The price rail used to be .shop's first child and paid
-     7+62+11 of its own box plus margin-bottom:80px = 160px above .shop-head.
-     The merge moved it into the header and put 28px on the BASE .shop rule —
-     but this desktop rule is the same specificity and LATER in source, so
-     padding-top stayed 0 and "THREE PRICES" butted flush against the spin
-     band's lip. Same trap as the .deal-shelf padding a few rules down, and it
-     shipped in the same commit as the comment warning about it. */
-  .shop{padding:64px 0 60px}
-  .shop-head{display:grid;grid-template-columns:1.05fr .95fr;gap:80px;align-items:end;padding:0 var(--gutter);max-width:none}
-  .console{margin:0}
-  .shelves{margin-top:64px}
+  /* The search is the shop's only intro now. Keep a compact section boundary
+     and centre the control instead of preserving the deleted headline column. */
+  .shop{padding:40px 0 60px}
+  .shop-head{padding:0 var(--gutter)}
+  .shelves{margin-top:44px}
   .deal-shelf{padding:64px 0 30px}
   /* max-width:none is load-bearing. .shelf-heading carries max-width:var(--max)
      with margin:auto AND this padding, so above 1280 it paid the gutter twice
@@ -2201,8 +2196,8 @@ html.motion .deal-shelf .product-card{opacity:0}
      the row was sized to hold it. The phone pass cut it to 20 and the pad has
      overhung its row by 2px top and bottom at every desktop width since. */
   .product-brand.has-dots{min-height:24px}
-  .rules{padding:110px var(--gutter) 120px}
-  .plates{grid-template-columns:repeat(3,1fr);gap:16px;margin-top:48px}
+  .rules{padding:64px var(--gutter) 120px}
+  .plates{grid-template-columns:repeat(3,1fr);gap:16px}
   .plate{padding:24px 24px 26px;gap:12px}
   /* Below 900 the six town chips wrap to four rows and set the height of the
      whole row; pinning the other two plates' bottom rows to that floor left

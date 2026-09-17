@@ -10,6 +10,7 @@ assets/products-master/*.png
 assets/products/*.png
 assets/beast-lab/*.png
 assets/inventory-sources/
+assets/flyer/
 
 # internal, never public
 wheel-lab.*
@@ -52,3 +53,4 @@ assets/prizes/try-again.svg
 flyer.html
 flyer.css
 share-card.html
+ad-creative.html

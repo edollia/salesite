@@ -20,8 +20,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="theme-color" content="#020816">
   <meta name="color-scheme" content="dark">
+  <meta name="robots" content="index,follow,max-image-preview:large">
   <meta name="description" content="Beast Stock-Up: household supplies in stock now. Any two medium bottles $5, big sizes $8, paper goods and softener any two $7. Pickup or local delivery in six towns. Cash in person, never a deposit.">
   <meta property="og:type" content="website">
+  <meta property="og:site_name" content="Beast Stock-Up">
+  <meta property="og:locale" content="en_US">
   <meta property="og:title" content="Beast Stock-Up — Stock-Up × MrBeast">
   <meta property="og:description" content="Household supplies, in stock now. Two medium bottles $5. Big sizes $8. Paper goods and softener, any two $7. Six towns, pickup or delivery, cash in person.">
   <!-- ABSOLUTE, because Open Graph requires it. This was a relative path, so
@@ -33,12 +36,16 @@
        time by check-integrity.mjs and printed on the flyer -- but still by
        nothing at runtime, so the point above stands.) -->
   <meta property="og:url" content="https://beast.deal/">
-  <meta property="og:image" content="https://beast.deal/assets/social-thumbnail.png">
-  <meta property="og:image:secure_url" content="https://beast.deal/assets/social-thumbnail.png">
+  <meta property="og:image" content="https://beast.deal/assets/social-thumbnail.jpg">
+  <meta property="og:image:secure_url" content="https://beast.deal/assets/social-thumbnail.jpg">
   <meta property="og:image:alt" content="Beast Stock-Up — any two medium bottles for $5.">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Beast Stock-Up — household supplies in stock now">
+  <meta name="twitter:description" content="Any two medium bottles $5, big sizes $8, and paper goods or softener any two $7. Pickup or local delivery. Cash in person.">
+  <meta name="twitter:image" content="https://beast.deal/assets/social-thumbnail.jpg">
+  <meta name="twitter:image:alt" content="Beast Stock-Up household-supply offers">
   <title>Beast Stock-Up — Stock-Up × MrBeast household supplies</title>
   <link rel="canonical" href="https://beast.deal/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
@@ -47,6 +54,15 @@
   <link rel="preload" href="assets/fonts/archivo-black.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="assets/fonts/permanent-marker.woff2" as="font" type="font/woff2" crossorigin>
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "WebSite",
+      "name": "Beast Stock-Up",
+      "alternateName": ["Beast Deal", "beast.deal"],
+      "url": "https://beast.deal/"
+    }
+  </script>
   <!-- These two must stay the exact complement of each other and must match the
        <picture> below and the CSS landscape band. `not all and (min-aspect-ratio:1/1)`
        is used rather than `(max-aspect-ratio:1/1)` so a perfectly square window
@@ -336,7 +352,7 @@
     </div>
 
     <!-- ============================== SHOP ============================== -->
-    <section class="shop" id="shop" aria-labelledby="shop-title">
+    <section class="shop" id="shop" aria-label="In-stock products">
       <!-- THE PRICE RAIL MOVED INTO THE HEADER, 2026-09-13. Owner, with a
            screenshot of the two stacked bars: "when scrolling these 2 should
            become one". Same markup, same three links, same aria-labels — it is
@@ -346,11 +362,7 @@
            iPhone rattle are on .stages in beast.css.
            The sentinel below is what tells script.js the shop has arrived. -->
       <i class="shop-dock" data-shop-dock aria-hidden="true"></i>
-      <header class="shop-head">
-        <div>
-          <p class="kicker" data-reveal><i></i>THREE PRICES</p>
-          <h2 id="shop-title" class="display" data-split>THE WHOLE<br><span class="accent">SHELF.</span></h2>
-        </div>
+      <div class="shop-head">
         <div class="console" data-reveal>
           <label for="product-search">FIND YOUR BRAND</label>
           <div class="console-field">
@@ -365,7 +377,7 @@
                count in products.js. -->
           <p role="status"><strong data-results-count>40</strong> SHOWING<span data-stage-count></span></p>
         </div>
-      </header>
+      </div>
 
       <div class="shelves" data-product-sections>
         <noscript><section class="noscript"><h2>The three price stages</h2><p>Medium bottles and 15 oz scent boosters 2 for $5, or $3 for one · big sizes $8 each · paper goods, softener and 14-count Power Paks, any 2 for $7.</p><p>JavaScript is required to browse individual products and build a pickup list.</p></section></noscript>
@@ -403,11 +415,7 @@
     </section>
 
     <!-- ============================== THE RULES ============================== -->
-    <section class="rules" id="how" aria-labelledby="rules-title">
-      <header class="rules-head">
-        <p class="kicker" data-reveal><i></i>THE RULES</p>
-        <h2 id="rules-title" class="display" data-split>CASH. PICKUP.<br><span class="accent">DELIVERY.</span></h2>
-      </header>
+    <section class="rules" id="how" aria-label="Pickup and delivery rules">
       <div class="plates" data-plates>
         <!-- "WHERE I GO" is gone at the owner's instruction, 2026-09-12, and so
              is the dial that counted to twenty: there is no twenty any more. The
@@ -509,6 +517,7 @@
            directly under it, in worse words. `data-inventory-line` went with it:
            no script in the project ever read that hook. -->
       <small>First come, first served. Packaging may vary.</small>
+      <nav class="footer-legal" aria-label="Store policies"><a href="privacy.html">Privacy</a><span aria-hidden="true">·</span><a href="terms.html">Terms</a></nav>
     </div>
   </footer>
 
