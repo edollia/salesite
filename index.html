@@ -358,17 +358,17 @@
             <input id="product-search" type="search" data-search autocomplete="off" placeholder="Tide, sensitive, pods, paper…">
             <button type="button" data-clear-search hidden>CLEAR</button>
           </div>
-          <!-- 38, not a smaller number typed once and left behind. script.js overwrites
+          <!-- 40, not a smaller number typed once and left behind. script.js overwrites
                this on first render, so it is only ever read by someone whose JS has not
                run -- which is exactly the visitor who cannot be corrected later. It said
                31 while the shelf held 38. Nothing guards it; keep it equal to the product
                count in products.js. -->
-          <p role="status"><strong data-results-count>37</strong> SHOWING<span data-stage-count></span></p>
+          <p role="status"><strong data-results-count>40</strong> SHOWING<span data-stage-count></span></p>
         </div>
       </header>
 
       <div class="shelves" data-product-sections>
-        <noscript><section class="noscript"><h2>The three price stages</h2><p>Medium bottles 2 for $5, or $3 for one · big sizes $8 each · paper goods and softener, any 2 for $7.</p><p>JavaScript is required to browse individual products and build a pickup list.</p></section></noscript>
+        <noscript><section class="noscript"><h2>The three price stages</h2><p>Medium bottles and 15 oz scent boosters 2 for $5, or $3 for one · big sizes $8 each · paper goods, softener and 14-count Power Paks, any 2 for $7.</p><p>JavaScript is required to browse individual products and build a pickup list.</p></section></noscript>
       </div>
 
       <section class="empty-results" data-empty-results hidden>

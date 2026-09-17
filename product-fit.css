@@ -7,6 +7,9 @@
 .product-visual .product-image-wrap img{--fit:1}
 .product-visual .product-image-wrap[data-variant-image="arm-hammer-oxiclean-fresh-21-loads"] img{--fit:0.758}
 .product-visual .product-image-wrap[data-variant-image="arm-hammer-odor-blasters-21-loads"] img{--fit:0.758}
+.product-visual .product-image-wrap[data-variant-image="arm-hammer-clean-scentsations-purifying-waters-15oz"] img{--fit:0.755}
+.product-visual .product-image-wrap[data-variant-image="arm-hammer-odor-blasters-fresh-burst-15oz"] img{--fit:0.755}
+.product-visual .product-image-wrap[data-variant-image="arm-hammer-odor-blasters-power-paks-14ct"] img{--fit:0.744}
 .product-visual .product-image-wrap[data-variant-image="tide-simply-all-in-one-24-loads"] img{--fit:0.785}
 .product-visual .product-image-wrap[data-variant-image="tide-simply-oxi-febreze-22-loads"] img{--fit:0.786}
 .product-visual .product-image-wrap[data-variant-image="arm-hammer-sensitive-skin-28-loads"] img{--fit:0.760}
