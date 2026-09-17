@@ -98,7 +98,7 @@
        An unapproved business rule that quietly voids something a customer won
        is worse than the bug it fixes, and the owner has not answered.
        THE MECHANISM IS KEPT, TESTED AND INERT. `loadPrize()` honours this
-       number and `beast-prove.py` proves it by seeding its own config, so
+       number and `beast-regressions.py` proves it by seeding its own config, so
        turning it on is one edit here and nothing else. Before turning it on,
        decide what the TICKET says: a window nobody is told about is not a
        policy, it is a deletion. */

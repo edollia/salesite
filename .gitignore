@@ -10,23 +10,17 @@ assets/products-master/*.png
 assets/products/*.png
 assets/beast-lab/*.png
 assets/inventory-sources/
-assets/fonts/caveat-var.woff2
-assets/fonts/anton.woff2
-assets/fonts/nunito-var.woff2
-assets/fonts/ultra.woff2
 
 # internal, never public
 wheel-lab.*
 admin.*
 qa/
 scripts/
-.session*-baseline/
 HANDOFF*.md
 MAINTAINING.md
 PRICING-WORKSHEET.md
 PUBLISH.md
 CODEX-PROMPT-*.md
-products.previous-*.js
 
 # ---- added 2026-09-13, when the workspace MOVED into this folder ----
 # Until today this repo held only the site and the workspace lived in
@@ -37,8 +31,6 @@ products.previous-*.js
 # pattern line. `7dolla/   # photos` is a literal pattern that matches nothing,
 # which is exactly how the first version of this block silently failed.
 
-# the built brief — the HANDOFF*.md rule above only covers .md
-handoff-prompt.html
 # the workspace's own README. There is no public README.md any more — it was deleted
 # 2026-09-13 at the owner's instruction and must not come back.
 README-WORKSPACE.md
@@ -48,20 +40,12 @@ README-WORKSPACE.md
 2x7 dolla/
 7dolla/
 
-# UNUSED TRADEMARK. No page fetches it, sync-repo.py refuses to publish it, and
-# it must not sit in a public repo.
-assets/prizes/hot-wheels.svg
-# referenced by nothing
-assets/beast-lab/mrbeast-signature.svg
 # sources for prize-art.js's inline sprite; no page fetches them
 assets/prizes/car.svg
 assets/prizes/free-delivery.svg
 assets/prizes/free-item.svg
 assets/prizes/off-coin.svg
 assets/prizes/try-again.svg
-# declared by no @font-face since 2026-09-12
-assets/fonts/caveat-700.woff2
-
 # Printable/social sources. PUBLISH.md calls these OPTIONAL: they are not part
 # of the storefront, and the printed PDF already lives in qa/. Delete the three
 # lines below if the flyer should be reachable online as well as on paper.

@@ -499,7 +499,7 @@
        the final answer is knowable at the first solve. A stage that is not in
        the DOM contributes its GEOMETRY and no nodes. THIS CHANGES THE TRANSIENT
        ONLY -- the settled count and every settled width are asserted unchanged,
-       at eleven shapes, by `beast-prove.py`. It does NOT decide work order 1.3:
+       at eleven shapes, by `beast-regressions.py`. It does NOT decide work order 1.3:
        whatever the hero settles on today it still settles on.
 
        Filtered through `window.PRODUCTS` because `buildStageContent()` skips an

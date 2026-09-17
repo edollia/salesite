@@ -7,13 +7,6 @@
 @font-face{font-family:Archivo;src:url('assets/fonts/archivo.woff2') format('woff2');font-display:swap}
 @font-face{font-family:ArchivoBlack;src:url('assets/fonts/archivo-black.woff2') format('woff2');font-display:swap}
 @font-face{font-family:Marker;src:url('assets/fonts/permanent-marker.woff2') format('woff2');font-display:swap}
-/* instanced at the one weight the page uses; see scripts/build-fonts.py */
-/* The Caveat @font-face and the --hand token were removed on 2026-09-12. They
-   had been dead since "this is what I have" came off the shop on 2026-09-11:
-   `.hand` matched nothing and no rule read --hand. An unused @font-face is never
-   downloaded so it cost no bytes, but it kept `caveat-700.woff2` on PUBLISH.md's
-   upload allow-list for a face the site does not use. The woff2 files stay on
-   disk as sources; build-fonts.py still instances them. */
 
 :root{
   --ink:#020816;--navy:#03152f;
@@ -95,7 +88,7 @@ body{margin:0;overflow-x:clip;background:var(--navy);color:var(--foam);font-fami
    (1) I first changed the shorthand to `overflow-y:hidden`, reasoning that it was
        clobbering the root's `overflow-x:clip`. CSS Overflow 3 §3.2 says clip
        computes to hidden when the other axis is neither clip nor visible -- so
-       that changed nothing. A new beast-prove.py row caught it within the hour.
+       that changed nothing. A regression assertion caught it within the hour.
    (2) I then went to `overflow:hidden;overflow:clip`, both axes clipped. An audit
        argued that breaks `lockPage()`, which reads `window.scrollY` immediately
        after the class goes on. MEASURED, and REFUTED: scrollY reads 1500 under
@@ -433,7 +426,7 @@ html.shop-docked .nav{border-bottom-color:transparent}
    The crossing at .5628 is continuous — slack is zero there, so this term
    fades in from nothing and beast-resize sees no step.
    It is set on .hero, NOT in a second rule naming `.hero-plate img`, because
-   beast-prove.py asserts that exactly ONE media rule carries that selector
+   beast-regressions.py asserts that exactly ONE media rule carries that selector
    with object-position (trap 15: the plate, its preload and its anchor must
    be picked by ONE condition). getComputedStyle still reads `50% 50%`, which
    is what podiumMetrics() needs. */
@@ -1018,8 +1011,7 @@ html.shop-docked .nav .stages a{pointer-events:auto}
    with them (`.product-grid::before` below); the parallax the pair existed to
    sell survives on its own, because it comes from the wall and floor being
    BACKGROUNDS ON A SCROLL CONTAINER (trap 46), not from these lines.
-   Nothing in the suite asserted them -- session 7's beast-prove row was
-   replaced wholesale in session 12 -- so this removal stands alone. */
+   Nothing in the suite asserted them, so this removal stands alone. */
 /* THE FIXTURE. The band across the top of each bay -- roughly 700 px of it at
    1440 -- was empty wall beside the price, and the owner's standing rule is
    "don't forget about blank leftovers visually as well". The answer there is
