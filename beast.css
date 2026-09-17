@@ -53,7 +53,11 @@
    button out from under the pink pickup bar at 375x553, 320x568, 414x568 and
    430x568. The desktop band sets it back to 0. If you add a second one, you are
    back in the composing trap this paragraph is about. */
-html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;scrollbar-gutter:stable;
+/* `manipulation` removes the browser's double-tap-to-zoom gesture (and its
+   accidental second-tap zoom) while retaining one-finger scrolling and
+   two-finger pinch zoom. Do not replace this with maximum-scale/user-scalable:
+   those viewport locks also remove intentional accessibility zoom. */
+html{background:var(--ink);scroll-behavior:smooth;-webkit-text-size-adjust:100%;overflow-x:clip;scrollbar-gutter:stable;touch-action:manipulation;
   /* WHY 12 AND NOT 78. The chrome used to be two bars — the fixed nav plus a
      sticky price bar under it — so this had to clear 141px on a phone and 160px
      on a desktop, and `--nav-h + 78` was the one expression covering both. It
