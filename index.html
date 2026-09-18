@@ -27,24 +27,27 @@
   <meta property="og:locale" content="en_US">
   <meta property="og:title" content="Household Supplies">
   <meta property="og:description" content="Household supplies in stock now. Two medium bottles $5, big sizes $8 each, and paper goods or softener any two $7. Free pickup or delivery from $5.">
-  <!-- NO SHARE IMAGE, DELIBERATELY. Owner, 2026-09-17: the rendered card is
-       not wanted for now, so every og:image / twitter:image tag was removed
-       rather than left pointing at a file. Leaving them was the actual bug in
-       the previous version: they named assets/social-thumbnail.jpg, which was
-       never committed, so beast.deal served a 404 and Facebook rendered a grey
-       box. A missing tag gives a clean text-only card; a broken tag gives that
-       box. With no image, twitter:card must be `summary`, not
-       `summary_large_image` — the large card has nothing to enlarge.
-       TO RESTORE: put back og:image, og:image:secure_url, og:image:alt,
-       og:image:width (1200), og:image:height (630) and twitter:image with
-       ABSOLUTE https://beast.deal/... URLs, set twitter:card back to
-       summary_large_image, COMMIT the asset itself, and re-scrape the URL in
-       Facebook's Sharing Debugger — it caches the old answer. The matching
-       gate in scripts/check-integrity.mjs must be flipped back at the same
-       time. assets/social-thumbnail.jpg is still on disk, untracked, and
-       scripts/beast-render-print.py still regenerates it for the flyer. -->
+  <!-- SHARE IMAGE. Owner, 2026-09-18: the live card is the 2-for-$7 paper
+       card, assets/share-card-2-for-7.jpg. The 2-for-$5 card made the same day
+       is kept beside it (assets/share-card-2-for-5.jpg) to swap in later: change
+       the three URLs below and the alt text. Both are the owner's ChatGPT art
+       widened to 1200x630 with their own blurred background so nothing is
+       cropped. They are NOT social-thumbnail.jpg, which
+       scripts/beast-render-print.py regenerates for the flyer. The old grey-box
+       card failed because its asset was never committed: URLs must be absolute
+       and the file must ship. check-integrity.mjs gates both, and fails if a
+       card's deal changes while its image still shows the old price. After
+       deploying, re-scrape beast.deal in Facebook's Sharing Debugger; it caches
+       the old answer. -->
+  <meta property="og:image" content="https://beast.deal/assets/share-card-2-for-7.jpg">
+  <meta property="og:image:secure_url" content="https://beast.deal/assets/share-card-2-for-7.jpg">
+  <meta property="og:image:type" content="image/jpeg">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Beast of a Deal: 2 for $7 on toilet paper and paper towels. Household supplies, cash in person, pickup or local delivery, www.beast.deal">
   <meta property="og:url" content="https://beast.deal/">
-  <meta name="twitter:card" content="summary">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://beast.deal/assets/share-card-2-for-7.jpg">
   <meta name="twitter:title" content="Household Supplies">
   <meta name="twitter:description" content="Any two medium bottles $5, big sizes $8 each, and paper goods or softener any two $7. Free pickup or local delivery from $5.">
   <title>Beast Stock-Up — household supplies in stock now</title>
