@@ -1978,7 +1978,9 @@
        when the OWNER SUPPLIED THE INVENTORY, not when store prices were checked —
        products.js carries no price date. The tail also restated the CLOSEST MATCH
        row 150 px above it. Both gone. */
-    note.textContent = "Store prices are before tax and change by store, location and date.";
+    note.textContent = "Store prices are before tax and change by store, location and date. "
+      + "Ours stay lowest, guaranteed: find a store selling it for less and we'll beat that price "
+      + "and update this site right away.";
     dom.priceSources.append(note);
   }
 
