@@ -21,32 +21,33 @@
   <meta name="theme-color" content="#020816">
   <meta name="color-scheme" content="dark">
   <meta name="robots" content="index,follow,max-image-preview:large">
-  <meta name="description" content="Beast Stock-Up: household supplies in stock now. Any two medium bottles $5, big sizes $8, paper goods and softener any two $7. Pickup or local delivery in six towns. Cash in person, never a deposit.">
+  <meta name="description" content="Beast Stock-Up: household supplies in stock now. Any two medium bottles $5, big sizes $8 each, paper goods and softener any two $7. Free pickup or local delivery from $5. Cash in person, never a deposit.">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="Beast Stock-Up">
   <meta property="og:locale" content="en_US">
-  <meta property="og:title" content="Beast Stock-Up — Stock-Up × MrBeast">
-  <meta property="og:description" content="Household supplies, in stock now. Two medium bottles $5. Big sizes $8. Paper goods and softener, any two $7. Six towns, pickup or delivery, cash in person.">
-  <!-- ABSOLUTE, because Open Graph requires it. This was a relative path, so
-       Facebook, Slack, iMessage and X could not resolve it and EVERY share of
-       the site rendered with no preview image at all. The asset itself is
-       tracked and public and was never the problem. `publicUrl` in
-       products.js could not have fixed this either: no JavaScript on this page
-       reads it. (It stopped being null on 2026-09-14 and is now read at BUILD
-       time by check-integrity.mjs and printed on the flyer -- but still by
-       nothing at runtime, so the point above stands.) -->
+  <meta property="og:title" content="Beast Stock-Up">
+  <meta property="og:description" content="Household supplies in stock now. Two medium bottles $5, big sizes $8 each, and paper goods or softener any two $7. Free pickup or delivery from $5.">
+  <!-- NO SHARE IMAGE, DELIBERATELY. Owner, 2026-09-17: the rendered card is
+       not wanted for now, so every og:image / twitter:image tag was removed
+       rather than left pointing at a file. Leaving them was the actual bug in
+       the previous version: they named assets/social-thumbnail.jpg, which was
+       never committed, so beast.deal served a 404 and Facebook rendered a grey
+       box. A missing tag gives a clean text-only card; a broken tag gives that
+       box. With no image, twitter:card must be `summary`, not
+       `summary_large_image` — the large card has nothing to enlarge.
+       TO RESTORE: put back og:image, og:image:secure_url, og:image:alt,
+       og:image:width (1200), og:image:height (630) and twitter:image with
+       ABSOLUTE https://beast.deal/... URLs, set twitter:card back to
+       summary_large_image, COMMIT the asset itself, and re-scrape the URL in
+       Facebook's Sharing Debugger — it caches the old answer. The matching
+       gate in scripts/check-integrity.mjs must be flipped back at the same
+       time. assets/social-thumbnail.jpg is still on disk, untracked, and
+       scripts/beast-render-print.py still regenerates it for the flyer. -->
   <meta property="og:url" content="https://beast.deal/">
-  <meta property="og:image" content="https://beast.deal/assets/social-thumbnail.jpg">
-  <meta property="og:image:secure_url" content="https://beast.deal/assets/social-thumbnail.jpg">
-  <meta property="og:image:alt" content="Beast Stock-Up — any two medium bottles for $5.">
-  <meta property="og:image:width" content="1200">
-  <meta property="og:image:height" content="630">
-  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="Beast Stock-Up — household supplies in stock now">
-  <meta name="twitter:description" content="Any two medium bottles $5, big sizes $8, and paper goods or softener any two $7. Pickup or local delivery. Cash in person.">
-  <meta name="twitter:image" content="https://beast.deal/assets/social-thumbnail.jpg">
-  <meta name="twitter:image:alt" content="Beast Stock-Up household-supply offers">
-  <title>Beast Stock-Up — Stock-Up × MrBeast household supplies</title>
+  <meta name="twitter:description" content="Any two medium bottles $5, big sizes $8 each, and paper goods or softener any two $7. Free pickup or local delivery from $5.">
+  <title>Beast Stock-Up — household supplies in stock now</title>
   <link rel="canonical" href="https://beast.deal/">
   <link rel="icon" href="assets/favicon.svg" type="image/svg+xml">
   <link rel="icon" href="assets/favicon.png" type="image/png" sizes="512x512">
@@ -129,14 +130,14 @@
 
   <div class="boot" data-boot aria-hidden="true">
     <div class="boot-in">
-      <img draggable="false" class="boot-panther" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="150" height="107">
+      <img draggable="false" class="boot-panther" src="assets/beast-lab/beast-panther.svg" alt="" width="150" height="107">
       <p class="boot-word"><span class="boot-beast"><span class="chrome chrome-md" data-text="BEAST">BEAST</span></span><span class="brush brush-sm">STOCK-UP</span></p>
     </div>
   </div>
 
   <header class="nav" data-nav>
     <a class="nav-brand" href="#top" aria-label="Beast of a Deal — beast.deal, back to top">
-      <img draggable="false" class="nav-panther" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="52" height="37">
+      <img draggable="false" class="nav-panther" src="assets/beast-lab/beast-panther.svg" alt="" width="52" height="37">
       <!-- Owner, 2026-09-13: the small "www" above the domain is GONE, and the
            domain is nudged up to sit where the two-line lockup used to read
            from. An address without the "www" is how a domain is written now,
@@ -174,9 +175,9 @@
          inside stay in the sequence; only the box around them leaves it.
          Belt rule in beast.css under the global :focus-visible. -->
     <nav class="stages" data-stages tabindex="-1" aria-label="Jump to a price stage">
-      <a href="#deal-2-for-5" data-stage-link="2-for-5" aria-label="2 / $5 — jump to the two for five dollars shelf"><b>2 / $5</b></a>
+      <a href="#deal-2-for-5" data-stage-link="2-for-5" aria-label="2 X $5 — jump to the two for five dollars shelf"><b>2 X $5</b></a>
       <a href="#deal-8-each" data-stage-link="8-each" aria-label="$8 — jump to the eight dollars each shelf"><b>$8</b></a>
-      <a href="#deal-paper-2-for-7" data-stage-link="paper-2-for-7" aria-label="2 / $7 — jump to the two for seven dollars shelf"><b>2 / $7</b></a>
+      <a href="#deal-paper-2-for-7" data-stage-link="paper-2-for-7" aria-label="2 X $7 — jump to the two for seven dollars shelf"><b>2 X $7</b></a>
     </nav>
     <i class="nav-progress" data-progress aria-hidden="true"></i>
   </header>
@@ -346,7 +347,7 @@
     <div class="spin-band" data-spin-band>
       <button class="spin-invite" type="button" data-open-wheel aria-haspopup="dialog" aria-controls="wheel-dialog">
         <span class="spin-badge" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
-        <span class="spin-copy"><b data-spin-title>SPIN THE WHEEL</b><small data-spin-sub>Money off, a drink, free delivery — and a toy car.</small></span>
+        <span class="spin-copy"><b data-spin-title>SPIN THE WHEEL</b></span>
         <span class="spin-go" data-spin-go aria-hidden="true">SPIN →</span>
       </button>
     </div>
@@ -380,7 +381,7 @@
       </div>
 
       <div class="shelves" data-product-sections>
-        <noscript><section class="noscript"><h2>The three price stages</h2><p>Medium bottles and 15 oz scent boosters 2 for $5, or $3 for one · big sizes $8 each · paper goods, softener and 14-count Power Paks, any 2 for $7.</p><p>JavaScript is required to browse individual products and build a pickup list.</p></section></noscript>
+        <noscript><section class="noscript"><h2>The three price stages</h2><p>Medium bottles and 15 oz scent boosters 2 X $5, or $3 for one · big sizes $8 each · paper goods, softener and 14-count Power Paks, any 2 X $7.</p><p>JavaScript is required to browse individual products and build a pickup list.</p></section></noscript>
       </div>
 
       <section class="empty-results" data-empty-results hidden>
@@ -417,25 +418,11 @@
     <!-- ============================== THE RULES ============================== -->
     <section class="rules" id="how" aria-label="Pickup and delivery rules">
       <div class="plates" data-plates>
-        <!-- "WHERE I GO" is gone at the owner's instruction, 2026-09-12, and so
-             is the dial that counted to twenty: there is no twenty any more. The
-             only free delivery is the wheel prize, so the plate says that and
-             the six towns become the body of it rather than a footnote under a
-             gauge. -->
+        <!-- Pickup and delivery are stated as separate prices. Delivery is a
+             minimum-order service, not part of the merchandise cash total. -->
         <article class="plate plate-delivery">
-          <!-- The medallion slot the gauge used to fill. Every plate has one and
-               they are what put the three headings on one line; leaving this one
-               empty would be the blank space the brief forbids. It carries the
-               delivery mark from the prize set, because the wheel is now the
-               only way this fee is waived — the plate and the wheel are the same
-               fact. Hidden with no JavaScript, where the sprite never mounts,
-               and the slot collapses rather than standing empty. -->
-          <div class="plate-medal" aria-hidden="true">
-            <svg class="plate-medal-art" focusable="false"><use href="#prize-free-delivery"></use></svg>
-            <b>ON THE<i>WHEEL</i></b>
-          </div>
           <h3>PICKUP IS FREE.</h3>
-          <p>We deliver in the six towns below. The wheel&rsquo;s FREE DELIVERY prize covers it on lists of 15+ items.</p>
+          <p>Local delivery starts at $5 and requires 12 items minimum.</p>
         </article>
         <article class="plate plate-cash">
           <div class="stamp-slot"><div class="cash-stamp" aria-hidden="true">
@@ -510,7 +497,7 @@
            or a Voice Control user saying "click of a deal" — the only words on it —
            reaches nothing. It read "Beast Stock-Up — back to top", which shares not
            one word with "OF A DEAL". `.nav-brand` above already gets this right. -->
-      <a class="footer-mark" href="#top" aria-label="OF A DEAL — Beast Stock-Up, back to top"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="76" height="55"><i>OF A DEAL</i></a>
+      <a class="footer-mark" href="#top" aria-label="OF A DEAL — Beast Stock-Up, back to top"><img draggable="false" src="assets/beast-lab/beast-panther.svg" alt="" width="76" height="55"><i>OF A DEAL</i></a>
       <!-- "While supplies last." is gone. It is half of the line the owner threw
            out by name — "'real bottles · while supplies last' — nah, wtf is that.
            Come on, judge your own work." — and it said the same thing as the line
@@ -531,7 +518,7 @@
   <button class="drawer-scrim" type="button" data-scrim hidden tabindex="-1" aria-hidden="true"></button>
   <aside class="drawer" id="pickup-list" data-cart-drawer role="dialog" aria-modal="true" aria-labelledby="drawer-title" aria-hidden="true">
     <header>
-      <img draggable="false" class="drawer-mark" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="42" height="30">
+      <img draggable="false" class="drawer-mark" src="assets/beast-lab/beast-panther.svg" alt="" width="42" height="30">
       <div><h2 id="drawer-title">PICKUP LIST<b data-cart-count>0</b></h2></div>
       <button type="button" data-close-cart aria-label="Close pickup list">×</button>
     </header>
@@ -546,11 +533,15 @@
          buttons, so nothing here stops being reachable. -->
     <div class="cart-lines" data-cart-items tabindex="-1"></div>
     <div class="cart-empty" data-cart-empty>
-      <img draggable="false" class="cart-empty-mark" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="96" height="69">
+      <img draggable="false" class="cart-empty-mark" src="assets/beast-lab/beast-panther.svg" alt="" width="96" height="69">
       <h3>NOTHING ON THE LIST</h3>
       <button type="button" data-close-cart>BACK TO THE SHELF</button>
     </div>
     <div class="cart-summary" data-cart-footer tabindex="-1" hidden>
+      <div class="cart-fee" data-bulk-fee-row hidden>
+        <span>Bulk-order fee<small>12+ items from the $8 shelf · $10 per started 20-item block</small></span>
+        <strong data-bulk-fee>$0.00</strong>
+      </div>
       <div class="cart-total"><span>Cash total</span><strong data-cart-total>$0.00</strong></div>
 
       <!-- One line, two facts. The claw rip is the transition from the store
@@ -633,19 +624,19 @@
       <div class="wheel-stage" data-wheel-stage>
         <span class="wheel-floor" aria-hidden="true"></span>
         <div class="wheel-disc" data-wheel-disc><svg viewBox="0 0 260 260" aria-hidden="true" focusable="false" data-wheel-svg></svg></div>
-        <span class="wheel-hub" aria-hidden="true"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="34" height="25"></span>
+        <span class="wheel-hub" aria-hidden="true"><img draggable="false" src="assets/beast-lab/beast-panther.svg" alt="" width="34" height="25"></span>
         <span class="wheel-needle" aria-hidden="true" data-wheel-needle><i></i></span>
+        <div class="wheel-coming" data-wheel-coming role="status"><b>COMING SOON</b></div>
         <ul class="visually-hidden" data-wheel-list></ul>
       </div>
       <p class="wheel-result" data-wheel-result role="status"></p>
-      <button class="btn btn-pink wheel-go" type="button" data-spin><span>SPIN</span><i>→</i></button>
+      <button class="btn btn-pink wheel-go" type="button" data-spin disabled aria-disabled="true"><span>SPIN DISABLED</span><i>×</i></button>
       <!-- THE ODDS ARE NOT PUBLISHED. Owner, 2026-09-12: "for me only to know,
            shouldn't be known to public." The wheel is still drawn from the real
            weights — a 1% prize is a 3.6-degree sliver and is drawn as one — so
            nobody is shown better odds than they are getting; the numbers are
            simply not printed. They live on the internal bench, wheel-lab.html,
            which is noindex. Do not put them back here without asking. -->
-      <small class="wheel-note">Nothing is charged or reserved here. Tell me what you won when you collect.</small>
     </div>
   </dialog>
 
@@ -663,7 +654,7 @@
         <span class="ticket-foil" aria-hidden="true"></span>
         <span class="ticket-glint" aria-hidden="true"></span>
         <div class="ticket-main">
-          <p class="ticket-eyebrow"><img draggable="false" src="assets/beast-lab/mrbeast-panther.svg" alt="" width="22" height="16">BEAST STOCK-UP · YOU WON</p>
+          <p class="ticket-eyebrow"><img draggable="false" src="assets/beast-lab/beast-panther.svg" alt="" width="22" height="16">BEAST STOCK-UP · YOU WON</p>
           <span class="ticket-art" data-ticket-art aria-hidden="true"></span>
           <h2 id="ticket-title" data-ticket-label>PRIZE</h2>
           <p class="ticket-terms" data-ticket-terms></p>
@@ -684,9 +675,9 @@
     <form data-order-form>
       <header><div><p>NO PAYMENT TAKEN HERE</p><h2 id="request-title">YOUR REQUEST</h2></div><button type="button" data-close-dialog aria-label="Close the request">×</button></header>
       <label>Your name<input name="name" required autocomplete="name" maxlength="80"></label>
-      <label>Pickup or delivery<select name="fulfillment"><option>Pickup</option><option>Local delivery</option></select></label>
+      <label>Pickup or delivery<select name="fulfillment"><option value="Pickup">Pickup — free</option><option value="Local delivery">Local delivery — from $5 · 12 item minimum</option></select><small class="request-hint">Local delivery requires 12 items minimum.</small></label>
       <label>Optional note<textarea name="note" rows="3" maxlength="500" placeholder="Preferred day or your town"></textarea></label>
-      <div class="request-total"><span>Cash total</span><b data-dialog-total>$0.00</b></div>
+      <div class="request-total"><span>Cash total<small>Delivery not included</small></span><b data-dialog-total>$0.00</b></div>
       <button class="request-submit" type="submit">CREATE THE REQUEST →</button>
     </form>
     <!-- Two channels, one document. When SITE_CONFIG.contactChannel carries a

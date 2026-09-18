@@ -1,5 +1,5 @@
 /* =====================================================================
-   BEAST STOCK-UP — Stock-Up × MrBeast household supplies (v3)
+   BEAST STOCK-UP — household supplies (v3)
    Chrome, cyan, hot pink. Dresses the DOM script.js produces.
    Performance rules: no infinite repaint animations, one drop-shadow per
    image, no filters inside scroll tweens, native scrolling.
@@ -686,7 +686,7 @@ html.motion .hero-price-in:has(.hero-dial.is-ready){padding-bottom:0}
    chrome rim, a needle that ticks against the wedges as they pass, and wedges
    whose width IS their probability — including two 3.6-degree slivers whose
    marks ride on flags outside the rim. */
-.wheel-dialog{border:0;padding:0;background:transparent;max-width:min(94vw,470px);max-height:calc(100svh - 20px);overflow:auto;overscroll-behavior:contain;color:#eaf6ff}
+.wheel-dialog{border:0;padding:0;background:transparent;width:min(94vw,470px);max-width:470px;max-height:calc(100svh - 20px);overflow:auto;overscroll-behavior:contain;color:#eaf6ff}
 .wheel-dialog::backdrop{background:radial-gradient(circle at 50% 40%,rgba(10,44,84,.72),rgba(1,5,13,.93))}
 .wheel-in{display:grid;gap:13px;padding:20px 20px 18px;border-radius:8px 34px 8px 34px;
   background:linear-gradient(160deg,#0a3157,#03142c 62%,#08213e);
@@ -709,12 +709,18 @@ html.motion .hero-price-in:has(.hero-dial.is-ready){padding-bottom:0}
    +32.20 · 375x667 +32.50 · 430x932 +21.80 · 360x640 +32.80 · 320x568 +33.60 —
    every phone width, not the two on the board. The disc rendered off-centre
    under a centred needle, inside a horizontal scrollbar. */
-.wheel-stage{position:relative;width:min(100%,58svh,386px);aspect-ratio:1;margin:0 auto}
+.wheel-stage{position:relative;width:min(100%,58svh,386px);aspect-ratio:1;margin:0 auto;
+  background:repeating-conic-gradient(from -8deg,rgba(0,213,255,.08) 0 7deg,transparent 7deg 17deg);
+  border-radius:50%}
 .wheel-floor{position:absolute;left:16%;right:16%;bottom:6%;height:8%;border-radius:50%;
   background:radial-gradient(ellipse,rgba(0,213,255,.34),rgba(0,0,0,.5) 55%,transparent 74%);filter:blur(2px)}
-.wheel-disc{position:absolute;inset:0;filter:drop-shadow(0 16px 34px rgba(0,0,0,.6))}
+.wheel-disc{position:absolute;inset:0;filter:drop-shadow(0 18px 30px rgba(0,0,0,.72)) drop-shadow(0 0 12px rgba(0,213,255,.18))}
 .wheel-disc svg{width:100%;height:100%;display:block;overflow:visible}
 .wheel-slice{stroke:none}
+.wheel-back-disc{stroke:#020916;stroke-width:3}
+.wheel-back-ring{fill:none;stroke:var(--pink);stroke-width:2;stroke-dasharray:3 5;filter:drop-shadow(0 0 4px rgba(255,36,157,.75))}
+.wheel-hatch{pointer-events:none}
+.wheel-inner-ring{fill:none;stroke:rgba(225,249,255,.44);stroke-width:1.4;stroke-dasharray:2 3}
 .wheel-spoke{stroke:rgba(2,10,22,.5);stroke-width:.7;fill:none}
 /* #7f9fb6 measured 4.11:1 against the TRY AGAIN wedges — under the 4.5 floor
    for 10 px text. A losing segment is meant to be quiet, not unreadable. */
@@ -730,7 +736,7 @@ html.motion .hero-price-in:has(.hero-dial.is-ready){padding-bottom:0}
 .wheel-art{color:#eafcff;opacity:.92}
 .wheel-art.tone-chrome,.wheel-art.tone-gold{color:#06192c}
 .wheel-chip{fill:#fdffff;opacity:.96}
-.wheel-rim{fill:none;stroke-width:6}
+.wheel-rim{fill:none;stroke-width:7}
 .wheel-lamp{fill:#eafcff;opacity:.9;filter:drop-shadow(0 0 2px rgba(180,245,255,.9))}
 html.motion .wheel-lamp{animation:lampChase 1.6s linear infinite;animation-delay:calc(var(--lamp) * -.4s)}
 @keyframes lampChase{0%,60%{opacity:.34}18%{opacity:1}}
@@ -750,15 +756,32 @@ html.motion .wheel-lamp{animation:lampChase 1.6s linear infinite;animation-delay
   clip-path:polygon(50% 100%,0 30%,14% 0,86% 0,100% 30%)}
 .wheel-needle::after{content:"";position:absolute;left:50%;top:9px;width:8px;height:8px;margin-left:-4px;border-radius:50%;
   background:var(--pink);box-shadow:0 0 8px rgba(255,36,157,.9)}
-.wheel-hub{position:absolute;left:50%;top:50%;z-index:2;width:14%;aspect-ratio:1;translate:-50% -50%;border-radius:50%;
+.wheel-hub{position:absolute;left:50%;top:50%;z-index:2;width:16%;aspect-ratio:1;translate:-50% -50%;border-radius:50%;
   display:grid;place-items:center;background:radial-gradient(circle at 40% 32%,#0b3a63,#02101f 76%);
-  box-shadow:0 0 0 3px rgba(233,250,255,.9),0 0 0 6px rgba(2,10,24,.85),0 5px 14px rgba(0,0,0,.6)}
+  box-shadow:0 0 0 3px rgba(233,250,255,.95),0 0 0 7px rgba(2,10,24,.9),0 0 0 9px rgba(255,36,157,.55),0 6px 16px rgba(0,0,0,.7)}
 .wheel-hub img{width:60%;height:auto}
 .wheel-dialog.is-spinning .wheel-hub{box-shadow:0 0 0 3px var(--cyan),0 0 0 6px rgba(2,10,24,.85),0 0 22px rgba(0,213,255,.7)}
-.wheel-result{min-height:34px;font:800 13px/1.4 var(--body);color:#bed6e5;text-align:center}
+.wheel-result:empty{display:none}
+.wheel-result{font:800 13px/1.4 var(--body);color:#bed6e5;text-align:center}
 .wheel-result.is-win{color:var(--yellow);font-weight:900}
 .wheel-go{justify-self:center;min-width:190px;min-height:52px}
-.wheel-go[aria-disabled=true]{opacity:.55;box-shadow:none}
+/* OPACITY ALONE WAS NOT ENOUGH. A 55%-opacity pink pill is still the loudest,
+   warmest object in the dialog, so the one control a shopper cannot use was the
+   one their eye went to first. A disabled primary action has to stop being a
+   primary action: no pink, no lift, an outline instead of a fill. */
+.wheel-go[aria-disabled=true]{opacity:1;box-shadow:none;background:rgba(2,13,28,.6);
+  border:1.5px solid rgba(141,235,255,.35);color:var(--ice);cursor:default}
+.wheel-go[aria-disabled=true] i{opacity:.5}
+
+/* The wheel stays visible while it is offline. One compact sticker carries
+   the Coming Soon state without blurring the artwork or repeating the copy. */
+.wheel-coming{position:absolute;z-index:4;left:50%;top:53%;width:min(78%,290px);translate:-50% -50%;rotate:-3deg;
+  display:grid;place-items:center;padding:13px 18px;text-align:center;border:4px solid #fff;border-radius:8px 22px 8px 22px;
+  background:linear-gradient(135deg,#ff249d,#d80b78);box-shadow:6px 7px 0 #00d5ff,0 16px 28px rgba(0,0,0,.58)}
+/* Chrome fill on the wordmark, same recipe as the page's other big type, with
+   a flat-colour fallback first for engines that refuse background-clip:text. */
+.wheel-coming b{font:900 clamp(23px,7vw,34px)/.88 var(--display);letter-spacing:-.055em;color:#fff;
+  text-shadow:0 3px 0 #72073f;white-space:nowrap}
 /* The odds, in words. A wheel whose jackpot is a 3.6-degree sliver is honest
    geometry that is hard to judge by eye, so the numbers are printed. */
 .wheel-odds summary{font:900 9px/1 var(--body);letter-spacing:.15em;color:var(--ice);padding:9px 2px;cursor:pointer}
@@ -774,7 +797,6 @@ html.motion .wheel-lamp{animation:lampChase 1.6s linear infinite;animation-delay
    dark row measured 2.27:1. The figure takes a lightened mix of the same
    tone so the row still reads as its colour without being unreadable. */
 .wheel-odds i{font:900 12px/1 var(--display);font-style:normal;color:color-mix(in srgb,var(--tone) 55%,white)}
-.wheel-note{font-size:10px;line-height:1.5;color:#7f9cb2;text-align:center}
 
 /* ---------- the golden ticket ----------
    Shown only on a win. Everything a shopper needs is markup — the prize, the
@@ -1443,17 +1465,6 @@ html.no-js [data-spin-band],html.no-js .console{display:none!important}
 .chips li::before{content:"";display:inline-block;width:5px;height:5px;margin:0 6px 1px 0;border-radius:50%;background:var(--cyan)}
 .chips-pink li{border-color:rgba(255,36,157,.45);color:#ffb3dd}
 .chips-pink li::before{background:var(--pink)}
-/* The 20-item gauge that used to open this plate is GONE, along with the rule
-   it counted toward. It was also the "random spinning stuff, awful" from the
-   session-1 critique, so nothing is mourned. Its 96 px slot survives as
-   .plate-medal, because that slot is what puts the three plate headings on one
-   line across the row. */
-.plate-medal{position:relative;min-height:96px;display:grid;grid-auto-flow:column;align-items:center;justify-content:start;gap:12px}
-.plate-medal-art{width:52px;height:52px;flex:0 0 auto;color:var(--cyan);
-  filter:drop-shadow(0 0 12px rgba(0,213,255,.45))}
-.plate-medal b{display:grid;font:900 15px/.94 var(--display);letter-spacing:.02em;color:#eafcff}
-.plate-medal b i{font-style:normal;font-size:19px;color:var(--cyan);letter-spacing:-.01em}
-html.no-js .plate-medal{display:none}
 /* This was a second 118 px disc. The gauge next to it is a disc too, and those
    two circles were the only visual ideas in the whole section. It is a stamp
    now — the same stamp language as FREE DELIVERY in the pickup list, so the two
@@ -1554,21 +1565,14 @@ html.no-js .plate-medal{display:none}
 .receipt summary::-webkit-details-marker{display:none}
 .receipt summary::after{content:"+";position:absolute;right:2px;top:50%;margin-top:-.55em;font:900 15px/1 var(--display);color:#0d6d8c}
 .receipt details[open] summary::after{content:"–"}
-.source-links>div,.source-list p{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #e2ebf0;font-size:11px}
-.source-links a{display:inline-flex;align-items:center;min-height:34px;padding:0 8px;margin-right:-8px;border-radius:8px;font-weight:900;color:#137a9d}
-@media(hover:hover){.source-links a:hover{background:rgba(19,122,157,.1)}}
+.source-list p{display:flex;justify-content:space-between;gap:14px;padding:10px 0;border-bottom:1px solid #e2ebf0;font-size:11px}
+.source-row-link{display:flex;width:max-content;align-items:center;min-height:28px;margin-top:4px;padding:0 7px;border-radius:7px;
+  font-weight:900;color:#137a9d;letter-spacing:.04em}
+@media(hover:hover){.source-row-link:hover{background:rgba(19,122,157,.1)}}
 .source-list b{text-align:right}
 
-/* Owner, 2026-09-12: "it should add on the bottom 'our price vs their price' so
-   they know even before opening the link." Both numbers already exist in
-   products.js. The tier word travels with the store price, so an estimate
-   still reads as an estimate — this is two labelled figures side by side, not
-   a savings claim, and check-integrity.mjs still fails any "save exactly $X". */
-.source-links>div{flex-wrap:wrap}
-/* AND `.source-list p` MUST WRAP FOR THE SAME REASON, which it did not.
-   Both selectors share the `display:flex` rule above; only the first was given
-   `flex-wrap:wrap` when the comparison row was added, so the receipt's own
-   price rows stayed `nowrap` with a `.price-swap` at `flex:0 0 auto`.
+/* Each item row contains its source link, store price and our price. It must
+   wrap because the price swap is wider than a narrow phone's receipt column.
    Measured: available content width is `W - 92` (24px .sources padding + 22px
    .receipt padding, both sides). The unshrinkable swap is 258.4px typical and
    267.1px worst ("Similar size $12.98 each + tax" 153.8 + 9px gap + 104.3px
@@ -1596,12 +1600,6 @@ html.no-js .plate-medal{display:none}
    `overflow-wrap:anywhere` gives the text somewhere to break, so the row finally
    fits the box that clips it. Measured at 320: 59px of overflow -> 16px -> 0. */
 .source-list p>span:first-child{min-width:0;overflow-wrap:anywhere}
-.source-compare{flex:1 0 100%;order:3;display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:2px}
-.source-compare i{font-style:normal;font:900 8px/1 var(--body);letter-spacing:.14em;opacity:.72;margin-right:6px}
-.source-compare b{display:inline-flex;align-items:baseline;padding:5px 9px;border-radius:99px;
-  background:#04203c;color:#8df0ff;font:900 11px/1 var(--display);letter-spacing:.02em}
-.source-compare s{display:inline-flex;align-items:baseline;padding:5px 9px;border-radius:99px;
-  background:#eef5f9;color:#4c6376;font:800 11px/1 var(--body);text-decoration-thickness:1.5px}
 
 /* THE PRICE SWAP. Owner: "the 'about blabla' should be animated and transition
    sideways into a glittery shiny price tag style showing my price afterwards."
@@ -1612,6 +1610,36 @@ html.no-js .plate-medal{display:none}
    row scrolls in, which is the only thing that moves. Fixed column widths, so
    nothing here can change the height of the receipt as it plays. */
 .source-list p{align-items:center}
+/* TWO LINES, NOT THREE. Owner, 2026-09-18: rows had "too much blank empty
+   white space". With the link inside the name and a flex row that wrapped,
+   every row at <=1024px stacked name / link / prices, leaving the right of the
+   link line and the left of the price line empty. Now the name spans the top
+   and the link shares the price line. The swap column is minmax(0,1fr) so the
+   swap can still stack its two figures internally on a narrow phone (see the
+   320px arithmetic above). */
+.source-list p.source-row{display:grid;grid-template-columns:auto minmax(0,1fr);column-gap:12px;row-gap:4px}
+.source-row-name{grid-column:1/-1}
+.source-row .source-row-link{grid-column:1;margin-top:0}
+.source-list p.source-row .price-swap{grid-column:2;justify-self:end;margin-left:0}
+/* The link's hover pad is 7px; pull it back so its text lines up with the name. */
+.source-row .source-row-link{margin-left:-7px}
+/* A narrow receipt cannot fit link + store price + tag on one line, and letting
+   the swap stack left the link line half empty again. There the swap box
+   dissolves into the row grid: store price over the link on the left, the gold
+   tag centred beside both. The swap classes are untouched, so beast.js's slide
+   and glint still run on the same elements. */
+.source-list{container-type:inline-size}
+@container (max-width:440px){
+  .source-list p.source-row{grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"name name" "was tag" "link tag";row-gap:2px}
+  .source-list p.source-row .price-swap{display:contents}
+  .source-row .source-row-name{grid-area:name;margin-bottom:2px}
+  .source-row .price-was{grid-area:was;text-align:left}
+  /* fit-content, not max-content: "Walmart Marketplace SOURCE" ran under the tag */
+  .source-row .source-row-link{grid-area:link;width:fit-content;max-width:calc(100% + 7px)}
+  .source-row .price-tag{grid-area:tag}
+  /* stacked, the -4px settle would pull the store price out of line with the name */
+  html.motion .source-list [data-price-swap].is-swapped .price-was{translate:0 0}
+}
 .price-swap{position:relative;flex:0 0 auto;display:flex;align-items:center;justify-content:flex-end;gap:9px;text-align:right}
 .price-was{font-weight:700;color:#4c6376;transition:opacity .45s var(--ease-out),translate .45s var(--ease-out)}
 .price-tag{position:relative;display:inline-flex;align-items:center;gap:6px;padding:6px 11px 6px 15px;
@@ -1907,6 +1935,10 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
 }
 .cart-total{display:flex;justify-content:space-between;align-items:end;gap:12px}
 .cart-total span{font-size:11px;font-weight:800}
+.cart-fee{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-bottom:12px;padding:11px 12px;border:1px solid rgba(245,247,57,.34);border-radius:11px;background:rgba(245,247,57,.07)}
+.cart-fee>span{font:900 10px/1.1 var(--body);letter-spacing:.04em;text-transform:uppercase;color:#fff}
+.cart-fee small{display:block;margin-top:4px;font:700 8px/1.35 var(--body);letter-spacing:0;text-transform:none;color:#9fb9c9}
+.cart-fee strong{flex:0 0 auto;font:900 20px/1 var(--display);color:var(--yellow)}
 /* 44px was "way too big"; the ordering the owner asked for is kept — the
    cash total stays larger than the yellow saving (34 vs 27). */
 .cart-total strong{font:900 34px/.86 var(--display);color:#fff;letter-spacing:-.05em;text-shadow:0 3px 0 rgba(0,0,0,.35)}
@@ -1956,10 +1988,12 @@ html.motion .delivery-stamp.is-landing{animation:stampLand .42s cubic-bezier(.2,
    mobile it autozooms when you tap on a text field and the keyboard gets
    brought up." If you restyle the label, these keep their own size. */
 .request input,.request select,.request textarea{display:block;width:100%;margin-top:7px;padding:12px;font-size:16px;border-radius:12px;border:1px solid rgba(141,235,255,.3);background:rgba(255,255,255,.08);color:#fff;outline:none;transition:border-color .2s}
+.request-hint{display:block;margin-top:6px;font:700 9px/1.4 var(--body);letter-spacing:0;color:#8faabd}
 .request input:focus,.request select:focus,.request textarea:focus{border-color:var(--cyan)}
 .request select option{color:#000}
 .request-total{display:flex;justify-content:space-between;align-items:center;margin-top:18px;padding:14px;border:1px solid rgba(141,235,255,.25);border-radius:14px}
 .request-total span{font-size:10px}
+.request-total span small{display:block;margin-top:4px;font-size:8px;color:#8faabd}
 .request-total b{font:900 25px/1 var(--display);color:var(--yellow)}
 .request-submit,.ready-actions button{width:100%;min-height:50px;border:0;border-radius:99px;background:linear-gradient(180deg,#ff7ccd,var(--pink) 55%,#d90d7b);color:var(--on-pink);margin-top:16px;font:900 11px/1 var(--display);letter-spacing:.06em;box-shadow:inset 0 2px 0 rgba(255,255,255,.5),0 5px 0 #7a0b4d}
 
@@ -2838,7 +2872,7 @@ html.motion.late-boot .hero-price-in{opacity:1!important}
      sets its own colour, so they kept the palette they use on navy. The phone
      number is the single most important string on the sheet. */
   .rules *,.sources *,.plate *,.mini-steps *,.chips *,.chips-pink *,
-  .kicker,.channel-line *,.cash-stamp *,.plate-medal *,
+  .kicker,.channel-line *,.cash-stamp *,
   .delivery-stamp *,.source-ledger *,.receipt *{color:#111!important}
   .chips li,.chips-pink li{border:1px solid #555!important}
   .shelf-price h3{font-size:24pt!important;color:#111!important}

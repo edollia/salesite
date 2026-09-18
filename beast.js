@@ -343,7 +343,7 @@
   const STAGE_BACK = .11;     // a bottle at the rim is this much smaller than one at the front
   const REFLECT_SQUASH = .26; // must match --reflect-squash in beast.css
 
-  /* Three stages, in the order the owner asked for: $5, then $7, then $8.
+  /* Three stages, in the order the owner asked for: 2 for $5, 2 for $7, then $8 each.
      `rel` is a real-world height, relative between products and SHARED across
      the three sets — one world scale — so the 150 oz Purex on stage three is
      visibly bigger than the 27 oz Snuggle on stage one instead of every set
@@ -793,9 +793,25 @@
        So: shrink for the short-bottle floor as before, but only surrender a
        bottle to the legibility floor if losing it actually makes the tallest
        one taller. If it does not, keep the products and let the gate judge. */
+    /* TWO BOTTLES IS NOT A LAYOUT, AND NOTHING ABOVE EVER CHOSE IT. The policy
+       stated a few lines up is "four wherever four can be read, three where it
+       cannot" -- two is not in it. It arrived anyway, through the `count > 2`
+       bound on the loop below: `floor` is a hard 64 px, and on a hero narrower
+       than about 350 px three bottles cannot reach 64 px no matter how the span
+       is spent, so the first branch stepped 4 -> 3 -> 2 and stopped only
+       because the loop ran out of room. Reproduced on a fresh load at 300x800,
+       320x900, 327x1000, 344x900 and 361x1000 -- and the owner photographed it.
+       That is a narrow BROWSER WINDOW as much as a phone, which is why the
+       static phone shapes in the suite never showed it: 320x568 and 390x844
+       both sit outside the band and both give three.
+       The bound becomes the policy instead of a leftover. `Math.min(3, ...)`
+       rather than a bare 3 so a stage that genuinely holds fewer products is
+       still free to show what it has -- the count may never exceed the shortest
+       row, and this must not invent a bottle that does not exist. */
+    const MIN_SHOWN = Math.min(3, ...all.map((row) => row.length));
     const fitCount = () => {
       const span = hi - lo;
-      while (count > 2) {
+      while (count > MIN_SHOWN) {
         if (shortestHeight(count, span, scales) < floor) { count -= 1; continue; }
         const now = tallestHeight(count, span, scales);
         if (now >= legible) break;
@@ -1062,13 +1078,13 @@
      light end — under the 4.5 floor for 10 px text — while dark type would have
      failed against the dark end of the same wedge. The range is narrower now,
      and the two light tones (chrome, gold) take dark ink instead. */
-  const WHEEL_TONES = {
-    cyan: ["#0c87b0", "#044f6b"],
-    pink: ["#c8126f", "#5e0938"],
+    const WHEEL_TONES = {
+    cyan: ["#13c9ef", "#075678"],
+    pink: ["#f52b9e", "#7f0b49"],
     chrome: ["#e7f4fb", "#9db3c2"],
-    violet: ["#5240b6", "#231a5c"],
-    gold: ["#ffdf6b", "#c08b06"],
-    miss: ["#0d2742", "#061627"]
+    violet: ["#7965ed", "#312376"],
+    gold: ["#fff15a", "#c68700"],
+    miss: ["#194565", "#071a31"]
   };
 
   (function buildWheel() {
@@ -1087,6 +1103,29 @@
     if (!band || !dialog || !svg || !disc || !spinButton) return;
     // no prizes in SITE_CONFIG means no wheel: the band would be an empty offer
     if (WHEEL_SEGMENTS.length < 2 || !WHEEL_SEGMENTS.some((seg) => seg.prize)) { band.remove(); dialog.remove(); return; }
+    const wheelEnabled = !!window.__beastLab || window.SITE_CONFIG?.wheelEnabled !== false;
+    const coming = dialog.querySelector("[data-wheel-coming]");
+    if (wheelEnabled) {
+      spinButton.disabled = false;
+      spinButton.removeAttribute("aria-disabled");
+      coming?.setAttribute("hidden", "");
+      if (result) result.textContent = "";
+    } else {
+      /* THE BAND AND THE DIALOG HEADER ARE LEFT ALONE, at the owner's
+         instruction 2026-09-17. The lock used to rewrite six strings: the band
+         title, its subtitle, its chip, the dialog eyebrow, the dialog heading
+         and a paragraph under the wheel. The owner's word for the result was
+         "awful", and they are right about the cause rather than just the tone:
+         the ask was "when the wheel OPENS add a coming soon", and a band that
+         renames itself is not that. The band keeps its own copy, and the news
+         is delivered once, where it was asked for -- on the plate over the
+         wheel -- instead of six times on the way there.
+         What still changes is the only thing that must: the control is really
+         disabled, and `spin()` refuses independently of it. */
+      spinButton.disabled = true;
+      spinButton.setAttribute("aria-disabled", "true");
+      spinButton.querySelector("span").textContent = "SPIN DISABLED";
+    }
 
     const NS = "http://www.w3.org/2000/svg";
     const N = WHEEL_SEGMENTS.length;
@@ -1143,8 +1182,20 @@
     [["0%", "#ffffff"], ["18%", "#9fd8ef"], ["45%", "#2b4f68"], ["62%", "#e8f8ff"], ["100%", "#0b2138"]]
       .forEach(([offset, color]) => rim.append(el("stop", { offset, "stop-color": color })));
     defs.append(rim);
+    const backGlow = el("radialGradient", { id: "wheelBackGlow", cx: "38%", cy: "30%", r: "72%" });
+    [["0%", "#163f68"], ["58%", "#061a33"], ["100%", "#010711"]]
+      .forEach(([offset, color]) => backGlow.append(el("stop", { offset, "stop-color": color })));
+    defs.append(backGlow);
+    const hatch = el("pattern", { id: "wheelHatch", width: "8", height: "8", patternUnits: "userSpaceOnUse", patternTransform: "rotate(25)" });
+    hatch.append(el("rect", { width: "8", height: "8", fill: "transparent" }));
+    hatch.append(el("path", { d: "M0 0V8", stroke: "#ffffff", "stroke-opacity": ".08", "stroke-width": "2" }));
+    defs.append(hatch);
     svg.append(defs);
 
+    const backplate = el("g", { class: "wheel-backplate" });
+    backplate.append(el("circle", { class: "wheel-back-disc", cx: CX, cy: CY, r: R + 11, fill: "url(#wheelBackGlow)" }));
+    backplate.append(el("circle", { class: "wheel-back-ring", cx: CX, cy: CY, r: R + 7 }));
+    svg.append(backplate);
     const face = el("g", { class: "wheel-face" });
     const flags = el("g", { class: "wheel-flags" });
     svg.append(face, flags);
@@ -1174,8 +1225,15 @@
 
       if (seg.span < SLIVER) { buildFlag(seg); return; }
 
+      /* THE TYPE HAS TO LAND IN THE BAND BETWEEN THE ART AND THE LAMP BED, and
+         at R*.80 it did not: a label is centred on this radius and half its
+         WIDTH runs outward, so "DELIVERY" and "AGAIN" crossed the lamp channel
+         and printed over the chrome rim. The band is art-top (~72) to bed-inner
+         (~104), so the centre belongs at ~88 = R*.745, not 94. The narrow-wedge
+         case has no art under it and pulls in further, toward the hub, where
+         there is more room than there is at the rim. */
       const artR = seg.span >= 22 ? R * .50 : 0;
-      const textR = artR ? R * .80 : R * .68;
+      const textR = artR ? R * .745 : R * .66;
       const [tx, ty] = pointAt(seg.mid, textR);
       /* Labels read ALONG the spoke, and the bottom half is flipped so no
          prize is ever printed upside down. */
@@ -1244,7 +1302,14 @@
         if (!box || !box.height) return;
         const inner = Math.max(14, radius - box.width / 2);
         const arc = 2 * Math.PI * inner * (seg.span / 360) * 0.86;  // tangential room where it is tightest
-        const spoke = (R - 30) * 0.94;                              // radial room, hub to rim
+        /* RADIAL ROOM, MEASURED FROM WHERE THE LABEL ACTUALLY SITS. This was a
+           constant — (R - 30) * .94, about 83 units — which is the full hub-to-
+           rim span and NOT a budget any label centred at `radius` can spend: it
+           is spent HALF OUTWARD, so a label 83 wide centred at 88 reaches 130
+           and the rim is at 118. Nothing ever tripped the gate, and the
+           overflow shipped. The real budget is twice the SMALLER of the two
+           clearances, hub side and lamp-bed side, so the tighter one binds. */
+        const spoke = 2 * Math.min(radius - 30, (R - 13.5) - radius);
         const over = Math.max(box.height / arc, box.width / spoke);
         if (over <= 1) return;
         const base = parseFloat(getComputedStyle(label).fontSize) || 9.4;
@@ -1308,6 +1373,8 @@
     }
 
     face.append(el("circle", { class: "wheel-shade", cx: CX, cy: CY, r: R, fill: "url(#wheelShade)" }));
+    face.append(el("circle", { class: "wheel-hatch", cx: CX, cy: CY, r: R - 10, fill: "url(#wheelHatch)" }));
+    face.append(el("circle", { class: "wheel-inner-ring", cx: CX, cy: CY, r: 34 }));
     face.append(el("circle", { class: "wheel-rim", cx: CX, cy: CY, r: R, stroke: "url(#wheelRim)" }));
     // the lamps around the rim: the one thing that makes a wheel read as a wheel
     const LAMPS = 24;
@@ -1387,10 +1454,10 @@
       band.classList.toggle("has-prize", !!prize);
       if (prize) {
         bandTitle.textContent = `YOU WON ${prize.label}`;
-        bandSub.textContent = prize.note || "Honored in person.";
+        if (bandSub) bandSub.textContent = prize.note || "Honored in person.";
       } else if (spunThisSession()) {
         bandTitle.textContent = "NO LUCK THIS TIME";
-        bandSub.textContent = "That was the spin for today.";
+        if (bandSub) bandSub.textContent = "That was the spin for today.";
       }
       const chip = band.querySelector("[data-spin-go]");
       if (!canSpin() && !spinning) {
@@ -1432,7 +1499,7 @@
     let spinning = false;
     let turns = 0;
     function spin(forceId) {
-      if (spinning || !canSpin() || spinButton.getAttribute("aria-disabled") === "true") return;
+      if (!wheelEnabled || spinning || !canSpin() || spinButton.getAttribute("aria-disabled") === "true") return;
       spinning = true;
       /* MARK IT NOW. This used to live in land(), 5.2 seconds later, so a reload
          two seconds into a spin wrote nothing at all: no lock, no prize, and
@@ -1501,7 +1568,7 @@
 
     /* ---------- the ticket ----------
        Owner, 2026-09-12: "every winning shows the popup — mega fancy, ultra
-       shiny, tilt, golden MrBeast ticket with what was won." The prize, the
+       shiny, tilt, golden ticket with what was won." The prize, the
        art and the terms are markup; the foil, the tilt and the glint are the
        only things that need motion, and none of them carry information. */
     const ticketDialog = document.querySelector("[data-ticket-dialog]");
@@ -1635,6 +1702,7 @@
     bandLive();
 
     spinButton.addEventListener("click", () => {
+      if (!wheelEnabled) return;
       if (!spinButton.classList.contains("is-done")) { spin(); return; }
       closeWheel();
       /* THE SAME FIX AS :1400, WHICH THIS CALL SITE DID NOT GET. Both open the
@@ -1649,7 +1717,7 @@
           .find((n) => n.getClientRects().length)?.click();
       }
     });
-    showBandPrize();
+    if (wheelEnabled) showBandPrize();
     band.classList.add("is-ready");
 
     /* The test surface, and what wheel-lab.html drives. `preview` shows a

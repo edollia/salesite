@@ -945,11 +945,19 @@
         warnings.push(`${needed === 1 ? "One more" : `${needed} more`} on the ${shelf} shelf finishes the pair.`);
       }
     }
+    const merchandiseTotal = cashTotal;
+    const bulkRule = window.SITE_CONFIG?.bulkOrder || {};
+    const bulkQuantity = Math.max(0, Number(byDeal[bulkRule.dealId]) || 0);
+    const startsAt = Math.max(1, Number(bulkRule.startsAtItems) || 12);
+    const blockSize = Math.max(1, Number(bulkRule.blockSize) || 20);
+    const feePerBlock = Math.max(0, Number(bulkRule.feePerBlock) || 0);
+    const bulkFee = bulkQuantity >= startsAt ? Math.ceil(bulkQuantity / blockSize) * feePerBlock : 0;
+    cashTotal += bulkFee;
     if (unavailable) warnings.push("A saved item is now marked out of stock. Availability must be reconfirmed.");
     const valid = itemCount > 0 && warnings.length === 0;
     comparisonTotal = comparisonCents / 100;
     return {
-      byDeal, warnings, valid, unavailable, itemCount, cashTotal, comparisonTotal, comparisonComplete,
+      byDeal, warnings, valid, unavailable, itemCount, merchandiseTotal, bulkFee, cashTotal, comparisonTotal, comparisonComplete,
       comparisonSourced,
       savings: valid && comparisonComplete ? Math.max(0, comparisonTotal - cashTotal) : null
     };
@@ -997,6 +1005,18 @@
   function deliveryEnabled() {
     return window.SITE_CONFIG?.delivery?.enabled !== false;
   }
+  function deliveryMinimumItems() {
+    const n = Number(window.SITE_CONFIG?.delivery?.minimumItems);
+    return Number.isFinite(n) && n > 0 ? Math.floor(n) : 12;
+  }
+  function deliveryStartingFee() {
+    const n = Number(window.SITE_CONFIG?.delivery?.startingFee);
+    return Number.isFinite(n) && n >= 0 ? n : 5;
+  }
+  function deliveryStartingFeeLabel() {
+    const fee = deliveryStartingFee();
+    return Number.isInteger(fee) ? `$${fee}` : money.format(fee);
+  }
   /* A threshold only exists if the config carries one. It is null today. */
   function deliveryThreshold() {
     const n = Number(window.SITE_CONFIG?.delivery?.freeMinimumItems);
@@ -1021,32 +1041,20 @@
   function deliveryMessage(itemCount) {
     if (!deliveryEnabled()) return "Pickup only — delivery is not running at the moment.";
     if (deliveryIsFree(itemCount)) return "Delivery is free on this list. Pickup is free too.";
+    /* THE THRESHOLD BRANCH IS NOT DEAD CODE, AND DELETING IT BROKE A GUARANTEE.
+       `freeMinimumItems` is null today, so this never fires on the live site and
+       reads like something to tidy away — it was, in the edit that added the
+       "starts at $5" sentence, and the suite caught it: "restoring a delivery
+       threshold in SITE_CONFIG brings the old rule back everywhere, with no code
+       change" went red. That row is the whole contract of this config key. With
+       the branch gone, setting `freeMinimumItems: 20` left every surface still
+       announcing a $5 charge at 12 items while `deliveryIsFree()` waived it at
+       20 — the config half-applied, which is worse than not supported.
+       A configured threshold OUTRANKS the starting fee, because it is the more
+       specific promise and the one a shopper can act on. */
     const threshold = deliveryThreshold();
-    /* NO FEE LANGUAGE ANYWHERE, 2026-09-15, at the owner's instruction: "as for
-       delivery and pickup goes just don't say delivery is a small fee, just
-       delivery period. Pickup period." Every branch below keeps its real news --
-       a threshold, a prize, delivery being off -- and says nothing about cost.
-       WHAT THIS GIVES UP, STATED PLAINLY BECAUSE IT IS A BUSINESS CHANGE AND NOT
-       A WORDING ONE: "not in this total" was the only disclosure that the figure
-       a shopper reads excludes a delivery charge. With it gone the total reads as
-       the total, on every surface. That is the honest consequence of the
-       instruction and the owner is owed it in those words. */
-    if (threshold !== null) return `Delivery is free from ${threshold} items. Pickup is always free.`;
-    /* EMPTY, not "Pickup is always free." Removing the fee clause from this
-       branch left the subordinate half standing alone, so a shopper watching a
-       DELIVERY meter count down was told, apropos of nothing, that PICKUP is
-       free -- a fact the rules plate already shouts, and the only branch that
-       went from two facts to one orphan. The meter directly above owns this
-       row; the no-prize branch below already returns "" and the slot collapses,
-       and beast-qa asserts that empty IS the intended state of this slot. */
-    if (deliveryPrizeMinItems() !== null) return "";
-    /* DELETED 2026-09-14, at the owner's instruction: "Delivery is a small fee,
-       not in this total. Pickup is always free." Pickup is what they prefer and
-       the line spent a row saying nothing a shopper did not already know. The
-       four branches above are KEPT deliberately -- each carries real news (the
-       fee is waived, delivery is off, a threshold exists) and an empty string
-       here collapses the slot rather than leaving the gap behind. */
-    return "";
+    if (threshold !== null) return `Pickup is free. Delivery is free from ${threshold} items.`;
+    return `Pickup is free. Local delivery starts at ${deliveryStartingFeeLabel()} and requires ${deliveryMinimumItems()} items minimum.`;
   }
   function renderDelivery(itemCount) {
     const enabled = deliveryEnabled();
@@ -1113,8 +1121,8 @@
        conclusion, not just its price: "needs 15 items; this list has 14" is a
        dangling premise that makes the seller do the comparison. Say what
        follows, without naming a charge. */
-    if (needed !== null) return `Local delivery — the FREE DELIVERY prize needs ${needed} items and this list has ${itemCount}, so it does not apply here`;
-    return "Local delivery.";
+    if (needed !== null) return `Local delivery — the FREE DELIVERY prize needs ${needed} items and this list has ${itemCount}, so it does not apply here; delivery starts at ${deliveryStartingFeeLabel()}`;
+    return `Local delivery — starts at ${deliveryStartingFeeLabel()} · ${deliveryMinimumItems()} item minimum.`;
   }
 
   /* renderCart() replaces the whole list, so the button that was just pressed
@@ -1321,6 +1329,12 @@
          [data-mobile-total], which is not in this querySelectorAll, so this
          comment described a fix that had only been half made.) */
       node.textContent = summary.valid ? money.format(summary.cashTotal) : "—";
+    });
+    document.querySelectorAll("[data-bulk-fee-row]").forEach((row) => {
+      row.hidden = !(summary.valid && summary.bulkFee > 0);
+    });
+    document.querySelectorAll("[data-bulk-fee]").forEach((node) => {
+      node.textContent = money.format(summary.bulkFee);
     });
     document.querySelectorAll("[data-delivery-status]").forEach((node) => {
       const message = deliveryMessage(summary.itemCount);
@@ -1708,8 +1722,11 @@
       const tail = money_or_count.startsWith("$") ? ` — ${money_or_count}` : "";
       lines.push(`- ${quantity} × ${labelName(item)} (${item.size})${tail}`);
     }
+    lines.push("");
+    if (summary.bulkFee > 0) {
+      lines.push(`Bulk-order fee: ${money.format(summary.bulkFee)} (${summary.byDeal["8-each"] || 0} items from the $8 each shelf)`);
+    }
     lines.push(
-      "",
       // the drawer shows "—" for an unrequestable cart; the two documents must
       // never disagree, even though the UI blocks this path
       /* "Total:", not "Estimated cash total, to confirm:" — owner, 2026-09-13,
@@ -1851,16 +1868,6 @@
     return node;
   }
 
-  /* The store price WITHOUT the tier sentence, for places that are already
-     labelled. sourceLabel() stays the long form used in the ledger. */
-  function sourceFigure(product) {
-    if (!Number.isFinite(product.comparePrice)) return "not listed";
-    const price = `${money.format(product.comparePrice)} each + tax`;
-    if (product.sourceStatus === "verified") return price;
-    if (product.sourceStatus === "category_reference") return `${price} (closest size)`;
-    return `${price} (estimate)`;
-  }
-
   function renderPriceSources() {
     if (!dom.priceSources) return;
     dom.priceSources.replaceChildren();
@@ -1868,15 +1875,13 @@
        PRICE NOTES, the paragraph says what the prices are — a fourth title
        saying the same thing was the section introducing itself four times. */
     const pricedProducts = products.filter((item) => item.pricingStatus === "active");
-    const linked = pricedProducts.filter((item) => item.sourceUrl);
 
-    /* The section whose whole job is credibility used to show two collapsed
-       rows and a disclaimer. This is the ledger, built entirely from fields
-       already in products.js: how many prices are documented, how many are the
-       closest comparable size, and how many are a working figure. Nothing here
-       is asserted that the manifest does not already carry. */
+    /* The ledger is built entirely from fields already in products.js: how
+       many prices are documented, how many use the closest comparable size,
+       and how many are a working figure. Nothing here is asserted that the
+       manifest does not already carry. */
     const TIERS = [
-      ["verified", "DOCUMENTED", "A store listing was recorded for this exact item."],
+      ["verified", "DOCUMENTED", "A store price is on record for every item: an exact Walmart, Target or CVS listing, or for paper a typical retail range."],
       ["category_reference", "CLOSEST MATCH", "No listing for the exact item; the nearest size or family is used."],
       ["working_value", "WORKING FIGURE", "No source recorded. Labelled as an estimate everywhere it appears."],
       /* A product with no comparison at all is not a "working figure" — it was
@@ -1886,12 +1891,18 @@
       [null, "NO COMPARISON", "No honest number for this one, so none is shown and it is left out of any saving."]
     ];
     const compared = pricedProducts.filter((item) => Number.isFinite(item.comparePrice));
+    /* Owner, 2026-09-18: the unbranded paper counts as DOCUMENTED through its
+       retailNote (a typical retail range across brands). That range is context
+       only: it is not a comparePrice, so paper still never enters a saving. */
+    const ranged = pricedProducts.filter((item) => !Number.isFinite(item.comparePrice) && item.retailNote);
+    const documented = compared.length + ranged.length;
     const ledger = document.createElement("ul");
     ledger.className = "source-ledger";
     for (const [status, label, blurb] of TIERS) {
       const count = status === null
-        ? pricedProducts.length - compared.length
-        : compared.filter((item) => item.sourceStatus === status).length;
+        ? pricedProducts.length - documented
+        : compared.filter((item) => item.sourceStatus === status).length
+          + (status === "verified" ? ranged.length : 0);
       if (!count) continue;
       const row = document.createElement("li");
       row.dataset.tier = status || "none";
@@ -1907,50 +1918,11 @@
       ledger.append(row);
     }
     dom.priceSources.append(ledger);
-    const seen = new Set();
-    const sourceDetails = document.createElement("details");
-    const sourceSummary = document.createElement("summary");
-    const sourceRows = document.createElement("div");
-    sourceRows.className = "source-links";
-    for (const item of linked) {
-      const key = `${item.sourceRetailer}|${item.sourceUrl}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      const row = document.createElement("div");
-      const label = document.createElement("span");
-      label.textContent = `${fullName(item)} · ${item.sourceRetailer}`;
-      const link = document.createElement("a");
-      link.href = item.sourceUrl;
-      link.target = "_blank";
-      link.rel = "noreferrer";
-      link.textContent = "VIEW SOURCE ↗";
-      /* Owner, 2026-09-12: "it should add on the bottom 'our price xyz vs
-         their price xxx' so they know even before opening the link." Both
-         figures already exist — the shelf price and the cited store price —
-         and printing them here means nobody has to open a retailer tab to find
-         out whether the link is worth opening. It is a comparison of two
-         labelled numbers, not a savings claim: the tier word travels with the
-         store price, so a working figure still reads as an estimate. */
-      const compare = document.createElement("p");
-      compare.className = "source-compare";
-      const ours = document.createElement("b");
-      ours.innerHTML = "";
-      ours.append(tag("i", "OURS"), document.createTextNode(cardPrice(item)));
-      const theirs = document.createElement("s");
-      theirs.append(tag("i", "THEIRS"), document.createTextNode(sourceFigure(item)));
-      compare.append(ours, theirs);
-      row.append(label, link, compare);
-      sourceRows.append(row);
-    }
-    const retailers = new Set(linked.map((item) => item.sourceRetailer));
-    sourceSummary.textContent = `${seen.size} SOURCE ${seen.size === 1 ? "LINK" : "LINKS"} AT ${retailers.size} ${retailers.size === 1 ? "RETAILER" : "RETAILERS"}`;
-    sourceDetails.append(sourceSummary, sourceRows);
-    dom.priceSources.append(sourceDetails);
     const details = document.createElement("details");
     const summary = document.createElement("summary");
-    summary.textContent = compared.length === pricedProducts.length
+    summary.textContent = documented === pricedProducts.length
       ? `STORE PRICE FOR ALL ${pricedProducts.length} ITEMS`
-      : `STORE PRICE FOR ${compared.length} OF ${pricedProducts.length} ITEMS`;
+      : `STORE PRICE FOR ${documented} OF ${pricedProducts.length} ITEMS`;
     const list = document.createElement("div");
     list.className = "source-list";
     /* Owner, 2026-09-12: "the 'about blabla' should be animated and transition
@@ -1964,13 +1936,30 @@
       const row = document.createElement("p");
       row.className = "source-row";
       const name = document.createElement("span");
+      name.className = "source-row-name";
       name.textContent = `${fullName(item)} — ${item.size}`;
+      row.append(name);
+      /* The link is the row's own child, not part of the name, so the grid can
+         put it on the price line. Inside the name it sat alone under the title
+         and pushed the prices to a third line, leaving both lines half empty. */
+      if (item.sourceUrl) {
+        const link = document.createElement("a");
+        link.className = "source-row-link";
+        link.href = item.sourceUrl;
+        link.target = "_blank";
+        link.rel = "noreferrer";
+        link.textContent = `${item.sourceRetailer || "STORE"} SOURCE ↗`;
+        link.setAttribute("aria-label", `View ${item.sourceRetailer || "store"} source for ${fullName(item)}`);
+        row.append(link);
+      }
       const swapBox = document.createElement("span");
       swapBox.className = "price-swap";
       const value = document.createElement("b");
       value.className = "price-was";
       const hasCompare = Number.isFinite(item.comparePrice);
-      value.textContent = hasCompare ? sourceLabel(item) : "No comparison price listed";
+      /* A retailNote is context only (the owner's typical range for unbranded
+         paper); it is never a comparePrice and never enters a saving. */
+      value.textContent = hasCompare ? sourceLabel(item) : (item.retailNote || "No comparison price listed");
       swapBox.append(value);
       if (hasCompare) {
         row.dataset.priceSwap = "";
@@ -1979,7 +1968,7 @@
         tagNode.append(tag("i", "OURS"), document.createTextNode(cardPrice(item)));
         swapBox.append(tagNode);
       }
-      row.append(name, swapBox);
+      row.append(swapBox);
       list.append(row);
     });
     details.append(summary, list);
@@ -2104,6 +2093,8 @@
 
   dom.orderForm?.addEventListener("submit", (event) => {
     event.preventDefault();
+    const fulfillmentSelect = dom.orderForm.elements.fulfillment;
+    fulfillmentSelect?.setCustomValidity("");
     if (!dom.orderForm.reportValidity()) return;
     /* AN EMPTY CART MUST NOT PRODUCE A REQUEST. The cart syncs across tabs; the
        open form did not. Emptying the list in a second tab and then submitting
@@ -2134,6 +2125,13 @@
     const name = String(formData.get("name") || "").trim();
     const note = String(formData.get("note") || "").trim();
     const fulfillment = String(formData.get("fulfillment") || "Pickup");
+    if (fulfillment === "Local delivery" && live.itemCount < deliveryMinimumItems()) {
+      const left = deliveryMinimumItems() - live.itemCount;
+      fulfillmentSelect?.setCustomValidity(`Delivery requires ${deliveryMinimumItems()} items. Add ${left} more or choose free pickup.`);
+      dom.orderForm.reportValidity();
+      fulfillmentSelect?.focus();
+      return;
+    }
     const text = createRequestText(name, note, fulfillment);
     /* ONE STRING, TWO SURFACES (work order 6). The bubble is what the shopper
        reads and the textarea is what the clipboard, the sms: href and the QA
@@ -2155,6 +2153,10 @@
     dom.orderSuccess.dataset.builtFor = cartSignature();
     (dom.orderSuccess.querySelector("[data-send-sms]:not([hidden])")
       || dom.orderSuccess.querySelector("[data-copy-order]"))?.focus();
+  });
+
+  dom.orderForm?.elements.fulfillment?.addEventListener("change", (event) => {
+    event.currentTarget.setCustomValidity("");
   });
 
   dom.dialog?.addEventListener("click", (event) => {
