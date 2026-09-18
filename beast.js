@@ -808,7 +808,13 @@
        rather than a bare 3 so a stage that genuinely holds fewer products is
        still free to show what it has -- the count may never exceed the shortest
        row, and this must not invent a bottle that does not exist. */
-    const MIN_SHOWN = Math.min(3, ...all.map((row) => row.length));
+    /* EVERY PRODUCT, AT EVERY WIDTH. Owner, 2026-09-18, with a screenshot of
+       the 2-for-$7 stage: "if the window gets too narrow it shows one less item
+       and they're all super big". Dropping to three to hold the 18% legibility
+       gate is exactly what they saw: one product vanished and the survivors
+       grew. The floor is now the whole row, so `fitCount()` below never removes
+       a product; a narrow window gets the full line-up, smaller. */
+    const MIN_SHOWN = Math.min(...all.map((row) => row.length));
     const fitCount = () => {
       const span = hi - lo;
       while (count > MIN_SHOWN) {
